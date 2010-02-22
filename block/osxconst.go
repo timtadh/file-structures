@@ -1,4 +1,4 @@
-package blockfile
+package file
 
 import "os"
 

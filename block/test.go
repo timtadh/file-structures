@@ -1,7 +1,7 @@
 package main
 
 import "fmt"
-import . "blockfile"
+import . "file"
 import . "keyblock"
 import . "buffers"
 import . "byteslice"
