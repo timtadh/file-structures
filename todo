@@ -1,0 +1,13 @@
+
+- Change the Way Pointers are Added to Blocks       Done
+- Make BlockDim struct and use to initialize        Done
+- Write Blocks to Disk                              Done
+- Read Block from Disk                              Done
+- Support Byteslice as blocks                       Done
+- Test rigorously every mode for blocks
+- Support Duplicate Keys in Blocks                  Done
+- Support LRU Page Replacement                      Done
+- Support LFU Page Replacement                      Done
+- Support Marked Page Holding
+- Support Compacting the File
+- Support Marking a Page as Dead
