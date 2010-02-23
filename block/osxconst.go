@@ -13,8 +13,10 @@ func (self *BlockFile) Open() bool {
         fmt.Println(err)
     } else {
         self.file = f
-	syscall.Syscall(syscall.SYS_FCNTL, uintptr(self.file.Fd()), syscall.F_NOCACHE, 1)
+        r1, r2, err := syscall.Syscall(syscall.SYS_FCNTL, uintptr(self.file.Fd()), syscall.F_NOCACHE, 1)
+        fmt.Printf("AAAAAAAAAAAAAAAAA%v %v %vAAAAAAAAAAAAAAAAAAAA\n", r1, r2, err)
         self.opened = true
+        fmt.Printf("%v\n", self.file.Fd())
     }
     return self.opened
 }

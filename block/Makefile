@@ -1,7 +1,7 @@
 
 fmt:
 	gofmt -w *.go
-	../scripts/tabs_to_spaces.sh *.go
+	../../scripts/tabs_to_spaces.sh *.go
 heap:
 	6g -I . -o heap.6 heap.go
 byteslice:

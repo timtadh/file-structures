@@ -9,7 +9,7 @@ import . "byteslice"
 func main() {
     fmt.Println("hi")
     positions := make([][]byte, 4)
-    dim, _ := NewBlockDimensions(RECORDS|POINTERS, 4096, 8, 8, &([3]uint32{1, 1, 2}))
+    dim, _ := NewBlockDimensions(RECORDS|POINTERS, 223, 8, 8, &([3]uint32{1, 1, 2}))
     t, _ := NewBlockFile("hello.btree", NewLFU(3))
     fmt.Println(t)
     fmt.Println(t.Open())
@@ -73,7 +73,7 @@ func main() {
             b.InsertPointer(i+1, ByteSlice64(2))
         }
         b.SerializeToFile()
-//         fmt.Println(b)
+        //         fmt.Println(b)
     }
 
     if b, ok := NewKeyBlock(t, dim); ok {
@@ -85,7 +85,7 @@ func main() {
             b.InsertPointer(i+1, ByteSlice64(3))
         }
         b.SerializeToFile()
-//         fmt.Println(b)
+        //         fmt.Println(b)
     }
 
     if b, ok := NewKeyBlock(t, dim); ok {
@@ -97,7 +97,7 @@ func main() {
             b.InsertPointer(i+1, ByteSlice64(4))
         }
         b.SerializeToFile()
-//         fmt.Println(b)
+        //         fmt.Println(b)
     }
     DeserializeFromFile(t, dim, positions[0])
     DeserializeFromFile(t, dim, positions[0])

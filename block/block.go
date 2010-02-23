@@ -84,17 +84,17 @@ func (b *key_block) Add(r *record) (int, bool) {
     //     fmt.Println(r)
     i, _ := b.find(r.key)
     fmt.Printf("i=%v, k=%v\n", i, r.GetKey())
-//     if !ok {
-        j := len(b.records)
-        j -= 1
-        for ; j > int(i); j-- {
-            b.records[j] = b.records[j-1]
-        }
-        b.records[i] = r
-        b.rec_count += 1
-        return i, true
-//     }
-//     return -1, false
+    //     if !ok {
+    j := len(b.records)
+    j -= 1
+    for ; j > int(i); j-- {
+        b.records[j] = b.records[j-1]
+    }
+    b.records[i] = r
+    b.rec_count += 1
+    return i, true
+    //     }
+    //     return -1, false
 }
 
 func (self *key_block) InsertPointer(i int, ptr ByteSlice) bool {
@@ -129,8 +129,8 @@ func (self *key_block) SetPointer(i int, ptr ByteSlice) bool {
 }
 
 func (self *key_block) Find(k ByteSlice) (int, *record, ByteSlice, ByteSlice, bool) {
-    i, ok := self.find(k);
-    if  ok {
+    i, ok := self.find(k)
+    if ok {
         return i, self.records[i], self.pointers[i], self.pointers[i+1], true
     }
     return i, nil, nil, nil, false
@@ -182,8 +182,10 @@ func (self *key_block) Remove(k ByteSlice) (int, bool) {
     return i, true
 }
 
-func (self *key_block) RemoveAtIndex(i int) (bool) {
-    if i >= int(self.PointerCount()) { return false }
+func (self *key_block) RemoveAtIndex(i int) bool {
+    if i >= int(self.PointerCount()) {
+        return false
+    }
     for j := i; j < len(self.records); j++ {
         if j+1 < len(self.records) {
             self.records[j] = self.records[j+1]
@@ -302,7 +304,9 @@ func DeserializeFromFile(bf *BlockFile, dim *BlockDimensions, pos ByteSlice) (*k
 func Deserialize(bf *BlockFile, dim *BlockDimensions, bytes []byte, pos ByteSlice) (*key_block, bool) {
     b := newKeyBlock(bf, pos, dim)
     c := 5
-    if dim.Mode != bytes[0] { return nil, false }
+    if dim.Mode != bytes[0] {
+        return nil, false
+    }
     b.rec_count = ByteSlice(bytes[1:3]).Int16()
     b.ptr_count = ByteSlice(bytes[3:5]).Int16()
     for i := 0; i < len(b.records); i++ {
@@ -350,12 +354,14 @@ func (b *key_block) find(k ByteSlice) (int, bool) {
     var r int = int(b.rec_count) - 1
     var m int
     for l <= r {
-        m = ((r-l)>>1) + l
+        m = ((r - l) >> 1) + l
         if b.records[m] == nil || k.Lt(b.records[m].GetKey()) {
             r = m - 1
         } else if k.Eq(b.records[m].GetKey()) {
             for j := m; j >= 0; j-- {
-                if j == 0 || !k.Eq(b.records[j-1].GetKey()) { return j, true }
+                if j == 0 || !k.Eq(b.records[j-1].GetKey()) {
+                    return j, true
+                }
             }
         } else {
             l = m + 1
