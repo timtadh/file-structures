@@ -8,7 +8,7 @@ const BLOCKHEADER = 5
 
 type key_block struct {
     bf        *BlockFile
-    dim       *blockDimensions
+    dim       *BlockDimensions
     rec_count uint16
     ptr_count uint16
     fields    []uint32
@@ -18,7 +18,7 @@ type key_block struct {
     extraptr  ByteSlice
 }
 
-func NewKeyBlock(bf *BlockFile, dim *blockDimensions) (*key_block, bool) {
+func NewKeyBlock(bf *BlockFile, dim *BlockDimensions) (*key_block, bool) {
     if size, ok := bf.Size(); ok {
         b := newKeyBlock(bf, ByteSlice64(size), dim)
         bf.Allocate(uint32(size) + dim.BlockSize)
@@ -27,7 +27,7 @@ func NewKeyBlock(bf *BlockFile, dim *blockDimensions) (*key_block, bool) {
     return nil, false
 }
 
-func newKeyBlock(bf *BlockFile, pos ByteSlice, dim *blockDimensions) *key_block {
+func newKeyBlock(bf *BlockFile, pos ByteSlice, dim *BlockDimensions) *key_block {
     n := dim.NumberOfKeysInBlock()
     //     fmt.Println(n)
     self := new(key_block)
@@ -284,7 +284,7 @@ func (self *key_block) Serialize() ([]byte, bool) {
     return bytes, true
 }
 
-func DeserializeFromFile(bf *BlockFile, dim *blockDimensions, pos ByteSlice) (*key_block, bool) {
+func DeserializeFromFile(bf *BlockFile, dim *BlockDimensions, pos ByteSlice) (*key_block, bool) {
     var bytes []byte
     {
         var ok bool
@@ -299,7 +299,7 @@ func DeserializeFromFile(bf *BlockFile, dim *blockDimensions, pos ByteSlice) (*k
     return Deserialize(bf, dim, bytes, pos)
 }
 
-func Deserialize(bf *BlockFile, dim *blockDimensions, bytes []byte, pos ByteSlice) (*key_block, bool) {
+func Deserialize(bf *BlockFile, dim *BlockDimensions, bytes []byte, pos ByteSlice) (*key_block, bool) {
     b := newKeyBlock(bf, pos, dim)
     c := 5
     if dim.Mode != bytes[0] { return nil, false }

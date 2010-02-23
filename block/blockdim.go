@@ -8,7 +8,7 @@ const (
     EXTRAPTR
 )
 
-type blockDimensions struct {
+type BlockDimensions struct {
     Mode         uint8
     BlockSize    uint32
     KeySize      uint32
@@ -16,15 +16,15 @@ type blockDimensions struct {
     RecordFields []uint32
 }
 
-func BlockDimensions(Mode uint8, BlockSize, KeySize, PointerSize uint32, RecordFields []uint32) (*blockDimensions, bool) {
-    dim := blockDimensions{Mode, BlockSize, KeySize, PointerSize, RecordFields}
+func NewBlockDimensions(Mode uint8, BlockSize, KeySize, PointerSize uint32, RecordFields []uint32) (*BlockDimensions, bool) {
+    dim := BlockDimensions{Mode, BlockSize, KeySize, PointerSize, RecordFields}
     if !dim.Valid() {
         return nil, false
     }
     return &dim, true
 }
 
-func (self *blockDimensions) NumberOfKeysInBlock() int {
+func (self *BlockDimensions) NumberOfKeysInBlock() int {
     var n int
     if self.Mode&EXTRAPTR != 0 {
         n = int((self.BlockSize - self.PointerSize - BLOCKHEADER) /
@@ -36,7 +36,7 @@ func (self *blockDimensions) NumberOfKeysInBlock() int {
     return n
 }
 
-func (self *blockDimensions) RecordSize() uint32 {
+func (self *BlockDimensions) RecordSize() uint32 {
     sum := uint32(0)
     for _, v := range self.RecordFields {
         sum += v
@@ -44,7 +44,7 @@ func (self *blockDimensions) RecordSize() uint32 {
     return sum
 }
 
-func (self *blockDimensions) Valid() bool {
+func (self *BlockDimensions) Valid() bool {
     if self.KeySize <= 0 {
         return false
     }
@@ -76,7 +76,7 @@ func (self *blockDimensions) Valid() bool {
     return false
 }
 
-func (self *blockDimensions) String() string {
+func (self *BlockDimensions) String() string {
     return fmt.Sprintf(
         "{Mode = %v, BlockSize = %v, KeySize = %v, PointerSize = %v, RecordFields = %v}",
         self.Mode, self.BlockSize, self.KeySize, self.PointerSize, self.RecordFields)

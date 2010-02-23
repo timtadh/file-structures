@@ -4,14 +4,14 @@ import "fmt"
 import . "byteslice"
 
 type record struct {
-    dim  *blockDimensions
+    dim  *BlockDimensions
     key  ByteSlice
     data [][]byte
 }
 type RecordsSlice []*record
 
 // TODO: sanity check fields verses size
-func newRecord(key ByteSlice, dim *blockDimensions) *record {
+func newRecord(key ByteSlice, dim *BlockDimensions) *record {
     self := new(record)
     self.key = key
     self.dim = dim
