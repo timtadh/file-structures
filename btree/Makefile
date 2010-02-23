@@ -16,6 +16,7 @@ btree_linux:
 	6g -I ../ -I . -o btree.6 btree.go
 build_linux: blockfile_linux btree_linux
 	6g -I ../ -I . -o main.6 test.go
+	-rm hello.btree
 linux: build_linux
 	6l -o test main.6
 	./test
@@ -25,6 +26,7 @@ linux: build_linux
 
 .PHONY : clean
 clean :
+		cd ../block; $(MAKE) clean
 		-rm hello.btree test *.6
 		ls
 

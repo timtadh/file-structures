@@ -6,7 +6,7 @@ import . "byteslice"
 
 const BLOCKHEADER = 5
 
-type key_block struct {
+type KeyBlock struct {
     bf        *BlockFile
     dim       *BlockDimensions
     rec_count uint16
@@ -18,7 +18,7 @@ type key_block struct {
     extraptr  ByteSlice
 }
 
-func NewKeyBlock(bf *BlockFile, dim *BlockDimensions) (*key_block, bool) {
+func NewKeyBlock(bf *BlockFile, dim *BlockDimensions) (*KeyBlock, bool) {
     if size, ok := bf.Size(); ok {
         b := newKeyBlock(bf, ByteSlice64(size), dim)
         bf.Allocate(uint32(size) + dim.BlockSize)
@@ -27,10 +27,10 @@ func NewKeyBlock(bf *BlockFile, dim *BlockDimensions) (*key_block, bool) {
     return nil, false
 }
 
-func newKeyBlock(bf *BlockFile, pos ByteSlice, dim *BlockDimensions) *key_block {
-    n := dim.NumberOfKeysInBlock()
+func newKeyBlock(bf *BlockFile, pos ByteSlice, dim *BlockDimensions) *KeyBlock {
+    n := dim.KeysPerBlock()
     //     fmt.Println(n)
-    self := new(key_block)
+    self := new(KeyBlock)
     self.bf = bf
     self.dim = dim
     self.position = pos
@@ -45,22 +45,23 @@ func newKeyBlock(bf *BlockFile, pos ByteSlice, dim *BlockDimensions) *key_block 
     return self
 }
 
-func (self *key_block) NewRecord(key ByteSlice) *record {
+func (self *KeyBlock) NewRecord(key ByteSlice) *record {
     return newRecord(key, self.dim)
 }
 
-func (self *key_block) Size() uint32        { return self.dim.BlockSize }
-func (self *key_block) RecordSize() uint32  { return self.dim.RecordSize() }
-func (self *key_block) KeySize() uint32     { return self.dim.KeySize }
-func (self *key_block) PointerSize() uint32 { return self.dim.PointerSize }
-func (self *key_block) MaxRecordCount() uint16 {
-    return uint16(len(self.records))
-}
-func (self *key_block) RecordCount() uint16  { return self.rec_count }
-func (self *key_block) PointerCount() uint16 { return self.ptr_count }
-func (self *key_block) Position() ByteSlice  { return self.position }
+func (self *KeyBlock) Size() uint32             { return self.dim.BlockSize }
+func (self *KeyBlock) RecordSize() uint32       { return self.dim.RecordSize() }
+func (self *KeyBlock) KeySize() uint32          { return self.dim.KeySize }
+func (self *KeyBlock) PointerSize() uint32      { return self.dim.PointerSize }
+func (self *KeyBlock) MaxRecordCount() uint16   { return uint16(len(self.records)) }
 
-func (self *key_block) SetExtraPtr(ptr ByteSlice) bool {
+func (self *KeyBlock) Full() bool { return len(self.records) == int(self.rec_count) }
+
+func (self *KeyBlock) RecordCount() uint16  { return self.rec_count }
+func (self *KeyBlock) PointerCount() uint16 { return self.ptr_count }
+func (self *KeyBlock) Position() ByteSlice  { return self.position }
+
+func (self *KeyBlock) SetExtraPtr(ptr ByteSlice) bool {
     if self.dim.Mode&EXTRAPTR != 0 && len(ptr) == int(self.dim.PointerSize) {
         self.extraptr = ptr
         return true
@@ -68,15 +69,14 @@ func (self *key_block) SetExtraPtr(ptr ByteSlice) bool {
     return false
 }
 
-func (self *key_block) GetExtraPtr() (ByteSlice, bool) {
+func (self *KeyBlock) GetExtraPtr() (ByteSlice, bool) {
     if self.dim.Mode&EXTRAPTR != 0 {
         return self.extraptr, true
     }
     return nil, false
 }
 
-// TODO: Support Multiple Keys
-func (b *key_block) Add(r *record) (int, bool) {
+func (b *KeyBlock) Add(r *record) (int, bool) {
     if b.RecordCount() >= b.MaxRecordCount() {
         return -1, false
     }
@@ -97,7 +97,7 @@ func (b *key_block) Add(r *record) (int, bool) {
     //     return -1, false
 }
 
-func (self *key_block) InsertPointer(i int, ptr ByteSlice) bool {
+func (self *KeyBlock) InsertPointer(i int, ptr ByteSlice) bool {
     if self.dim.Mode&POINTERS == 0 {
         return false
     }
@@ -117,7 +117,7 @@ func (self *key_block) InsertPointer(i int, ptr ByteSlice) bool {
     return true
 }
 
-func (self *key_block) SetPointer(i int, ptr ByteSlice) bool {
+func (self *KeyBlock) SetPointer(i int, ptr ByteSlice) bool {
     if self.dim.Mode&POINTERS == 0 {
         return false
     }
@@ -128,7 +128,7 @@ func (self *key_block) SetPointer(i int, ptr ByteSlice) bool {
     return true
 }
 
-func (self *key_block) Find(k ByteSlice) (int, *record, ByteSlice, ByteSlice, bool) {
+func (self *KeyBlock) Find(k ByteSlice) (int, *record, ByteSlice, ByteSlice, bool) {
     i, ok := self.find(k)
     if ok {
         return i, self.records[i], self.pointers[i], self.pointers[i+1], true
@@ -136,21 +136,21 @@ func (self *key_block) Find(k ByteSlice) (int, *record, ByteSlice, ByteSlice, bo
     return i, nil, nil, nil, false
 }
 
-func (self *key_block) Get(i int) (*record, ByteSlice, ByteSlice, bool) {
+func (self *KeyBlock) Get(i int) (*record, ByteSlice, ByteSlice, bool) {
     if i < int(self.RecordCount()) {
         return self.records[i], self.pointers[i], self.pointers[i+1], true
     }
     return nil, nil, nil, false
 }
 
-func (self *key_block) GetPointer(i int) (ByteSlice, bool) {
+func (self *KeyBlock) GetPointer(i int) (ByteSlice, bool) {
     if i < int(self.PointerCount()) {
         return self.pointers[i], true
     }
     return nil, false
 }
 
-func (self *key_block) PointerIndex(ptr ByteSlice) (int, bool) {
+func (self *KeyBlock) PointerIndex(ptr ByteSlice) (int, bool) {
     if self.dim.Mode&POINTERS == 0 {
         return -1, false
     }
@@ -165,7 +165,7 @@ func (self *key_block) PointerIndex(ptr ByteSlice) (int, bool) {
     return -1, false
 }
 
-func (self *key_block) Remove(k ByteSlice) (int, bool) {
+func (self *KeyBlock) Remove(k ByteSlice) (int, bool) {
     i, ok := self.find(k)
     if ok {
         for j := i; j < len(self.records); j++ {
@@ -182,7 +182,7 @@ func (self *key_block) Remove(k ByteSlice) (int, bool) {
     return i, true
 }
 
-func (self *key_block) RemoveAtIndex(i int) bool {
+func (self *KeyBlock) RemoveAtIndex(i int) bool {
     if i >= int(self.PointerCount()) {
         return false
     }
@@ -197,7 +197,7 @@ func (self *key_block) RemoveAtIndex(i int) bool {
     return true
 }
 
-func (self *key_block) RemovePointer(i int) bool {
+func (self *KeyBlock) RemovePointer(i int) bool {
     if self.dim.Mode&POINTERS == 0 {
         return false
     }
@@ -216,14 +216,14 @@ func (self *key_block) RemovePointer(i int) bool {
     return true
 }
 
-func (self *key_block) SerializeToFile() bool {
+func (self *KeyBlock) SerializeToFile() bool {
     if bytes, ok := self.Serialize(); ok {
         return self.bf.WriteBlock(int64(self.Position().Int64()), bytes)
     }
     return false
 }
 
-func (self *key_block) Serialize() ([]byte, bool) {
+func (self *KeyBlock) Serialize() ([]byte, bool) {
     bytes := make([]byte, self.Size())
     c := 0
     bytes[c] = self.dim.Mode
@@ -286,7 +286,7 @@ func (self *key_block) Serialize() ([]byte, bool) {
     return bytes, true
 }
 
-func DeserializeFromFile(bf *BlockFile, dim *BlockDimensions, pos ByteSlice) (*key_block, bool) {
+func DeserializeFromFile(bf *BlockFile, dim *BlockDimensions, pos ByteSlice) (*KeyBlock, bool) {
     var bytes []byte
     {
         var ok bool
@@ -301,7 +301,7 @@ func DeserializeFromFile(bf *BlockFile, dim *BlockDimensions, pos ByteSlice) (*k
     return Deserialize(bf, dim, bytes, pos)
 }
 
-func Deserialize(bf *BlockFile, dim *BlockDimensions, bytes []byte, pos ByteSlice) (*key_block, bool) {
+func Deserialize(bf *BlockFile, dim *BlockDimensions, bytes []byte, pos ByteSlice) (*KeyBlock, bool) {
     b := newKeyBlock(bf, pos, dim)
     c := 5
     if dim.Mode != bytes[0] {
@@ -349,7 +349,7 @@ func Deserialize(bf *BlockFile, dim *BlockDimensions, bytes []byte, pos ByteSlic
     return b, true
 }
 
-func (b *key_block) find(k ByteSlice) (int, bool) {
+func (b *KeyBlock) find(k ByteSlice) (int, bool) {
     var l int = 0
     var r int = int(b.rec_count) - 1
     var m int
@@ -370,9 +370,9 @@ func (b *key_block) find(k ByteSlice) (int, bool) {
     return l, false
 }
 
-func (b *key_block) String() string {
+func (b *KeyBlock) String() string {
     if b == nil {
-        return "<nil> key_block"
+        return "<nil> KeyBlock"
     }
     s := "Dimensions: " + fmt.Sprintln(b.dim)
     s += "rec_count: " + fmt.Sprintln(b.rec_count)

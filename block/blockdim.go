@@ -24,7 +24,7 @@ func NewBlockDimensions(Mode uint8, BlockSize, KeySize, PointerSize uint32, Reco
     return &dim, true
 }
 
-func (self *BlockDimensions) NumberOfKeysInBlock() int {
+func (self *BlockDimensions) KeysPerBlock() int {
     var n int
     if self.Mode&EXTRAPTR != 0 {
         n = int((self.BlockSize - self.PointerSize - BLOCKHEADER) /
@@ -78,6 +78,6 @@ func (self *BlockDimensions) Valid() bool {
 
 func (self *BlockDimensions) String() string {
     return fmt.Sprintf(
-        "{Mode = %v, BlockSize = %v, KeySize = %v, PointerSize = %v, RecordFields = %v}",
-        self.Mode, self.BlockSize, self.KeySize, self.PointerSize, self.RecordFields)
+        "Dimensions{Mode = %v, BlockSize = %v, KeySize = %v, PointerSize = %v, RecordFields = %v, KeysPerBlock=%v}",
+        self.Mode, self.BlockSize, self.KeySize, self.PointerSize, self.RecordFields, self.KeysPerBlock())
 }

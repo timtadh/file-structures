@@ -3,7 +3,6 @@ package file
 import "os"
 import "fmt"
 import . "buffers"
-// const BLOCKSIZE = 4096
 
 type BlockFile struct {
     filename string
@@ -52,6 +51,7 @@ func (self *BlockFile) resize(size int64) bool {
     return true
 }
 
+// TODO: Return Block Position
 func (self *BlockFile) Allocate(size uint32) bool {
     return self.resize(int64(size))
 }

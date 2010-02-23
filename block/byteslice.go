@@ -25,6 +25,27 @@ func (b ByteSlice) Int16() uint16 {
     return i
 }
 
+func ByteSlice32(i uint32) ByteSlice {
+    b := make(ByteSlice, 4)
+    s := len(b) - 1
+    for j := s; j >= 0; j-- {
+        b[j] = uint8(i & 0x00000000000000ff)
+        i >>= 8
+    }
+    return b
+}
+
+func (b ByteSlice) Int32() uint32 {
+    i := uint32(0)
+    for j := 0; j < len(b) && j < 4; j++ {
+        i |= 0x00000000000000ff & uint32(b[j])
+        if j+1 < len(b) {
+            i <<= 8
+        }
+    }
+    return i
+}
+
 func ByteSlice64(i uint64) ByteSlice {
     b := make(ByteSlice, 8)
     s := len(b) - 1
@@ -72,7 +93,7 @@ func (a ByteSlice) Gt(b ByteSlice) bool {
         t = t || r && (a[i] > b[i])
         r = r && (a[i] == b[i])
     }
-    fmt.Printf("%v > %v == %v\n", a, b, t)
+//     fmt.Printf("%v > %v == %v\n", a, b, t)
     return t
 }
 
