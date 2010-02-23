@@ -1,7 +1,7 @@
 package main
 
 import "fmt"
-// import . "btree"
+import . "btree"
 // import . "block/file"
 // import . "block/keyblock"
 // import . "block/buffers"
@@ -9,5 +9,6 @@ import "fmt"
 
 func main() {
     fmt.Println("test2 yoyo")
-//     fmt.Println(Node)
+    btree, _ := NewBTree("hello.btree", 4, &([3]uint32{1,1,2}))
+    fmt.Println(btree)
 }
