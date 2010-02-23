@@ -2,6 +2,7 @@ package file
 
 import "os"
 import "fmt"
+import "syscall"
 
 const OPENFLAG = os.O_RDWR | os.O_CREAT
 
@@ -12,6 +13,7 @@ func (self *BlockFile) Open() bool {
         fmt.Println(err)
     } else {
         self.file = f
+	syscall.Syscall(syscall.SYS_FCNTL, uintptr(self.file.Fd()), syscall.F_NOCACHE, 1)
         self.opened = true
     }
     return self.opened
