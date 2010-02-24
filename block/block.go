@@ -202,7 +202,7 @@ func (self *KeyBlock) RemovePointer(i int) bool {
     if self.dim.Mode&POINTERS == 0 {
         return false
     }
-    if i > int(self.PointerCount()) {
+    if i > int(self.PointerCount()) || self.PointerCount() == 0 {
         return false
     }
     j := i
