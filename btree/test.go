@@ -13,6 +13,11 @@ func main() {
     rec := &([3][]byte{&[1]byte{1},&[1]byte{1},&[2]byte{1,2}})
 //     fmt.Println(btree)
     fmt.Println(btree.Insert(ByteSlice32(1), rec))
-    fmt.Println(btree.Insert(ByteSlice32(2), rec))
+    fmt.Println(btree.Insert(ByteSlice32(5), rec))
+    fmt.Println(btree.Insert(ByteSlice32(9), rec))
+//     fmt.Println(btree)
     fmt.Println(btree.Insert(ByteSlice32(3), rec))
+    fmt.Println(btree.Insert(ByteSlice32(7), rec))
+    fmt.Println(btree.Insert(ByteSlice32(8), rec))
+    fmt.Println(btree)
 }

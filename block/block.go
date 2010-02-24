@@ -137,7 +137,7 @@ func (self *KeyBlock) Find(k ByteSlice) (int, *Record, ByteSlice, ByteSlice, boo
 }
 
 func (self *KeyBlock) Get(i int) (*Record, ByteSlice, ByteSlice, bool) {
-    if i < int(self.RecordCount()) {
+    if i < int(self.RecordCount()) && i >= 0 {
         return self.records[i], self.pointers[i], self.pointers[i+1], true
     }
     return nil, nil, nil, false
