@@ -82,22 +82,112 @@ func (self *BTree) find_block(key, pos ByteSlice, path []ByteSlice) (*KeyBlock, 
 }
 
 func (self *BTree) Insert(key ByteSlice, record []ByteSlice) bool {
+
+    type dirty struct {
+        slice []*KeyBlock
+    }
+
+    parent := func(i int, path []ByteSlice) (*KeyBlock, bool) {
+        if i-1 < 0 { return nil, false }
+        block, ok := DeserializeFromFile(self.bf, self.node, path[i-1]);
+        if !ok {
+            fmt.Println("Bad block pointer PANIC")
+            os.Exit(1)
+        }
+        return block, true
+    }
+    insert_dirty := func(b *KeyBlock, d *dirty) {
+        d.slice = d.slice[0:len(d.slice)+1]
+        d.slice[len(d.slice)-1] = b
+    }
+    dirty_blocks := new(dirty)
+    dirty_blocks.slice = make([]*KeyBlock, self.height*4)[0:0]
+
     if !self.ValidateKey(key) || !self.ValidateRecord(record) { return false }
     block, path := self.find_block(key, ByteSlice64(0), make([]ByteSlice, self.height)[0:0])
+    insert_dirty(block, dirty_blocks)
     fmt.Println(path)
+    cnode := len(path)-1
+
     rec := block.NewRecord(key)
     for i,f := range record {
         rec.Set(uint32(i), f)
     }
+
     r := false
     if block.Full() {
+        var split_rec *Record
         i, _, _, _, _ := block.Find(key)
-        if i == self.node.KeysPerBlock() { i = i-1 }
-        fmt.Println(i)
+        m := self.node.KeysPerBlock() >> 1
+        if m != i {
+            if i >= self.node.KeysPerBlock() { i-- }
+            split_rec, _, _, _ = block.Get(i)
+            block.RemoveAtIndex(i)
+            if _, ok := block.Add(rec); !ok {
+                fmt.Println("Inserting record into block failed")
+                return false
+            }
+        } else {
+            split_rec = rec
+        }
+        fmt.Println(split_rec)
+
+        //TODO: Add pointer manipulation
+        if _, ok := parent(cnode, path); !ok {
+            // we are at the root, and the root is full
+            // so we need two more blocks one for the new right and the new left
+            var l_child, r_child *KeyBlock
+            var ok1, ok2 bool
+            l_child, ok1 = NewKeyBlock(self.bf, self.node);
+            r_child, ok2 = NewKeyBlock(self.bf, self.node);
+            if !ok1 || !ok2 {
+                fmt.Println("Could not allocate block PANIC")
+                os.Exit(1)
+            }
+            insert_dirty(l_child, dirty_blocks)
+            insert_dirty(r_child, dirty_blocks)
+
+            for j := m-1; j >= 0; j-- {
+                if r, _, _, ok := block.Get(j); !ok {
+                    fmt.Printf("could not get index j<%v> from block: %v", j, block)
+                    os.Exit(2)
+                } else {
+                    if !block.RemoveAtIndex(j) {
+                        fmt.Printf("could not remove index j<%v> from block: %v", j, block)
+                        os.Exit(2)
+                    }
+                    l_child.Add(r)
+                }
+            }
+            for block.RecordCount() > 0 {
+                if r, _, _, ok := block.Get(0); !ok {
+                    fmt.Printf("could not get index j<%v> from block: %v", 0, block)
+                    os.Exit(2)
+                } else {
+                    if !block.RemoveAtIndex(0) {
+                        fmt.Printf("could not remove index j<%v> from block: %v", 0, block)
+                        os.Exit(2)
+                    }
+                    r_child.Add(r)
+                }
+            }
+            fmt.Println(block)
+            fmt.Println(l_child)
+            fmt.Println(r_child)
+            if i, ok := block.Add(split_rec); !ok {
+                fmt.Printf("could not insert rec <%v> into block: %v", split_rec, block)
+                os.Exit(2)
+            } else {
+                block.InsertPointer(i, l_child.Position())
+                block.InsertPointer(i+1, r_child.Position())
+            }
+        }
     } else {
         _,r = block.Add(rec)
         fmt.Println(block)
-        block.SerializeToFile()
+    }
+    for _,b := range dirty_blocks.slice {
+        b.SerializeToFile()
     }
     return r
 }

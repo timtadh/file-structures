@@ -45,7 +45,7 @@ func newKeyBlock(bf *BlockFile, pos ByteSlice, dim *BlockDimensions) *KeyBlock {
     return self
 }
 
-func (self *KeyBlock) NewRecord(key ByteSlice) *record {
+func (self *KeyBlock) NewRecord(key ByteSlice) *Record {
     return newRecord(key, self.dim)
 }
 
@@ -76,14 +76,14 @@ func (self *KeyBlock) GetExtraPtr() (ByteSlice, bool) {
     return nil, false
 }
 
-func (b *KeyBlock) Add(r *record) (int, bool) {
+func (b *KeyBlock) Add(r *Record) (int, bool) {
     if b.RecordCount() >= b.MaxRecordCount() {
         return -1, false
     }
     //     fmt.Println()
     //     fmt.Println(r)
     i, _ := b.find(r.key)
-    fmt.Printf("i=%v, k=%v\n", i, r.GetKey())
+//     fmt.Printf("i=%v, k=%v\n", i, r.GetKey())
     //     if !ok {
     j := len(b.records)
     j -= 1
@@ -128,7 +128,7 @@ func (self *KeyBlock) SetPointer(i int, ptr ByteSlice) bool {
     return true
 }
 
-func (self *KeyBlock) Find(k ByteSlice) (int, *record, ByteSlice, ByteSlice, bool) {
+func (self *KeyBlock) Find(k ByteSlice) (int, *Record, ByteSlice, ByteSlice, bool) {
     i, ok := self.find(k)
     if ok {
         return i, self.records[i], self.pointers[i], self.pointers[i+1], true
@@ -136,7 +136,7 @@ func (self *KeyBlock) Find(k ByteSlice) (int, *record, ByteSlice, ByteSlice, boo
     return i, nil, nil, nil, false
 }
 
-func (self *KeyBlock) Get(i int) (*record, ByteSlice, ByteSlice, bool) {
+func (self *KeyBlock) Get(i int) (*Record, ByteSlice, ByteSlice, bool) {
     if i < int(self.RecordCount()) {
         return self.records[i], self.pointers[i], self.pointers[i+1], true
     }
@@ -183,7 +183,8 @@ func (self *KeyBlock) Remove(k ByteSlice) (int, bool) {
 }
 
 func (self *KeyBlock) RemoveAtIndex(i int) bool {
-    if i >= int(self.PointerCount()) {
+    if i >= int(self.RecordCount()) {
+        fmt.Printf("RemoveAtIndex failed %v >= %v\n", i, self.RecordCount())
         return false
     }
     for j := i; j < len(self.records); j++ {
@@ -218,6 +219,7 @@ func (self *KeyBlock) RemovePointer(i int) bool {
 
 func (self *KeyBlock) SerializeToFile() bool {
     if bytes, ok := self.Serialize(); ok {
+        fmt.Println(bytes)
         return self.bf.WriteBlock(int64(self.Position().Int64()), bytes)
     }
     return false
@@ -372,7 +374,7 @@ func (b *KeyBlock) find(k ByteSlice) (int, bool) {
 
 func (b *KeyBlock) String() string {
     if b == nil {
-        return "<nil> KeyBlock"
+        return "<nil KeyBlock>"
     }
     s := "Dimensions: " + fmt.Sprintln(b.dim)
     s += "rec_count: " + fmt.Sprintln(b.rec_count)
