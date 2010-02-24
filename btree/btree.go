@@ -132,7 +132,6 @@ func (self *BTree) Insert(key ByteSlice, record []ByteSlice) bool {
         }
         fmt.Println(split_rec)
 
-        //TODO: Add pointer manipulation
         if _, ok := parent(cnode, path); !ok {
             // we are at the root, and the root is full
             // so we need two more blocks one for the new right and the new left
@@ -158,6 +157,15 @@ func (self *BTree) Insert(key ByteSlice, record []ByteSlice) bool {
                     }
                     l_child.Add(r)
                 }
+                if j == m-1 {
+                    if p, ok := block.GetPointer(m); ok {
+                        l_child.InsertPointer(0, p)
+                    }
+                }
+                if p, ok := block.GetPointer(j); ok {
+                    l_child.InsertPointer(0, p)
+                }
+                block.RemovePointer(j)
             }
             for block.RecordCount() > 0 {
                 if r, _, _, ok := block.Get(0); !ok {
@@ -170,10 +178,17 @@ func (self *BTree) Insert(key ByteSlice, record []ByteSlice) bool {
                     }
                     r_child.Add(r)
                 }
+                if p, ok := block.GetPointer(0); ok {
+                    r_child.InsertPointer(int(r_child.PointerCount()), p)
+                }
+                block.RemovePointer(0)
+                if block.RecordCount() == 0 {
+                    if p, ok := block.GetPointer(0); ok {
+                        r_child.InsertPointer(int(r_child.PointerCount()), p)
+                    }
+                    block.RemovePointer(0)
+                }
             }
-            fmt.Println(block)
-            fmt.Println(l_child)
-            fmt.Println(r_child)
             if i, ok := block.Add(split_rec); !ok {
                 fmt.Printf("could not insert rec <%v> into block: %v", split_rec, block)
                 os.Exit(2)
@@ -181,6 +196,9 @@ func (self *BTree) Insert(key ByteSlice, record []ByteSlice) bool {
                 block.InsertPointer(i, l_child.Position())
                 block.InsertPointer(i+1, r_child.Position())
             }
+            fmt.Println(block)
+            fmt.Println(l_child)
+            fmt.Println(r_child)
         }
     } else {
         _,r = block.Add(rec)
