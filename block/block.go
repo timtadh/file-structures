@@ -219,7 +219,6 @@ func (self *KeyBlock) RemovePointer(i int) bool {
 
 func (self *KeyBlock) SerializeToFile() bool {
     if bytes, ok := self.Serialize(); ok {
-        fmt.Println(bytes)
         return self.bf.WriteBlock(int64(self.Position().Int64()), bytes)
     }
     return false

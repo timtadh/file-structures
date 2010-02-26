@@ -33,7 +33,7 @@ func (self *Record) String() string {
     if self == nil {
         return "<nil>"
     }
-    return fmt.Sprintf("{%v, data=%v}", self.key, self.data)
+    return fmt.Sprintf("{%v, data=%v}", self.key.Int64(), self.data)
 }
 
 func (recs RecordsSlice) String() string {

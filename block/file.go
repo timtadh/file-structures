@@ -3,6 +3,7 @@ package file
 import "os"
 import "fmt"
 import . "buffers"
+import . "byteslice"
 
 type BlockFile struct {
     filename string
@@ -60,6 +61,12 @@ func (self *BlockFile) WriteBlock(p int64, block []byte) bool {
     if !self.opened {
         return false
     }
+    if b, ok := self.buf.Read(p, uint32(len(block))); ok {
+        if ByteSlice(b).Eq(block) {
+            fmt.Println("skip write no change in block from what is in cache")
+            return true
+        }
+    }
     for pos, err := self.file.Seek(p, 0); pos != p; pos, err = self.file.Seek(p, 0) {
         if err != nil {
             fmt.Println(err)
@@ -73,6 +80,7 @@ func (self *BlockFile) WriteBlock(p int64, block []byte) bool {
         return false
     }
     self.buf.Update(p, block)
+    fmt.Println(block)
     return true
 }
 
