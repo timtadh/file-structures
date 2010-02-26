@@ -1,7 +1,4 @@
 
-fmt:
-	gofmt -w *.go
-	../../scripts/tabs_to_spaces.sh *.go
 heap:
 	6g -I . -o heap.6 heap.go
 byteslice:
@@ -35,3 +32,7 @@ linux: build_test_linux
 clean :
 		-rm hello.btree test *.6
 		ls
+
+fmt:
+	gofmt -w *.go
+	../../scripts/tabs_to_spaces.sh *.go
