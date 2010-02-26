@@ -33,6 +33,17 @@ func main() {
     fmt.Println(btree.Insert(ByteSlice32(6), rec))
     fmt.Println(btree)
     fmt.Println(btree.Insert(ByteSlice32(12), rec))
+    fmt.Println(btree.Insert(ByteSlice32(14), rec))
+    fmt.Println(btree.Insert(ByteSlice32(2), rec))
+    fmt.Println(btree.Insert(ByteSlice32(10), rec))
+    fmt.Println(btree.Insert(ByteSlice32(13), rec))
+    fmt.Println(btree.Insert(ByteSlice32(4), rec))
+    fmt.Println(btree.Insert(ByteSlice32(16), rec))
+    fmt.Println(btree.Insert(ByteSlice32(17), rec))
+    fmt.Println(btree.Insert(ByteSlice32(18), rec))
+    fmt.Println(btree.Insert(ByteSlice32(19), rec))
+    fmt.Println(btree.Insert(ByteSlice32(20), rec))
+    fmt.Println(btree.Insert(ByteSlice32(21), rec))
     fmt.Println(btree)
     
     
