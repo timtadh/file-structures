@@ -9,7 +9,8 @@ import . "block/buffers"
 import . "block/byteslice"
 
 // const BLOCKSIZE = 4096
-const BLOCKSIZE = 45
+// const BLOCKSIZE = 45
+const BLOCKSIZE = 65
 // const BLOCKSIZE = 105
 
 

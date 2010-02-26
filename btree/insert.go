@@ -34,6 +34,12 @@ func (self BTree) balance_blocks(full *KeyBlock, empty *KeyBlock) {
         }
         full.RemovePointer(j+1)
     }
+//     if full.PointerCount() == full. {
+//         if p, ok := full.GetPointer(m); ok {
+//             empty.InsertPointer(0, p)
+//         }
+//         full.RemovePointer(m)
+//     }
     fmt.Println("   full:\n", full)
     fmt.Println("   emtpy:\n", empty)
 }
@@ -67,24 +73,45 @@ func (self *BTree) split(block *KeyBlock, rec *Record, nextb *KeyBlock, dirty *d
         split_rec = rec
     }
     self.balance_blocks(block, new_block)
+    dirty.sync()                                                        // figure out how to remove
     if nextb != nil {
         fmt.Println("NEXTB: ", nextb)
         nextr, _, _, _ := nextb.Get(0)
         if i, _, _, _, ok := block.Find(rec.GetKey()); ok {
-            fmt.Println("full")
-            fmt.Println("i=", i)
-            if nextr.GetKey().Lt(rec.GetKey()) {
+            // if this pointer is going into the old block that means there will be too many pointers in this block
+            // so we must move the last one over to the new block
+            
+            if p, ok := block.GetPointer(m); ok {
+                new_block.InsertPointer(0, p)
+            }
+            block.RemovePointer(m)
+            
+            _, left, _, _ := block.Get(i)
+            fmt.Println("left=", left)
+            lblock := self.getblock(left)
+            r, _, _, _ := lblock.Get(0)
+            fmt.Println("empty")
+            fmt.Printf("nextr %v > %v r, %v\n", nextr.GetKey(), r.GetKey(), nextr.GetKey().Gt(r.GetKey()))
+            if nextr.GetKey().Gt(r.GetKey()) {
+                fmt.Println("i=", i, "+1")
                 block.InsertPointer(i+1, nextb.Position())
             } else {
+                fmt.Println("i=", i)
                 block.InsertPointer(i, nextb.Position())
             }
         } else {
             i, _, _, _, _ := new_block.Find(rec.GetKey())
+            _, left, _, _ := new_block.Get(i)
+            fmt.Println("left=", left)
+            lblock := self.getblock(left)
+            r, _, _, _ := lblock.Get(0)
             fmt.Println("empty")
-            fmt.Println("i=", i)
-            if nextr.GetKey().Lt(rec.GetKey()) {
+            fmt.Printf("nextr %v > %v r, %v\n", nextr.GetKey(), r.GetKey(), nextr.GetKey().Gt(r.GetKey()))
+            if nextr.GetKey().Gt(r.GetKey()) {
+                fmt.Println("i=", i, "+1")
                 new_block.InsertPointer(i+1, nextb.Position())
             } else {
+                fmt.Println("i=", i)
                 new_block.InsertPointer(i, nextb.Position())
             }
         }
@@ -99,7 +126,7 @@ func (self *BTree) split(block *KeyBlock, rec *Record, nextb *KeyBlock, dirty *d
     Recursively inserts the record based on Sedgewick's algorithm
 */
 func (self *BTree) insert(block *KeyBlock, rec *Record, height int, dirty *dirty_blocks) (*KeyBlock, *Record, bool) {
-    fmt.Println("inserting", block, rec, height)
+    fmt.Println("inserting", rec, "\n", block, height)
     var nextb *KeyBlock
     if height > 0 {
         // at an interior node
