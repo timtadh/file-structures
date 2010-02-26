@@ -21,6 +21,25 @@ func (self *BTree) parent(i int, path []ByteSlice) (*KeyBlock, bool) {
     return block, true
 }
 
+func (self *BTree) allocate() *KeyBlock {
+    
+    b, ok := NewKeyBlock(self.bf, self.node)
+    if !ok {
+        fmt.Println("Could not allocate block PANIC")
+        os.Exit(1)
+    }
+    return b
+}
+
+func (self *BTree) getblock(pos ByteSlice) *KeyBlock {
+    cblock, ok := DeserializeFromFile(self.bf, self.node, pos);
+    if  !ok {
+        fmt.Println("Bad block pointer PANIC")
+        os.Exit(1)
+    }
+    return cblock
+}
+
 func (self *BTree) ValidateKey(key ByteSlice) bool {
     return len(key) == int(self.node.KeySize)
 }

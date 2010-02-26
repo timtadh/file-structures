@@ -1,6 +1,7 @@
 package keyblock
 
 import "fmt"
+import . "byteslice"
 
 const (
     RECORDS = 1 << iota
@@ -22,6 +23,10 @@ func NewBlockDimensions(Mode uint8, BlockSize, KeySize, PointerSize uint32, Reco
         return nil, false
     }
     return &dim, true
+}
+
+func (self *BlockDimensions) NewRecord(key ByteSlice) *Record {
+    return newRecord(key, self)
 }
 
 func (self *BlockDimensions) KeysPerBlock() int {

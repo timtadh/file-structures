@@ -377,6 +377,7 @@ func (b *KeyBlock) String() string {
         return "<nil KeyBlock>"
     }
     s := "Dimensions: " + fmt.Sprintln(b.dim)
+    s += "Position: " + fmt.Sprintln(b.Position())
     s += "rec_count: " + fmt.Sprintln(b.rec_count)
     s += "ptr_count: " + fmt.Sprintln(b.ptr_count)
     s += "records: " + fmt.Sprintln(b.records)
