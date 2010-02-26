@@ -42,14 +42,21 @@ func (self BTree) balance_blocks(full *KeyBlock, empty *KeyBlock) {
     split takes a block figures out how splits it and splits it between the two blocks, it passes back
     the splitting record, and the position of the new block
 */
-func (self *BTree) split(block *KeyBlock, rec *Record, nextp ByteSlice, dirty *dirty_blocks) (ByteSlice, *Record, bool) {
+func (self *BTree) split(block *KeyBlock, rec *Record, nextb *KeyBlock, dirty *dirty_blocks) (*KeyBlock, *Record, bool) {
     var split_rec *Record
     new_block := self.allocate()
     dirty.insert(new_block)
     i, _, _, _, _ := block.Find(rec.GetKey())
     m := self.node.KeysPerBlock() >> 1
     fmt.Println("m=", m)
-    if m != i {
+    if m > i {
+        split_rec, _, _, _ = block.Get(m-1)
+        block.RemoveAtIndex(m-1)
+        if _, ok := block.Add(rec); !ok {
+            fmt.Println("Inserting record into block failed PANIC")
+            os.Exit(3)
+        }
+    } else if m < i {
         split_rec, _, _, _ = block.Get(m)
         block.RemoveAtIndex(m)
         if _, ok := block.Add(rec); !ok {
@@ -60,26 +67,40 @@ func (self *BTree) split(block *KeyBlock, rec *Record, nextp ByteSlice, dirty *d
         split_rec = rec
     }
     self.balance_blocks(block, new_block)
-    if nextp != nil {
+    if nextb != nil {
+        fmt.Println("NEXTB: ", nextb)
+        nextr, _, _, _ := nextb.Get(0)
         if i, _, _, _, ok := block.Find(rec.GetKey()); ok {
-            block.InsertPointer(i+1, nextp)
+            fmt.Println("full")
+            fmt.Println("i=", i)
+            if nextr.GetKey().Lt(rec.GetKey()) {
+                block.InsertPointer(i+1, nextb.Position())
+            } else {
+                block.InsertPointer(i, nextb.Position())
+            }
         } else {
             i, _, _, _, _ := new_block.Find(rec.GetKey())
-            new_block.InsertPointer(i+1, nextp)
+            fmt.Println("empty")
+            fmt.Println("i=", i)
+            if nextr.GetKey().Lt(rec.GetKey()) {
+                new_block.InsertPointer(i+1, nextb.Position())
+            } else {
+                new_block.InsertPointer(i, nextb.Position())
+            }
         }
     }
     j, _, _, _, _ := new_block.Find(split_rec.GetKey())
     fmt.Println("split .... ", j)
     fmt.Println(new_block.Position(), split_rec, true)
-    return new_block.Position(), split_rec, true
+    return new_block, split_rec, true
 }
 
 /*
     Recursively inserts the record based on Sedgewick's algorithm
 */
-func (self *BTree) insert(block *KeyBlock, rec *Record, height int, dirty *dirty_blocks) (ByteSlice, *Record, bool) {
+func (self *BTree) insert(block *KeyBlock, rec *Record, height int, dirty *dirty_blocks) (*KeyBlock, *Record, bool) {
     fmt.Println("inserting", block, rec, height)
-    var nextp ByteSlice
+    var nextb *KeyBlock
     if height > 0 {
         // at an interior node
         var pos ByteSlice
@@ -100,10 +121,10 @@ func (self *BTree) insert(block *KeyBlock, rec *Record, height int, dirty *dirty
             }
         }
         // recursive insert call, s is true we a node split occured in the level below so we change our insert
-        if p, r, s := self.insert(self.getblock(pos), rec, height-1, dirty); s {
+        if b, r, s := self.insert(self.getblock(pos), rec, height-1, dirty); s {
             // a node split occured in the previous call
             // so we are going to use this new record now
-            nextp = p
+            nextb = b
             rec = r
         } else {
             // no node split we return to the parent saying it has nothing to do
@@ -115,13 +136,13 @@ func (self *BTree) insert(block *KeyBlock, rec *Record, height int, dirty *dirty
     if i, ok := block.Add(rec); ok {
         // Block isn't full record inserted, now insert pointer (if one exists)
         // return to parent saying it has nothing to do
-        if nextp != nil {
-            block.InsertPointer(i+1, nextp)
+        if nextb != nil {
+            block.InsertPointer(i+1, nextb.Position())
         }
         return nil, nil, false
     }
     // Block is full split the block
-    return self.split(block, rec, nextp, dirty)
+    return self.split(block, rec, nextb, dirty)
 }
 
 func (self *BTree) Insert(key ByteSlice, record []ByteSlice) bool {
@@ -147,7 +168,7 @@ func (self *BTree) Insert(key ByteSlice, record []ByteSlice) bool {
         dirty.insert(root)
         if i, ok := root.Add(r); ok {
             root.InsertPointer(i, self.root)
-            root.InsertPointer(i+1, b)
+            root.InsertPointer(i+1, b.Position())
         } else {
             fmt.Println("Could not insert into empty block PANIC")
             os.Exit(2)

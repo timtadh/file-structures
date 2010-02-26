@@ -307,6 +307,7 @@ func Deserialize(bf *BlockFile, dim *BlockDimensions, bytes []byte, pos ByteSlic
     b := newKeyBlock(bf, pos, dim)
     c := 5
     if dim.Mode != bytes[0] {
+        fmt.Println("Block mode != too dim.Mode")
         return nil, false
     }
     b.rec_count = ByteSlice(bytes[1:3]).Int16()

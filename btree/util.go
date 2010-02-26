@@ -35,7 +35,7 @@ func (self *BTree) getblock(pos ByteSlice) *KeyBlock {
     cblock, ok := DeserializeFromFile(self.bf, self.node, pos);
     if  !ok {
         fmt.Println("Bad block pointer PANIC")
-        os.Exit(1)
+        os.Exit(7)
     }
     return cblock
 }
