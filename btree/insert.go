@@ -48,10 +48,10 @@ func (self *BTree) split(block *KeyBlock, rec *Record, nextp ByteSlice, dirty *d
     dirty.insert(new_block)
     i, _, _, _, _ := block.Find(rec.GetKey())
     m := self.node.KeysPerBlock() >> 1
+    fmt.Println("m=", m)
     if m != i {
-        if i >= self.node.KeysPerBlock() { i-- }
-        split_rec, _, _, _ = block.Get(i)
-        block.RemoveAtIndex(i)
+        split_rec, _, _, _ = block.Get(m)
+        block.RemoveAtIndex(m)
         if _, ok := block.Add(rec); !ok {
             fmt.Println("Inserting record into block failed PANIC")
             os.Exit(3)
@@ -89,7 +89,7 @@ func (self *BTree) insert(block *KeyBlock, rec *Record, height int, dirty *dirty
             i, _, _, _, _ := block.Find(k) // find where the key would go in the block
             if i >= int(block.RecordCount()) { i-- } // is it after the last key?
             r, left, right, ok := block.Get(i) // get the record
-            if ok && (r.GetKey().Gt(k) || r.GetKey().Eq(k)) && left != nil {
+            if ok && (k.Lt(r.GetKey())) && left != nil {
                 pos = left // hey it goes on the left
             } else if ok && right != nil {
                 pos = right // the right
