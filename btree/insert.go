@@ -19,12 +19,12 @@ func (self BTree) balance_blocks(full *KeyBlock, empty *KeyBlock) {
     for j := n-1; j >= m; j-- {
         if r, _, _, ok := full.Get(j); !ok {
             fmt.Printf("could not get index j<%v> from block: %v", j, full)
-            os.Exit(2)
+            os.Exit(5)
             return
         } else {
             if !full.RemoveAtIndex(j) {
                 fmt.Printf("could not remove index j<%v> from block: %v", j, full)
-                os.Exit(2)
+                os.Exit(5)
                 return
             }
             empty.Add(r)
@@ -74,6 +74,9 @@ func (self *BTree) split(block *KeyBlock, rec *Record, nextp ByteSlice, dirty *d
     return new_block.Position(), split_rec, true
 }
 
+/*
+    Recursively inserts the record based on Sedgewick's algorithm
+*/
 func (self *BTree) insert(block *KeyBlock, rec *Record, height int, dirty *dirty_blocks) (ByteSlice, *Record, bool) {
     fmt.Println("inserting", block, rec, height)
     var nextp ByteSlice
@@ -81,20 +84,22 @@ func (self *BTree) insert(block *KeyBlock, rec *Record, height int, dirty *dirty
         // at an interior node
         var pos ByteSlice
         {
+            // we need to find the next block to search
             k := rec.GetKey()
-            i, _, _, _, _ := block.Find(k)
-            if i >= int(block.RecordCount()) { i-- }
-            r, left, right, ok := block.Get(i)
+            i, _, _, _, _ := block.Find(k) // find where the key would go in the block
+            if i >= int(block.RecordCount()) { i-- } // is it after the last key?
+            r, left, right, ok := block.Get(i) // get the record
             if ok && (r.GetKey().Gt(k) || r.GetKey().Eq(k)) && left != nil {
-                pos = left
+                pos = left // hey it goes on the left
             } else if ok && right != nil {
-                pos = right
+                pos = right // the right
             } else {
                 fmt.Println("Bad block pointer in interior node PANIC, for real? ", ok)
                 fmt.Println(block)
                 os.Exit(4)
             }
         }
+        // recursive insert call, s is true we a node split occured in the level below so we change our insert
         if p, r, s := self.insert(self.getblock(pos), rec, height-1, dirty); s {
             // a node split occured in the previous call
             // so we are going to use this new record now
@@ -105,6 +110,7 @@ func (self *BTree) insert(block *KeyBlock, rec *Record, height int, dirty *dirty
             return nil, nil, false
         }
     }
+    // this block is changed
     dirty.insert(block)
     if i, ok := block.Add(rec); ok {
         // Block isn't full record inserted, now insert pointer (if one exists)
@@ -119,7 +125,7 @@ func (self *BTree) insert(block *KeyBlock, rec *Record, height int, dirty *dirty
 }
 
 func (self *BTree) Insert(key ByteSlice, record []ByteSlice) bool {
-    dirty := new_dirty_blocks(self.height * 4)
+    dirty := new_dirty_blocks(self.height * 4) // this is our buffer of "dirty" blocks that we will write back at the end
 
     if !self.ValidateKey(key) || !self.ValidateRecord(record) {
         return false
@@ -127,12 +133,16 @@ func (self *BTree) Insert(key ByteSlice, record []ByteSlice) bool {
 //     block, path := self.find_block(key, self.root, make([]ByteSlice, self.height)[0:0])
 //     dirty.insert(block)
 
+    // makes the record
     rec := self.node.NewRecord(key)
     for i, f := range record {
         rec.Set(uint32(i), f)
     }
     
+    // insert the block if split is true then we need to split the root
     if b, r, split := self.insert(self.getblock(self.root), rec, self.height-1, dirty); split {
+        // root split
+        // first allocate a new root then insert the key record and the associated pointers
         root := self.allocate()
         dirty.insert(root)
         if i, ok := root.Add(r); ok {
@@ -143,9 +153,10 @@ func (self *BTree) Insert(key ByteSlice, record []ByteSlice) bool {
             os.Exit(2)
             return false
         }
+        // don't forget to update the height of the tree and the root
         self.root = root.Position()
         self.height += 1
     }
-    dirty.sync()
+    dirty.sync() // writes the dirty blocks to disk
     return true
 }
