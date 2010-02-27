@@ -4,9 +4,9 @@ import "fmt"
 import "os"
 // import "container/list"
 // import . "block/file"
-import . "block/keyblock"
+import . "keyblock"
 // import . "block/buffers"
-import . "block/byteslice"
+import . "byteslice"
 
 /*
     balance blocks takes two keyblocks full, and empty and balances the records between them. full must be full
