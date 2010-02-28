@@ -223,3 +223,38 @@ func TestSimpleSplitO5(t *testing.T) {
     defer cleanbtree(self)
     testSimpleSplit(self, t)
 }
+
+
+
+func constructComplete(self *BTree, order, skip int) {
+    dirty := new_dirty_blocks(100)
+    n := order*(order+2)
+    if (skip <= n) { n++ }
+    root := self.getblock(self.root)
+    dirty.insert(root)
+    cur := self.allocate()
+    dirty.insert(cur)
+    for i := 0; i < n; i++ {
+        if (i+1 == skip) { continue }
+        rec :=  makerec(self, ByteSlice32(uint32(i+1)))
+        if cur.Full() {
+            root.InsertPointer(int(root.PointerCount()), cur.Position())
+            cur = self.allocate() 
+            dirty.insert(cur)
+            root.Add(rec)
+        } else {
+            cur.Add(rec)
+        }
+    }
+    root.InsertPointer(int(root.PointerCount()), cur.Position())
+    dirty.sync()
+}
+
+
+func TestSplitO2(t *testing.T) {
+    fmt.Println("\n\n\n------  TestSplitO2  ------")
+    self := makebtree(ORDER_2)
+    defer cleanbtree(self)
+    constructComplete(self, 2, 9)
+    fmt.Println(self)
+}

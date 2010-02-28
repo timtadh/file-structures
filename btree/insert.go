@@ -47,6 +47,12 @@ func (self BTree) balance_blocks(full *KeyBlock, empty *KeyBlock) {
 /*
    split takes a block figures out how to split it and splits it between the two blocks, it passes back
    the splitting record, and a pointer new block, and whether or not it succeeded
+   nextb is the block that will be pointed at by one of the blocks
+        ie. it was a block that was allocated by the previous split, normally a pointer to it would have
+            been inserted into the block that is being split, but as that block is full it needs to go into
+            one of the blocks here
+        the function should always return a valid btree if the record it returns becomes the record at the root
+        level.
 */
 func (self *BTree) split(block *KeyBlock, rec *Record, nextb *KeyBlock, dirty *dirty_blocks) (*KeyBlock, *Record, bool) {
     var split_rec *Record
