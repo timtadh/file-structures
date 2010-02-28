@@ -73,7 +73,7 @@ func cleanbtree(btree *BTree) {
 // }
 
 func TestAllocate(t *testing.T) {
-    fmt.Println("\nTestAllocate")
+    fmt.Println("\n------  TestAllocate  ------")
     self := makebtree(BLOCKSIZE)
     defer cleanbtree(self)
     
@@ -87,7 +87,7 @@ func TestAllocate(t *testing.T) {
 }
 
 func TestGetBlock(t *testing.T) {
-    fmt.Println("\n\n\nTestGetBlock")
+    fmt.Println("\n\n\n------  TestGetBlock  ------")
     self := makebtree(BLOCKSIZE)
     defer cleanbtree(self)
     
@@ -97,7 +97,7 @@ func TestGetBlock(t *testing.T) {
 }
 
 func TestValidateKey(t *testing.T) {
-    fmt.Println("\n\n\nTestValidateKey")
+    fmt.Println("\n\n\n------  TestValidateKey  ------")
     self := makebtree(BLOCKSIZE)
     defer cleanbtree(self)
     
@@ -113,7 +113,7 @@ func TestValidateKey(t *testing.T) {
 }
 
 func TestValidateRecord(t *testing.T) {
-    fmt.Println("\n\n\nTestValidateRecord")
+    fmt.Println("\n\n\n------  TestValidateRecord  ------")
     self := makebtree(BLOCKSIZE)
     defer cleanbtree(self)
     
