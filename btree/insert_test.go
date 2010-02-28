@@ -226,7 +226,7 @@ func TestSimpleSplitO5(t *testing.T) {
 
 
 
-func constructComplete(self *BTree, order, skip int) {
+func constructCompleteLevel2(self *BTree, order, skip int) {
     dirty := new_dirty_blocks(100)
     n := order*(order+2)
     if (skip <= n) { n++ }
@@ -250,11 +250,50 @@ func constructComplete(self *BTree, order, skip int) {
     dirty.sync()
 }
 
+func verify_tree(self *BTree, t *testing.T) {
+    var traverse func(*KeyBlock)
+    j := 1
+    traverse = func(block *KeyBlock) {
+        i := 0
+        for ; i < int(block.RecordCount()); i++ {
+            rec, _, _, ok := block.Get(i)
+            if !ok {
+                t.Errorf("could not get rec, %v, from block with %v records", i, block.RecordCount())
+            }
+            if p, ok := block.GetPointer(i); ok {
+                nblock := self.getblock(p)
+                if nblock == nil {
+                    t.Errorf("nil block returned by self.getblock(p)", i, block.RecordCount())
+                }
+                traverse(nblock)
+            }
+            fmt.Println(rec)
+            if !rec.GetKey().Eq(ByteSlice32(uint32(j))) {
+                t.Errorf("block invalid expecting key %v got %v", j, rec.GetKey().Int32())
+            }
+            j++
+        }
+        if p, ok := block.GetPointer(i); ok {
+            nblock := self.getblock(p)
+            if nblock == nil {
+                t.Errorf("nil block returned by self.getblock(p)", i, block.RecordCount())
+            }
+            traverse(nblock)
+        }
+    }
+    traverse(self.getblock(self.root))
+}
+
+// the more general split is easiest to test by running an insert into the tree an verifying
+// it is the correct tree.
 
 func TestSplitO2(t *testing.T) {
     fmt.Println("\n\n\n------  TestSplitO2  ------")
     self := makebtree(ORDER_2)
     defer cleanbtree(self)
-    constructComplete(self, 2, 9)
+    skip := 8
+    constructCompleteLevel2(self, 2, skip)
+    self.Insert(ByteSlice32(uint32(skip)), rec)
     fmt.Println(self)
+    verify_tree(self, t)
 }
