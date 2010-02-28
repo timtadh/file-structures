@@ -26,7 +26,7 @@ test:
 
 .PHONY : clean
 clean :
-		- rm %s
+		-find -name "*.6" | xargs --replace="%s" rm %s
 		-rm hello.btree _testmain block/test btree/test *.6 2> /dev/null
 		ls
 
