@@ -248,12 +248,13 @@ func constructCompleteLevel2(self *BTree, order, skip int) {
     }
     root.InsertPointer(int(root.PointerCount()), cur.Position())
     dirty.sync()
+    self.height = 2
 }
 
 func verify_tree(self *BTree, t *testing.T) {
-    var traverse func(*KeyBlock)
+    var traverse func(*KeyBlock) int
     j := 1
-    traverse = func(block *KeyBlock) {
+    traverse = func(block *KeyBlock) int {
         i := 0
         for ; i < int(block.RecordCount()); i++ {
             rec, _, _, ok := block.Get(i)
@@ -267,7 +268,6 @@ func verify_tree(self *BTree, t *testing.T) {
                 }
                 traverse(nblock)
             }
-            fmt.Println(rec)
             if !rec.GetKey().Eq(ByteSlice32(uint32(j))) {
                 t.Errorf("block invalid expecting key %v got %v", j, rec.GetKey().Int32())
             }
@@ -280,8 +280,13 @@ func verify_tree(self *BTree, t *testing.T) {
             }
             traverse(nblock)
         }
+        return j
     }
-    traverse(self.getblock(self.root))
+    order := self.node.KeysPerBlock()
+    j = traverse(self.getblock(self.root))
+    if j-1 != order*(order+2) + 1 {
+        t.Errorf("tree missing a key", j-1,order*(order+2) + 1 )
+    }
 }
 
 // the more general split is easiest to test by running an insert into the tree an verifying
@@ -291,9 +296,42 @@ func TestSplitO2(t *testing.T) {
     fmt.Println("\n\n\n------  TestSplitO2  ------")
     self := makebtree(ORDER_2)
     defer cleanbtree(self)
-    skip := 8
+    skip := 4
     constructCompleteLevel2(self, 2, skip)
-    self.Insert(ByteSlice32(uint32(skip)), rec)
     fmt.Println(self)
+    self.Insert(ByteSlice32(uint32(skip)), rec)
+    verify_tree(self, t)
+}
+
+func TestSplitO3(t *testing.T) {
+    fmt.Println("\n\n\n------  TestSplitO3  ------")
+    self := makebtree(ORDER_3)
+    defer cleanbtree(self)
+    skip := 4
+    constructCompleteLevel2(self, 3, skip)
+    fmt.Println(self)
+    self.Insert(ByteSlice32(uint32(skip)), rec)
+    verify_tree(self, t)
+}
+
+func TestSplitO4(t *testing.T) {
+    fmt.Println("\n\n\n------  TestSplitO4  ------")
+    self := makebtree(ORDER_4)
+    defer cleanbtree(self)
+    skip := 4
+    constructCompleteLevel2(self, 4, skip)
+    fmt.Println(self)
+    self.Insert(ByteSlice32(uint32(skip)), rec)
+    verify_tree(self, t)
+}
+
+func TestSplitO5(t *testing.T) {
+    fmt.Println("\n\n\n------  TestSplitO5  ------")
+    self := makebtree(ORDER_5)
+    defer cleanbtree(self)
+    skip := 4
+    constructCompleteLevel2(self, 5, skip)
+    fmt.Println(self)
+    self.Insert(ByteSlice32(uint32(skip)), rec)
     verify_tree(self, t)
 }
