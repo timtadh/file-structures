@@ -9,14 +9,14 @@ import . "block/keyblock"
 import . "block/byteslice"
 
 /*
-    balance blocks takes two keyblocks full, and empty and balances the records between them. full must be full
-    empty must be empty
+   balance blocks takes two keyblocks full, and empty and balances the records between them. full must be full
+   empty must be empty
 */
 func (self BTree) balance_blocks(full *KeyBlock, empty *KeyBlock) {
     fmt.Println("FULL:\n", full)
     n := self.node.KeysPerBlock()
     m := n >> 1
-    for j := n-1; j >= m; j-- {
+    for j := n - 1; j >= m; j-- {
         if r, _, _, ok := full.Get(j); !ok {
             fmt.Printf("could not get index j<%v> from block: %v", j, full)
             os.Exit(5)
@@ -29,24 +29,24 @@ func (self BTree) balance_blocks(full *KeyBlock, empty *KeyBlock) {
             }
             empty.Add(r)
         }
-        if p, ok := full.GetPointer(j+1); ok {
+        if p, ok := full.GetPointer(j + 1); ok {
             empty.InsertPointer(0, p)
         }
-        full.RemovePointer(j+1)
+        full.RemovePointer(j + 1)
     }
-//     if full.PointerCount() == full. {
-//         if p, ok := full.GetPointer(m); ok {
-//             empty.InsertPointer(0, p)
-//         }
-//         full.RemovePointer(m)
-//     }
+    //     if full.PointerCount() == full. {
+    //         if p, ok := full.GetPointer(m); ok {
+    //             empty.InsertPointer(0, p)
+    //         }
+    //         full.RemovePointer(m)
+    //     }
     fmt.Println("   full:\n", full)
     fmt.Println("   emtpy:\n", empty)
 }
 
 /*
-    split takes a block figures out how splits it and splits it between the two blocks, it passes back
-    the splitting record, and the position of the new block
+   split takes a block figures out how splits it and splits it between the two blocks, it passes back
+   the splitting record, and the position of the new block
 */
 func (self *BTree) split(block *KeyBlock, rec *Record, nextb *KeyBlock, dirty *dirty_blocks) (*KeyBlock, *Record, bool) {
     var split_rec *Record
@@ -56,8 +56,8 @@ func (self *BTree) split(block *KeyBlock, rec *Record, nextb *KeyBlock, dirty *d
     m := self.node.KeysPerBlock() >> 1
     fmt.Println("m=", m)
     if m > i {
-        split_rec, _, _, _ = block.Get(m-1)
-        block.RemoveAtIndex(m-1)
+        split_rec, _, _, _ = block.Get(m - 1)
+        block.RemoveAtIndex(m - 1)
         if _, ok := block.Add(rec); !ok {
             fmt.Println("Inserting record into block failed PANIC")
             os.Exit(3)
@@ -73,19 +73,19 @@ func (self *BTree) split(block *KeyBlock, rec *Record, nextb *KeyBlock, dirty *d
         split_rec = rec
     }
     self.balance_blocks(block, new_block)
-    dirty.sync()                                                        // figure out how to remove
+    dirty.sync() // figure out how to remove
     if nextb != nil {
         fmt.Println("NEXTB: ", nextb)
         nextr, _, _, _ := nextb.Get(0)
         if i, _, _, _, ok := block.Find(rec.GetKey()); ok {
             // if this pointer is going into the old block that means there will be too many pointers in this block
             // so we must move the last one over to the new block
-            
+
             if p, ok := block.GetPointer(m); ok {
                 new_block.InsertPointer(0, p)
             }
             block.RemovePointer(m)
-            
+
             _, left, _, _ := block.Get(i)
             fmt.Println("left=", left)
             lblock := self.getblock(left)
@@ -123,7 +123,7 @@ func (self *BTree) split(block *KeyBlock, rec *Record, nextb *KeyBlock, dirty *d
 }
 
 /*
-    Recursively inserts the record based on Sedgewick's algorithm
+   Recursively inserts the record based on Sedgewick's algorithm
 */
 func (self *BTree) insert(block *KeyBlock, rec *Record, height int, dirty *dirty_blocks) (*KeyBlock, *Record, bool) {
     fmt.Println("inserting", rec, "\n", block, height)
@@ -135,7 +135,9 @@ func (self *BTree) insert(block *KeyBlock, rec *Record, height int, dirty *dirty
             // we need to find the next block to search
             k := rec.GetKey()
             i, _, _, _, _ := block.Find(k) // find where the key would go in the block
-            if i >= int(block.RecordCount()) { i-- } // is it after the last key?
+            if i >= int(block.RecordCount()) {
+                i--
+            } // is it after the last key?
             r, left, right, ok := block.Get(i) // get the record
             if ok && (k.Lt(r.GetKey())) && left != nil {
                 pos = left // hey it goes on the left
@@ -178,15 +180,15 @@ func (self *BTree) Insert(key ByteSlice, record []ByteSlice) bool {
     if !self.ValidateKey(key) || !self.ValidateRecord(record) {
         return false
     }
-//     block, path := self.find_block(key, self.root, make([]ByteSlice, self.height)[0:0])
-//     dirty.insert(block)
+    //     block, path := self.find_block(key, self.root, make([]ByteSlice, self.height)[0:0])
+    //     dirty.insert(block)
 
     // makes the record
     rec := self.node.NewRecord(key)
     for i, f := range record {
         rec.Set(uint32(i), f)
     }
-    
+
     // insert the block if split is true then we need to split the root
     if b, r, split := self.insert(self.getblock(self.root), rec, self.height-1, dirty); split {
         // root split

@@ -8,13 +8,14 @@ import . "btree"
 import . "block/byteslice"
 
 func main() {
-    
-    var fac func(int) int 
-    fac = func(i int) int {
-        if i <= 1 { return 1 }
-        return i*fac(i-1)
-    }
 
+    var fac func(int) int
+    fac = func(i int) int {
+        if i <= 1 {
+            return 1
+        }
+        return i * fac(i-1)
+    }
 
     fmt.Println("test2 yoyo")
     btree, _ := NewBTree("hello.btree", 4, &([3]uint32{1, 1, 2}))
@@ -60,13 +61,13 @@ func main() {
     fmt.Println(btree.Insert(ByteSlice32(23), rec))
     fmt.Println(btree.Insert(ByteSlice32(19), rec))
     fmt.Println(btree.Insert(ByteSlice32(32), rec))
-//     fmt.Println(btree)
+    //     fmt.Println(btree)
     fmt.Println(btree)
-//     fmt.Println(btree.Insert(ByteSlice32(2), rec))
-//     fmt.Println(btree.Insert(ByteSlice32(4), rec))
-//     fmt.Println(btree.Insert(ByteSlice32(19), rec))
-//     fmt.Println(btree)
-    
-    
+    //     fmt.Println(btree.Insert(ByteSlice32(2), rec))
+    //     fmt.Println(btree.Insert(ByteSlice32(4), rec))
+    //     fmt.Println(btree.Insert(ByteSlice32(19), rec))
+    //     fmt.Println(btree)
+
+
     fmt.Println(fac(5))
 }

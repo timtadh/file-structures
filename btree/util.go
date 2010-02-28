@@ -22,7 +22,7 @@ func (self *BTree) parent(i int, path []ByteSlice) (*KeyBlock, bool) {
 }
 
 func (self *BTree) allocate() *KeyBlock {
-    
+
     b, ok := NewKeyBlock(self.bf, self.node)
     if !ok {
         fmt.Println("Could not allocate block PANIC")
@@ -32,8 +32,8 @@ func (self *BTree) allocate() *KeyBlock {
 }
 
 func (self *BTree) getblock(pos ByteSlice) *KeyBlock {
-    cblock, ok := DeserializeFromFile(self.bf, self.node, pos);
-    if  !ok {
+    cblock, ok := DeserializeFromFile(self.bf, self.node, pos)
+    if !ok {
         fmt.Println("Bad block pointer PANIC")
         os.Exit(7)
     }

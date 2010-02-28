@@ -32,4 +32,4 @@ clean :
 
 fmt:
 	find -name "*.go" | xargs --replace="%s" gofmt -w %s
-	find -name "*.go" | xargs --replace="%s" ../scripts/tabs_to_spaces.sh * %s
+	find -name "*.go" | xargs --replace="%s" ../scripts/tabs_to_spaces.sh %s

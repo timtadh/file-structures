@@ -93,7 +93,7 @@ func (a ByteSlice) Gt(b ByteSlice) bool {
         t = t || r && (a[i] > b[i])
         r = r && (a[i] == b[i])
     }
-//     fmt.Printf("%v > %v == %v\n", a, b, t)
+    //     fmt.Printf("%v > %v == %v\n", a, b, t)
     return t
 }
 

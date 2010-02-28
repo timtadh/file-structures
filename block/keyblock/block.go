@@ -49,11 +49,11 @@ func (self *KeyBlock) NewRecord(key ByteSlice) *Record {
     return newRecord(key, self.dim)
 }
 
-func (self *KeyBlock) Size() uint32             { return self.dim.BlockSize }
-func (self *KeyBlock) RecordSize() uint32       { return self.dim.RecordSize() }
-func (self *KeyBlock) KeySize() uint32          { return self.dim.KeySize }
-func (self *KeyBlock) PointerSize() uint32      { return self.dim.PointerSize }
-func (self *KeyBlock) MaxRecordCount() uint16   { return uint16(len(self.records)) }
+func (self *KeyBlock) Size() uint32           { return self.dim.BlockSize }
+func (self *KeyBlock) RecordSize() uint32     { return self.dim.RecordSize() }
+func (self *KeyBlock) KeySize() uint32        { return self.dim.KeySize }
+func (self *KeyBlock) PointerSize() uint32    { return self.dim.PointerSize }
+func (self *KeyBlock) MaxRecordCount() uint16 { return uint16(len(self.records)) }
 
 func (self *KeyBlock) Full() bool { return len(self.records) == int(self.rec_count) }
 
@@ -83,7 +83,7 @@ func (b *KeyBlock) Add(r *Record) (int, bool) {
     //     fmt.Println()
     //     fmt.Println(r)
     i, _ := b.find(r.key)
-//     fmt.Printf("i=%v, k=%v\n", i, r.GetKey())
+    //     fmt.Printf("i=%v, k=%v\n", i, r.GetKey())
     //     if !ok {
     j := len(b.records)
     j -= 1
