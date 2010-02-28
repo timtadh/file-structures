@@ -119,7 +119,7 @@ func TestBalanceBlocksO5(t *testing.T) {
 
 
 
-func validateSplit(self *BTree, a *KeyBlock, c *Record, dirty *dirty_blocks, t *testing.T) {
+func validateSimpleSplit(self *BTree, a *KeyBlock, c *Record, dirty *dirty_blocks, t *testing.T) {
     
     b, rec, ok := self.split(a, c, nil, dirty)
     
@@ -174,21 +174,21 @@ func testSimpleSplit(self *BTree, t *testing.T) {
     a := self.allocate()
     dirty.insert(a)
     fill_block(self, a, t, self.node.KeysPerBlock())
-    validateSplit(self, a, makerec(self, ByteSlice32(uint32(self.node.KeysPerBlock()))), dirty, t)
+    validateSimpleSplit(self, a, makerec(self, ByteSlice32(uint32(self.node.KeysPerBlock()))), dirty, t)
     
     
     fmt.Println("case 2")
     a = self.allocate()
     dirty.insert(a)
     fill_block(self, a, t, self.node.KeysPerBlock()>>1)
-    validateSplit(self, a, makerec(self, ByteSlice32(uint32(self.node.KeysPerBlock())>>1)), dirty, t)
+    validateSimpleSplit(self, a, makerec(self, ByteSlice32(uint32(self.node.KeysPerBlock())>>1)), dirty, t)
     
     
     fmt.Println("case 3")
     a = self.allocate()
     dirty.insert(a)
     fill_block(self, a, t, 0)
-    validateSplit(self, a, makerec(self, ByteSlice32(0)), dirty, t)
+    validateSimpleSplit(self, a, makerec(self, ByteSlice32(0)), dirty, t)
 }
 
 func TestSimpleSplitO2(t *testing.T) {
