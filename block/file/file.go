@@ -32,6 +32,8 @@ func (self *BlockFile) Close() bool {
     return self.opened
 }
 
+func (self *BlockFile) Filename() string { return self.filename }
+
 func (self *BlockFile) Size() (uint64, bool) {
     if !self.opened {
         return 0, false

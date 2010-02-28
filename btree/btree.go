@@ -61,6 +61,8 @@ func NewBTree(filename string, keysize uint32, fields []uint32) (*BTree, bool) {
     return self, true
 }
 
+func (self *BTree) Filename() string { return self.bf.Filename() }
+
 func (self *BTree) String() string {
     s := "BTree:\n{\n"
     stack := list.New()

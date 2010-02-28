@@ -9,18 +9,6 @@ import . "block/keyblock"
 // import . "block/buffers"
 import . "block/byteslice"
 
-func (self *BTree) parent(i int, path []ByteSlice) (*KeyBlock, bool) {
-    if i-1 < 0 {
-        return nil, false
-    }
-    block, ok := DeserializeFromFile(self.bf, self.node, path[i-1])
-    if !ok {
-        fmt.Println("Bad block pointer PANIC")
-        os.Exit(1)
-    }
-    return block, true
-}
-
 func (self *BTree) allocate() *KeyBlock {
 
     b, ok := NewKeyBlock(self.bf, self.node)

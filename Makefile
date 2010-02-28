@@ -23,6 +23,7 @@ btree: build
 
 test:
 	gobuild -run -t -ignore=$(ignore)
+	-rm _testmain *.6
 
 .PHONY : clean
 clean :
