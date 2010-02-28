@@ -5,7 +5,7 @@ import "fmt"
 // import "syscall"
 
 // const OPENFLAG = os.O_RDWR | os.O_CREAT | syscall.O_DIRECT
-const OPENFLAG = os.O_RDWR | os.O_CREAT
+var OPENFLAG = os.O_RDWR | os.O_CREAT
 
 func (self *BlockFile) Open() bool {
     // the O_DIRECT flag turns off os buffering of pages allow us to do it manually
