@@ -27,9 +27,9 @@ test:
 .PHONY : clean
 clean :
 		- rm %s
-		-rm hello.btree _testmain block/test btree/test 2> /dev/null
+		-rm hello.btree _testmain block/test btree/test *.6 2> /dev/null
 		ls
 
 fmt:
-	find -name "*.6" | xargs --replace="%s" gofmt -w %s
-	find -name "*.6" | xargs --replace="%s" ../scripts/tabs_to_spaces.sh * %s
+	find -name "*.go" | xargs --replace="%s" gofmt -w %s
+	find -name "*.go" | xargs --replace="%s" ../scripts/tabs_to_spaces.sh * %s
