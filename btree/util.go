@@ -5,9 +5,9 @@ import "fmt"
 import "os"
 // import "container/list"
 // import . "block/file"
-import . "keyblock"
+import . "block/keyblock"
 // import . "block/buffers"
-import . "byteslice"
+import . "block/byteslice"
 
 func (self *BTree) parent(i int, path []ByteSlice) (*KeyBlock, bool) {
     if i-1 < 0 {

@@ -2,7 +2,7 @@ package buffers
 
 import list "container/list"
 import "fmt"
-import "heap"
+import "block/heap"
 
 type Buffer interface {
     Update(p int64, block []byte)

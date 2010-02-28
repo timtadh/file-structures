@@ -1,7 +1,7 @@
 package keyblock
 
 import "fmt"
-import . "byteslice"
+import . "block/byteslice"
 
 type Record struct {
     dim  *BlockDimensions

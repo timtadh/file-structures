@@ -3,10 +3,10 @@ package btree
 import "fmt"
 // import "os"
 import "container/list"
-import . "file"
-import . "keyblock"
-import . "buffers"
-import . "byteslice"
+import . "block/file"
+import . "block/keyblock"
+import . "block/buffers"
+import . "block/byteslice"
 
 // const BLOCKSIZE = 4096
 // const BLOCKSIZE = 45

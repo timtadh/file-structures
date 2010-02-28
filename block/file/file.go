@@ -2,8 +2,8 @@ package file
 
 import "os"
 import "fmt"
-import . "buffers"
-import . "byteslice"
+import . "block/buffers"
+import . "block/byteslice"
 
 type BlockFile struct {
     filename string

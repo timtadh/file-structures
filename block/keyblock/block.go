@@ -1,8 +1,8 @@
 package keyblock
 
 import "fmt"
-import . "file"
-import . "byteslice"
+import . "block/file"
+import . "block/byteslice"
 
 const BLOCKHEADER = 5
 

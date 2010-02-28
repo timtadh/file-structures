@@ -5,7 +5,7 @@ import . "btree"
 // import . "block/file"
 // import . "block/keyblock"
 // import . "block/buffers"
-import . "byteslice"
+import . "block/byteslice"
 
 func main() {
     
