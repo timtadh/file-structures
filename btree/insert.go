@@ -45,8 +45,8 @@ func (self BTree) balance_blocks(full *KeyBlock, empty *KeyBlock) {
 }
 
 /*
-   split takes a block figures out how splits it and splits it between the two blocks, it passes back
-   the splitting record, and the position of the new block
+   split takes a block figures out how to split it and splits it between the two blocks, it passes back
+   the splitting record, and a pointer new block, and whether or not it succeeded
 */
 func (self *BTree) split(block *KeyBlock, rec *Record, nextb *KeyBlock, dirty *dirty_blocks) (*KeyBlock, *Record, bool) {
     var split_rec *Record
