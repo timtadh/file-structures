@@ -36,6 +36,7 @@ test: runtest
 
 .PHONY : clean
 clean :
+	-rm -rf dot png *.dot *.png
 	-find -name "*.6" | xargs --replace="%s" rm %s
 	-find -name "hello.btree" | xargs --replace="%s" rm %s
 	-rm hello.btree _testmain block/test btree/test *.6 2> /dev/null
