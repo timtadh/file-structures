@@ -65,7 +65,7 @@ func (self *BlockFile) WriteBlock(p int64, block []byte) bool {
     }
     if b, ok := self.buf.Read(p, uint32(len(block))); ok {
         if ByteSlice(b).Eq(block) {
-            fmt.Println("skip write no change in block from what is in cache")
+//             fmt.Println("skip write no change in block from what is in cache")
             return true
         }
     }
@@ -82,7 +82,7 @@ func (self *BlockFile) WriteBlock(p int64, block []byte) bool {
         return false
     }
     self.buf.Update(p, block)
-    fmt.Println(block)
+//     fmt.Println(block)
     return true
 }
 

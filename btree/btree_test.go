@@ -29,6 +29,7 @@ func testingNewBTree(blocksize uint32) (*BTree, bool) {
     } else {
         self.node = dim
     }
+    //     fmt.Println("keys per block", self.node.KeysPerBlock())
     if !self.bf.Open() {
         fmt.Println("Couldn't open file")
         return nil, false

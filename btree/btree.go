@@ -8,9 +8,9 @@ import . "block/keyblock"
 import . "block/buffers"
 import . "block/byteslice"
 
-// const BLOCKSIZE = 4096
+const BLOCKSIZE = 4096
 // const BLOCKSIZE = 45
-const BLOCKSIZE = 65
+// const BLOCKSIZE = 65
 // const BLOCKSIZE = 105
 
 
@@ -59,6 +59,27 @@ func NewBTree(filename string, keysize uint32, fields []uint32) (*BTree, bool) {
         self.root = b.Position()
     }
     return self, true
+}
+
+func (self *BTree) Find(key ByteSlice) (*Record, bool) {
+    var find func(*KeyBlock, int) *Record
+    find = func(block *KeyBlock, ht int) *Record {
+        i, rec, _, _, found := block.Find(key);
+        if i >= int(block.RecordCount()) { i-- }
+        r, left, right, ok := block.Get(i)
+        if found {
+            return rec
+        } else if ht > 0 && ok && key.Lt(r.GetKey()) && left != nil {
+            // its on the left
+            return find(self.getblock(left), ht-1)
+        } else if ht > 0 && ok && right != nil {
+            return find(self.getblock(right), ht-1)
+        }
+        return nil
+    }
+    r := find(self.getblock(self.root), self.height)
+    if r == nil { return nil, false }
+    return r, true
 }
 
 func (self *BTree) Filename() string { return self.bf.Filename() }

@@ -4,6 +4,7 @@ import "testing"
 import "fmt"
 import . "block/keyblock"
 import . "block/byteslice"
+import "rand"
 
 const ORDER_2 = 45
 const ORDER_3 = 65
@@ -251,7 +252,7 @@ func constructCompleteLevel2(self *BTree, order, skip int) {
     self.height = 2
 }
 
-func verify_tree(self *BTree, t *testing.T) {
+func verify_tree(self *BTree, n int, t *testing.T) {
     var traverse func(*KeyBlock) int
     j := 1
     traverse = func(block *KeyBlock) int {
@@ -282,10 +283,9 @@ func verify_tree(self *BTree, t *testing.T) {
         }
         return j
     }
-    order := self.node.KeysPerBlock()
     j = traverse(self.getblock(self.root))
-    if j-1 != order*(order+2) + 1 {
-        t.Errorf("tree missing a key", j-1,order*(order+2) + 1 )
+    if j-1 != n {
+        t.Errorf("tree missing a key", j-1,n )
     }
 }
 
@@ -294,44 +294,169 @@ func verify_tree(self *BTree, t *testing.T) {
 
 func TestSplitO2(t *testing.T) {
     fmt.Println("\n\n\n------  TestSplitO2  ------")
-    self := makebtree(ORDER_2)
-    defer cleanbtree(self)
-    skip := 4
-    constructCompleteLevel2(self, 2, skip)
-    fmt.Println(self)
-    self.Insert(ByteSlice32(uint32(skip)), rec)
-    verify_tree(self, t)
+    order := 2
+    n := order*(order+2)+1
+    for i:= 1; i<=order*(order+2)+1; i++ {
+        self := makebtree(ORDER_2)
+        constructCompleteLevel2(self, order, i)
+        self.Insert(ByteSlice32(uint32(i)), rec)
+        verify_tree(self,n, t)
+        cleanbtree(self)
+    }
 }
 
 func TestSplitO3(t *testing.T) {
     fmt.Println("\n\n\n------  TestSplitO3  ------")
-    self := makebtree(ORDER_3)
-    defer cleanbtree(self)
-    skip := 4
-    constructCompleteLevel2(self, 3, skip)
-    fmt.Println(self)
-    self.Insert(ByteSlice32(uint32(skip)), rec)
-    verify_tree(self, t)
+    order := 3
+    n := order*(order+2)+1
+    for i:= 1; i<=n; i++ {
+        self := makebtree(ORDER_3)
+        constructCompleteLevel2(self, order, i)
+        self.Insert(ByteSlice32(uint32(i)), rec)
+        verify_tree(self,n, t)
+        cleanbtree(self)
+    }
 }
 
 func TestSplitO4(t *testing.T) {
     fmt.Println("\n\n\n------  TestSplitO4  ------")
-    self := makebtree(ORDER_4)
-    defer cleanbtree(self)
-    skip := 4
-    constructCompleteLevel2(self, 4, skip)
-    fmt.Println(self)
-    self.Insert(ByteSlice32(uint32(skip)), rec)
-    verify_tree(self, t)
+    order := 4
+    n := order*(order+2)+1
+    for i:= 1; i<=order*(order+2)+1; i++ {
+        self := makebtree(ORDER_4)
+        constructCompleteLevel2(self, order, i)
+        self.Insert(ByteSlice32(uint32(i)), rec)
+        verify_tree(self,n, t)
+        cleanbtree(self)
+    }
 }
 
 func TestSplitO5(t *testing.T) {
     fmt.Println("\n\n\n------  TestSplitO5  ------")
-    self := makebtree(ORDER_5)
-    defer cleanbtree(self)
-    skip := 4
-    constructCompleteLevel2(self, 5, skip)
-    fmt.Println(self)
-    self.Insert(ByteSlice32(uint32(skip)), rec)
-    verify_tree(self, t)
+    order := 5
+    n := order*(order+2)+1
+    for i:= 1; i<=order*(order+2)+1; i++ {
+        self := makebtree(ORDER_5)
+        constructCompleteLevel2(self, order, i)
+        self.Insert(ByteSlice32(uint32(i)), rec)
+        verify_tree(self,n, t)
+        name := fmt.Sprintf("%v.dot", i)
+        if len(name) < 6 { name = "0" + name }
+        Dotty(name, self)
+        cleanbtree(self)
+    }
 }
+
+func TestRandomBuildO2(t *testing.T) {
+    fmt.Println("\n\n\n------  TestRandomBuildO2  ------")
+    
+    order := 2
+    n := order*order*(order+2)+1
+    for k:= 0; k < n; k++ {
+        self := makebtree(ORDER_2)
+        for i:= 1; i<=n; i++ {
+            j := rand.Intn(n)+1
+            for _, ok := self.Find(ByteSlice32(uint32(j))); ok; {
+                j = rand.Intn(n)+1
+                _, ok = self.Find(ByteSlice32(uint32(j)))
+            }
+            self.Insert(ByteSlice32(uint32(j)), rec)
+        }
+        verify_tree(self,n, t)
+        if k+1 == n {
+            Dotty("rand2.dot", self)
+        }
+        cleanbtree(self)
+    }
+}
+
+func TestRandomBuildO3(t *testing.T) {
+    fmt.Println("\n\n\n------  TestRandomBuildO3  ------")
+    
+    order := 3
+    n := order*order*(order+2)+1
+    for k:= 0; k < n; k++ {
+        self := makebtree(ORDER_3)
+        for i:= 1; i<=n; i++ {
+            j := rand.Intn(n)+1
+            for _, ok := self.Find(ByteSlice32(uint32(j))); ok; {
+                j = rand.Intn(n)+1
+                _, ok = self.Find(ByteSlice32(uint32(j)))
+            }
+            self.Insert(ByteSlice32(uint32(j)), rec)
+        }
+        verify_tree(self,n, t)
+        if k+1 == n {
+            Dotty("rand3.dot", self)
+        }
+        cleanbtree(self)
+    }
+}
+
+func TestRandomBuildO4(t *testing.T) {
+    fmt.Println("\n\n\n------  TestRandomBuildO4  ------")
+    
+    order := 4
+    n := order*order*(order+2)+1
+    for k:= 0; k < n; k++ {
+        self := makebtree(ORDER_4)
+        for i:= 1; i<=n; i++ {
+            j := rand.Intn(n)+1
+            for _, ok := self.Find(ByteSlice32(uint32(j))); ok; {
+                j = rand.Intn(n)+1
+                _, ok = self.Find(ByteSlice32(uint32(j)))
+            }
+            self.Insert(ByteSlice32(uint32(j)), rec)
+        }
+        verify_tree(self,n, t)
+        if k+1 == n {
+            Dotty("rand4.dot", self)
+        }
+        cleanbtree(self)
+    }
+}
+
+func TestRandomBuildO5(t *testing.T) {
+    fmt.Println("\n\n\n------  TestRandomBuildO5  ------")
+    
+    order := 5
+    n := order*order*(order+2)+1
+    for k:= 0; k < n; k++ {
+        self := makebtree(ORDER_5)
+        for i:= 1; i<=n; i++ {
+            j := rand.Intn(n)+1
+            for _, ok := self.Find(ByteSlice32(uint32(j))); ok; {
+                j = rand.Intn(n)+1
+                _, ok = self.Find(ByteSlice32(uint32(j)))
+            }
+            self.Insert(ByteSlice32(uint32(j)), rec)
+        }
+        verify_tree(self,n, t)
+        if k+1 == n {
+            Dotty("rand5.dot", self)
+        }
+        cleanbtree(self)
+    }
+}
+
+
+// func TestRandomBuild4096(t *testing.T) {
+//     fmt.Println("\n\n\n------  TestRandomBuild4096  ------")
+//     
+//     order := 255
+//     n := order*(order+2)+1
+//     top := 1
+//     for k:= 0; k < top; k++ {
+//         self := makebtree(4096)
+//         for i:= 1; i<=n; i++ {
+//             j := rand.Intn(n)+1
+//             for _, ok := self.Find(ByteSlice32(uint32(j))); ok; {
+//                 j = rand.Intn(n)+1
+//                 _, ok = self.Find(ByteSlice32(uint32(j)))
+//             }
+//             self.Insert(ByteSlice32(uint32(j)), rec)
+//         }
+//         verify_tree(self,n, t)
+//         cleanbtree(self)
+//     }
+// }
