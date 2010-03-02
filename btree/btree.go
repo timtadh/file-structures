@@ -2,11 +2,13 @@ package btree
 
 import "fmt"
 // import "os"
+import "runtime"
 import "container/list"
 import . "block/file"
 import . "block/keyblock"
 import . "block/buffers"
 import . "block/byteslice"
+
 
 // const BLOCKSIZE = 4096
 // const BLOCKSIZE = 45
@@ -103,6 +105,10 @@ func NewBTree(filename string, keysize uint32, fields []uint32) (*BTree, bool) {
     } else {
         self.info = load_container(self.bf)
     }
+    clean := func(self *BTree) {
+        self.bf.Close()
+    }
+    runtime.SetFinalizer(self, clean)
     return self, true
 }
 

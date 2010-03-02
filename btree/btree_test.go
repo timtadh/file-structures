@@ -3,6 +3,7 @@ package btree
 import "testing"
 import "fmt"
 import "os"
+import "runtime"
 import "block/file"
 import . "block/keyblock"
 import . "block/buffers"
@@ -49,6 +50,10 @@ func testingNewBTree(blocksize uint32) (*BTree, bool) {
         }
         self.info = new_container(self.bf, 1, b.Position())
     }
+    clean := func(self *BTree) {
+        self.bf.Close()
+    }
+    runtime.SetFinalizer(self, clean)
     return self, true
 }
 

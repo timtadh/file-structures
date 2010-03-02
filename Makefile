@@ -16,9 +16,11 @@ build:
 	gobuild -a -ignore=$(ignore)
 
 block: build
+	-rm hello.btree
 	./block/test
 
 btree: build
+	-rm hello.btree
 	./btree/test
 
 runtest:

@@ -293,16 +293,19 @@ func verify_tree(self *BTree, n int, t *testing.T) {
 // it is the correct tree.
 
 func TestSplitO2(t *testing.T) {
-    fmt.Println("\n\n\n------  TestSplitO2  ------")
-    order := 2
-    n := order*(order+2)+1
-    for i:= 1; i<=order*(order+2)+1; i++ {
-        self := makebtree(ORDER_2)
-        constructCompleteLevel2(self, order, i)
-        self.Insert(ByteSlice32(uint32(i)), rec)
-        verify_tree(self,n, t)
-        cleanbtree(self)
+    test := func() {
+        fmt.Println("\n\n\n------  TestSplitO2  ------")
+        order := 2
+        n := order*(order+2)+1
+        for i:= 1; i<=order*(order+2)+1; i++ {
+            self := makebtree(ORDER_2)
+            constructCompleteLevel2(self, order, i)
+            self.Insert(ByteSlice32(uint32(i)), rec)
+            verify_tree(self,n, t)
+            cleanbtree(self)
+        }
     }
+    test()
 }
 
 func TestSplitO3(t *testing.T) {
