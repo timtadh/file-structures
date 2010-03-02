@@ -70,5 +70,5 @@ func main() {
 
 
     fmt.Println(fac(5))
-    Dotty(btree)
+    Dotty("out.dot", btree)
 }

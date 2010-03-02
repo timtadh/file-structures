@@ -57,7 +57,7 @@ func Dotty(filename string, tree *BTree) {
         fmt.Fprintf(file, "%v[shape=record, label=\"%v\"]\n", name, label(vals, int(block.MaxRecordCount())))
         return name
     }
-    traverse(tree.getblock(tree.root))
+    traverse(tree.getblock(tree.info.Root()))
     for e := range edges.Iter() {
         if edge, ok := e.(string); ok {
             fmt.Fprintln(file, edge)

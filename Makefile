@@ -12,7 +12,7 @@ ifeq ($(GOOS), darwin)
 	ignore="block/file/const_linux.go"; 
 endif
 
-build: clean
+build:
 	gobuild -a -ignore=$(ignore)
 
 block: build

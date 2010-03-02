@@ -8,23 +8,66 @@ import . "block/keyblock"
 import . "block/buffers"
 import . "block/byteslice"
 
-const BLOCKSIZE = 4096
+// const BLOCKSIZE = 4096
 // const BLOCKSIZE = 45
-// const BLOCKSIZE = 65
+const BLOCKSIZE = 65
 // const BLOCKSIZE = 105
 
+type container struct {
+    file   *BlockFile
+    height int
+    root   ByteSlice
+}
+
+func new_container(file *BlockFile, h int, r ByteSlice) *container {
+    self := new(container)
+    self.file = file
+    self.height = h
+    self.root = r
+    self.Serialize()
+    return self
+}
+func load_container(file *BlockFile) *container {
+    self := new(container)
+    self.file = file
+    self.deserialize()
+    return self
+}
+func (self *container) Height() int { return self.height }
+func (self *container) Root() ByteSlice { return self.root }
+func (self *container) SetHeight(h int) { self.height = h; self.Serialize() }
+func (self *container) SetRoot(r ByteSlice) { self.root = r; self.Serialize() }
+func (self *container) Serialize() {
+    bytes := make([]byte, BLOCKSIZE)
+    h := ByteSlice32(uint32(self.height))
+    i := 0
+    for _, b := range h {
+        bytes[i] = b
+        i++
+    }
+    for _, b := range self.root {
+        bytes[i] = b
+        i++
+    }
+    self.file.WriteBlock(0, bytes)
+}
+func (self *container) deserialize() {
+    bytes, ok := self.file.ReadBlock(0, BLOCKSIZE)
+    if ok {
+        self.height = int(ByteSlice(bytes[0:4]).Int32())
+        self.root = ByteSlice(bytes[4:12])
+    }
+}
 
 type BTree struct {
     bf     *BlockFile
     node   *BlockDimensions
-    height int
-    root   ByteSlice
+    info   *container
 }
 
 // TODO: CREATE INFO BLOCK THAT SERIALIZES THE HEIGHT
 func NewBTree(filename string, keysize uint32, fields []uint32) (*BTree, bool) {
     self := new(BTree)
-    self.height = 1
     // 4 MB buffer with a block size of 4096 bytes
     if bf, ok := NewBlockFile(filename, NewLFU(1000)); !ok {
         fmt.Println("could not create block file")
@@ -56,7 +99,9 @@ func NewBTree(filename string, keysize uint32, fields []uint32) (*BTree, bool) {
             fmt.Println("Could not serialize root block to file")
             return nil, false
         }
-        self.root = b.Position()
+        self.info = new_container(self.bf, 1, b.Position())
+    } else {
+        self.info = load_container(self.bf)
     }
     return self, true
 }
@@ -77,7 +122,7 @@ func (self *BTree) Find(key ByteSlice) (*Record, bool) {
         }
         return nil
     }
-    r := find(self.getblock(self.root), self.height)
+    r := find(self.getblock(self.info.Root()), self.info.Height())
     if r == nil { return nil, false }
     return r, true
 }
@@ -87,7 +132,7 @@ func (self *BTree) Filename() string { return self.bf.Filename() }
 func (self *BTree) String() string {
     s := "BTree:\n{\n"
     stack := list.New()
-    stack.PushBack(self.root)
+    stack.PushBack(self.info.Root())
     for stack.Len() > 0 {
         e := stack.Front()
         pos := e.Value.(ByteSlice)

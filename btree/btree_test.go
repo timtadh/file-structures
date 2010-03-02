@@ -14,7 +14,6 @@ func testingNewBTree(blocksize uint32) (*BTree, bool) {
     keysize := uint32(4)
     fields := &([3]uint32{1, 1, 2})
     self := new(BTree)
-    self.height = 1
     // 4 MB buffer with a block size of 4096 bytes
     if bf, ok := file.NewBlockFile(filename, NewLFU(1000)); !ok {
         fmt.Println("could not create block file")
@@ -48,7 +47,7 @@ func testingNewBTree(blocksize uint32) (*BTree, bool) {
             fmt.Println("Could not serialize root block to file")
             return nil, false
         }
-        self.root = b.Position()
+        self.info = new_container(self.bf, 1, b.Position())
     }
     return self, true
 }
@@ -92,7 +91,7 @@ func TestGetBlock(t *testing.T) {
     self := makebtree(BLOCKSIZE)
     defer cleanbtree(self)
     
-    if self.getblock(self.root) == nil {
+    if self.getblock(self.info.Root()) == nil {
         t.Error("could not read the root block")
     }
 }

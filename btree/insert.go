@@ -181,7 +181,7 @@ func (self *BTree) insert(block *KeyBlock, rec *Record, height int, dirty *dirty
 }
 
 func (self *BTree) Insert(key ByteSlice, record []ByteSlice) bool {
-    dirty := new_dirty_blocks(self.height * 4) // this is our buffer of "dirty" blocks that we will write back at the end
+    dirty := new_dirty_blocks(self.info.Height() * 4) // this is our buffer of "dirty" blocks that we will write back at the end
 
     if !self.ValidateKey(key) || !self.ValidateRecord(record) {
         return false
@@ -196,13 +196,13 @@ func (self *BTree) Insert(key ByteSlice, record []ByteSlice) bool {
     }
 
     // insert the block if split is true then we need to split the root
-    if b, r, split := self.insert(self.getblock(self.root), rec, self.height-1, dirty); split {
+    if b, r, split := self.insert(self.getblock(self.info.Root()), rec, self.info.Height()-1, dirty); split {
         // root split
         // first allocate a new root then insert the key record and the associated pointers
         root := self.allocate()
         dirty.insert(root)
         if i, ok := root.Add(r); ok {
-            root.InsertPointer(i, self.root)
+            root.InsertPointer(i, self.info.Root())
             root.InsertPointer(i+1, b.Position())
         } else {
             fmt.Println("Could not insert into empty block PANIC")
@@ -210,8 +210,8 @@ func (self *BTree) Insert(key ByteSlice, record []ByteSlice) bool {
             return false
         }
         // don't forget to update the height of the tree and the root
-        self.root = root.Position()
-        self.height += 1
+        self.info.SetRoot(root.Position())
+        self.info.SetHeight(self.info.Height()+1)
     }
     dirty.sync() // writes the dirty blocks to disk
     return true

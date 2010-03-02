@@ -69,7 +69,7 @@ func fill_block(self *BTree, a *KeyBlock, t *testing.T, skip int) {
 }
 
 func testBalanceBlocks(self *BTree, t *testing.T) {
-    a := self.getblock(self.root)
+    a := self.getblock(self.info.Root())
     b := self.allocate()
     
     fill_block(self, a, t, self.node.KeysPerBlock())
@@ -231,7 +231,7 @@ func constructCompleteLevel2(self *BTree, order, skip int) {
     dirty := new_dirty_blocks(100)
     n := order*(order+2)
     if (skip <= n) { n++ }
-    root := self.getblock(self.root)
+    root := self.getblock(self.info.Root())
     dirty.insert(root)
     cur := self.allocate()
     dirty.insert(cur)
@@ -249,7 +249,7 @@ func constructCompleteLevel2(self *BTree, order, skip int) {
     }
     root.InsertPointer(int(root.PointerCount()), cur.Position())
     dirty.sync()
-    self.height = 2
+    self.info.SetHeight(2)
 }
 
 func verify_tree(self *BTree, n int, t *testing.T) {
@@ -283,7 +283,7 @@ func verify_tree(self *BTree, n int, t *testing.T) {
         }
         return j
     }
-    j = traverse(self.getblock(self.root))
+    j = traverse(self.getblock(self.info.Root()))
     if j-1 != n {
         t.Errorf("tree missing a key", j-1,n )
     }
@@ -351,7 +351,7 @@ func TestRandomBuildO2(t *testing.T) {
     fmt.Println("\n\n\n------  TestRandomBuildO2  ------")
     
     order := 2
-    n := order*order*(order+2)+1
+    n := order*order*order*order*order*(order+2)+1
     for k:= 0; k < n; k++ {
         self := makebtree(ORDER_2)
         for i:= 1; i<=n; i++ {
