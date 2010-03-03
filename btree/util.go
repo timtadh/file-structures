@@ -42,22 +42,3 @@ func (self *BTree) ValidateRecord(record []ByteSlice) bool {
     }
     return r
 }
-
-type dirty_blocks struct {
-    slice []*KeyBlock
-}
-
-func new_dirty_blocks(size int) *dirty_blocks {
-    self := new(dirty_blocks)
-    self.slice = make([]*KeyBlock, size)[0:0]
-    return self
-}
-func (self *dirty_blocks) insert(b *KeyBlock) {
-    self.slice = self.slice[0 : len(self.slice)+1]
-    self.slice[len(self.slice)-1] = b
-}
-func (self *dirty_blocks) sync() {
-    for _, b := range self.slice {
-        b.SerializeToFile()
-    }
-}

@@ -7,6 +7,7 @@ import "os"
 import . "block/keyblock"
 // import . "block/buffers"
 import . "block/byteslice"
+import "block/dirty"
 
 /*
    balance blocks takes two keyblocks full, and empty and balances the records between them. full must be full
@@ -54,10 +55,10 @@ func (self BTree) balance_blocks(full *KeyBlock, empty *KeyBlock) {
         the function should always return a valid btree if the record it returns becomes the record at the root
         level.
 */
-func (self *BTree) split(block *KeyBlock, rec *Record, nextb *KeyBlock, dirty *dirty_blocks) (*KeyBlock, *Record, bool) {
+func (self *BTree) split(block *KeyBlock, rec *Record, nextb *KeyBlock, dirty *dirty.DirtyBlocks) (*KeyBlock, *Record, bool) {
     var split_rec *Record
     new_block := self.allocate()
-    dirty.insert(new_block)
+    dirty.Insert(new_block)
     i, _, _, _, _ := block.Find(rec.GetKey())
     m := self.node.KeysPerBlock() >> 1
 //     fmt.Println("m=", m)
@@ -79,7 +80,7 @@ func (self *BTree) split(block *KeyBlock, rec *Record, nextb *KeyBlock, dirty *d
         split_rec = rec
     }
     self.balance_blocks(block, new_block)
-    dirty.sync() // figure out how to remove
+    dirty.Sync() // figure out how to remove
     if nextb != nil {
 //         fmt.Println("NEXTB: ", nextb)
         nextr, _, _, _ := nextb.Get(0)
@@ -131,7 +132,7 @@ func (self *BTree) split(block *KeyBlock, rec *Record, nextb *KeyBlock, dirty *d
 /*
    Recursively inserts the record based on Sedgewick's algorithm
 */
-func (self *BTree) insert(block *KeyBlock, rec *Record, height int, dirty *dirty_blocks) (*KeyBlock, *Record, bool) {
+func (self *BTree) insert(block *KeyBlock, rec *Record, height int, dirty *dirty.DirtyBlocks) (*KeyBlock, *Record, bool) {
 //     fmt.Println("inserting", rec, "\n", block, height)
     var nextb *KeyBlock
     if height > 0 {
@@ -167,7 +168,7 @@ func (self *BTree) insert(block *KeyBlock, rec *Record, height int, dirty *dirty
         }
     }
     // this block is changed
-    dirty.insert(block)
+    dirty.Insert(block)
     if i, ok := block.Add(rec); ok {
         // Block isn't full record inserted, now insert pointer (if one exists)
         // return to parent saying it has nothing to do
@@ -181,7 +182,7 @@ func (self *BTree) insert(block *KeyBlock, rec *Record, height int, dirty *dirty
 }
 
 func (self *BTree) Insert(key ByteSlice, record []ByteSlice) bool {
-    dirty := new_dirty_blocks(self.info.Height() * 4) // this is our buffer of "dirty" blocks that we will write back at the end
+    dirty := dirty.New(self.info.Height() * 4) // this is our buffer of "dirty" blocks that we will write back at the end
 
     if !self.ValidateKey(key) || !self.ValidateRecord(record) {
         return false
@@ -200,7 +201,7 @@ func (self *BTree) Insert(key ByteSlice, record []ByteSlice) bool {
         // root split
         // first allocate a new root then insert the key record and the associated pointers
         root := self.allocate()
-        dirty.insert(root)
+        dirty.Insert(root)
         if i, ok := root.Add(r); ok {
             root.InsertPointer(i, self.info.Root())
             root.InsertPointer(i+1, b.Position())
@@ -213,6 +214,6 @@ func (self *BTree) Insert(key ByteSlice, record []ByteSlice) bool {
         self.info.SetRoot(root.Position())
         self.info.SetHeight(self.info.Height()+1)
     }
-    dirty.sync() // writes the dirty blocks to disk
+    dirty.Sync() // writes the dirty blocks to disk
     return true
 }

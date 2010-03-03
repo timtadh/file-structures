@@ -4,67 +4,22 @@ import "fmt"
 // import "os"
 import "runtime"
 import "container/list"
+import "treeinfo"
 import . "block/file"
 import . "block/keyblock"
 import . "block/buffers"
 import . "block/byteslice"
 
 
-// const BLOCKSIZE = 4096
 // const BLOCKSIZE = 45
-const BLOCKSIZE = 65
+// const BLOCKSIZE = 65
 // const BLOCKSIZE = 105
 
-type container struct {
-    file   *BlockFile
-    height int
-    root   ByteSlice
-}
-
-func new_container(file *BlockFile, h int, r ByteSlice) *container {
-    self := new(container)
-    self.file = file
-    self.height = h
-    self.root = r
-    self.Serialize()
-    return self
-}
-func load_container(file *BlockFile) *container {
-    self := new(container)
-    self.file = file
-    self.deserialize()
-    return self
-}
-func (self *container) Height() int { return self.height }
-func (self *container) Root() ByteSlice { return self.root }
-func (self *container) SetHeight(h int) { self.height = h; self.Serialize() }
-func (self *container) SetRoot(r ByteSlice) { self.root = r; self.Serialize() }
-func (self *container) Serialize() {
-    bytes := make([]byte, BLOCKSIZE)
-    h := ByteSlice32(uint32(self.height))
-    i := 0
-    for _, b := range h {
-        bytes[i] = b
-        i++
-    }
-    for _, b := range self.root {
-        bytes[i] = b
-        i++
-    }
-    self.file.WriteBlock(0, bytes)
-}
-func (self *container) deserialize() {
-    bytes, ok := self.file.ReadBlock(0, BLOCKSIZE)
-    if ok {
-        self.height = int(ByteSlice(bytes[0:4]).Int32())
-        self.root = ByteSlice(bytes[4:12])
-    }
-}
 
 type BTree struct {
     bf     *BlockFile
     node   *BlockDimensions
-    info   *container
+    info   *treeinfo.TreeInfo
 }
 
 // TODO: CREATE INFO BLOCK THAT SERIALIZES THE HEIGHT
@@ -77,7 +32,7 @@ func NewBTree(filename string, keysize uint32, fields []uint32) (*BTree, bool) {
     } else {
         self.bf = bf
     }
-    if dim, ok := NewBlockDimensions(RECORDS|POINTERS, BLOCKSIZE, keysize, 8, fields); !ok {
+    if dim, ok := NewBlockDimensions(RECORDS|POINTERS, treeinfo.BLOCKSIZE, keysize, 8, fields); !ok {
         fmt.Println("Block Dimensions invalid")
         return nil, false
     } else {
@@ -101,9 +56,9 @@ func NewBTree(filename string, keysize uint32, fields []uint32) (*BTree, bool) {
             fmt.Println("Could not serialize root block to file")
             return nil, false
         }
-        self.info = new_container(self.bf, 1, b.Position())
+        self.info = treeinfo.New(self.bf, 1, b.Position())
     } else {
-        self.info = load_container(self.bf)
+        self.info = treeinfo.Load(self.bf)
     }
     clean := func(self *BTree) {
         self.bf.Close()

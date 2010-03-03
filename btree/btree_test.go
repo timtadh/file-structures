@@ -5,10 +5,12 @@ import "fmt"
 import "os"
 import "runtime"
 import "block/file"
+import "treeinfo"
 import . "block/keyblock"
 import . "block/buffers"
 
 var rec [][]byte = &([3][]byte{&[1]byte{1}, &[1]byte{1}, &[2]byte{1, 2}});
+var BLOCKSIZE uint32 = treeinfo.BLOCKSIZE
 
 func testingNewBTree(blocksize uint32) (*BTree, bool) {
     filename := "test.btree"
@@ -48,7 +50,7 @@ func testingNewBTree(blocksize uint32) (*BTree, bool) {
             fmt.Println("Could not serialize root block to file")
             return nil, false
         }
-        self.info = new_container(self.bf, 1, b.Position())
+        self.info = treeinfo.New(self.bf, 1, b.Position())
     }
     clean := func(self *BTree) {
         self.bf.Close()
@@ -78,7 +80,7 @@ func cleanbtree(btree *BTree) {
 // }
 
 func TestAllocate(t *testing.T) {
-    fmt.Println("\n------  TestAllocate  ------")
+//     fmt.Println("\n------  TestAllocate  ------")
     self := makebtree(BLOCKSIZE)
     defer cleanbtree(self)
     
@@ -92,7 +94,7 @@ func TestAllocate(t *testing.T) {
 }
 
 func TestGetBlock(t *testing.T) {
-    fmt.Println("\n\n\n------  TestGetBlock  ------")
+//     fmt.Println("\n\n\n------  TestGetBlock  ------")
     self := makebtree(BLOCKSIZE)
     defer cleanbtree(self)
     
@@ -102,7 +104,7 @@ func TestGetBlock(t *testing.T) {
 }
 
 func TestValidateKey(t *testing.T) {
-    fmt.Println("\n\n\n------  TestValidateKey  ------")
+//     fmt.Println("\n\n\n------  TestValidateKey  ------")
     self := makebtree(BLOCKSIZE)
     defer cleanbtree(self)
     
@@ -118,7 +120,7 @@ func TestValidateKey(t *testing.T) {
 }
 
 func TestValidateRecord(t *testing.T) {
-    fmt.Println("\n\n\n------  TestValidateRecord  ------")
+//     fmt.Println("\n\n\n------  TestValidateRecord  ------")
     self := makebtree(BLOCKSIZE)
     defer cleanbtree(self)
     

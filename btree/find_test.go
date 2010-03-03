@@ -1,11 +1,10 @@
 package btree
 
 import "testing"
-import "fmt"
 import . "block/byteslice"
 
 func TestFind(t *testing.T) {
-    fmt.Println("\n------  TestFind  ------")
+//     fmt.Println("\n------  TestFind  ------")
     self := makebtree(ORDER_5)
     defer cleanbtree(self)
     order := 5
