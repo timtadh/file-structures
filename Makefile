@@ -34,16 +34,16 @@ test: runtest
 	mkdir dot
 	mkdir png
 	-mv *.dot dot/
-	-for file in dot/*.dot; do echo $$file | cut -d "/" -f 2 - | xargs --replace="%s" dot -Tpng $$file -o png/%s.png; done
+	-for file in dot/*.dot; do echo $$file | cut -d "/" -f 2 - | xargs -I"%s" dot -Tpng $$file -o png/%s.png; done
 
 .PHONY : clean
 clean :
 	-rm -rf dot png *.dot *.png
-	-find -name "*.6" | xargs --replace="%s" rm %s
-	-find -name "hello.btree" | xargs --replace="%s" rm %s
+	-find . -name "*.6" | xargs -I"%s" rm %s
+	-find . -name "hello.btree" | xargs -I"%s" rm %s
 	-rm hello.btree _testmain block/test btree/test *.6 2> /dev/null
 	ls
 
 fmt:
-	find -name "*.go" | xargs --replace="%s" gofmt -w %s
-	find -name "*.go" | xargs --replace="%s" ../scripts/tabs_to_spaces.sh %s
+	find . -name "*.go" | xargs -I"%s" gofmt -w %s
+	find . -name "*.go" | xargs -I"%s" ../scripts/tabs_to_spaces.sh %s
