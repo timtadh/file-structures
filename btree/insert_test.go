@@ -355,7 +355,7 @@ func TestRandomBuildO2(t *testing.T) {
     fmt.Println("------  TestRandomBuildO2  ------")
     
     order := 2
-    n := order*order*order*order*order*(order+2)+1
+    n := order*order*order*(order+2)+1
     for k:= 0; k < n; k++ {
         self := makebtree(ORDER_2)
         for i:= 1; i<=n; i++ {
@@ -402,7 +402,8 @@ func TestRandomBuildO4(t *testing.T) {
     
     order := 4
     n := order*order*(order+2)+1
-    for k:= 0; k < n; k++ {
+    top := 5
+    for k:= 0; k < top; k++ {
         self := makebtree(ORDER_4)
         for i:= 1; i<=n; i++ {
             j := rand.Intn(n)+1
@@ -413,7 +414,7 @@ func TestRandomBuildO4(t *testing.T) {
             self.Insert(ByteSlice32(uint32(j)), rec)
         }
         verify_tree(self,n, t)
-        if k+1 == n {
+        if k+1 == top {
             Dotty("rand4.dot", self)
         }
         cleanbtree(self)
@@ -425,7 +426,8 @@ func TestRandomBuildO5(t *testing.T) {
     
     order := 5
     n := order*order*(order+2)+1
-    for k:= 0; k < n; k++ {
+    top := 5
+    for k:= 0; k < top; k++ {
         self := makebtree(ORDER_5)
         for i:= 1; i<=n; i++ {
             j := rand.Intn(n)+1
@@ -435,8 +437,8 @@ func TestRandomBuildO5(t *testing.T) {
             }
             self.Insert(ByteSlice32(uint32(j)), rec)
         }
-        verify_tree(self,n, t)
-        if k+1 == n {
+        verify_tree(self, n, t)
+        if k+1 == top {
             Dotty("rand5.dot", self)
         }
         cleanbtree(self)

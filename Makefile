@@ -28,12 +28,13 @@ runtest:
 	-rm -rf dot png *.dot *.png
 	gobuild -run -t -ignore=$(ignore)
 	-rm _testmain *.6
-
-test: runtest
 	-rm -rf dot png
 	mkdir dot
-	mkdir png
 	-mv *.dot dot/
+
+test: runtest
+	-rm -rf png
+	mkdir png
 	-for file in dot/*.dot; do echo $$file | cut -d "/" -f 2 - | xargs --replace="%s" dot -Tpng $$file -o png/%s.png; done
 
 .PHONY : clean

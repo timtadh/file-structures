@@ -22,7 +22,6 @@ type BTree struct {
     info   *treeinfo.TreeInfo
 }
 
-// TODO: CREATE INFO BLOCK THAT SERIALIZES THE HEIGHT
 func NewBTree(filename string, keysize uint32, fields []uint32) (*BTree, bool) {
     self := new(BTree)
     // 4 MB buffer with a block size of 4096 bytes
@@ -60,10 +59,10 @@ func NewBTree(filename string, keysize uint32, fields []uint32) (*BTree, bool) {
     } else {
         self.info = treeinfo.Load(self.bf)
     }
-    clean := func(self *BTree) {
-        self.bf.Close()
-    }
-    runtime.SetFinalizer(self, clean)
+    runtime.SetFinalizer(self, 
+        func(self *BTree) {
+            self.bf.Close()
+        })
     return self, true
 }
 
