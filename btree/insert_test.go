@@ -13,25 +13,25 @@ const ORDER_4 = 85
 const ORDER_5 = 105
 
 func TestOrder(t *testing.T) {
-//     fmt.Println("\n\n\n------  TestOrder  ------")
+    //     fmt.Println("\n\n\n------  TestOrder  ------")
     order2 := makebtree(ORDER_2)
     if order2.node.KeysPerBlock() != 2 {
         t.Error("order 2 btree not order 2 it is order", order2.node.KeysPerBlock())
     }
     cleanbtree(order2)
-    
+
     order3 := makebtree(ORDER_3)
     if order3.node.KeysPerBlock() != 3 {
         t.Error("order 2 btree not order 2 it is order", order3.node.KeysPerBlock())
     }
     cleanbtree(order3)
-    
+
     order4 := makebtree(ORDER_4)
     if order4.node.KeysPerBlock() != 4 {
         t.Error("order 2 btree not order 2 it is order", order4.node.KeysPerBlock())
     }
     cleanbtree(order4)
-    
+
     order5 := makebtree(ORDER_5)
     if order5.node.KeysPerBlock() != 5 {
         t.Error("order 2 btree not order 2 it is order", order5.node.KeysPerBlock())
@@ -55,10 +55,15 @@ func insert(self *BTree, a *KeyBlock, key ByteSlice) bool {
 
 func fill_block(self *BTree, a *KeyBlock, t *testing.T, skip int) {
     n := self.node.KeysPerBlock()
-    if skip < n { n++ }
+    if skip < n {
+        n++
+    }
     p_ := uint32(0)
     for i := uint32(0); int(i) < n; i++ {
-        if int(i) == skip { p_ = 1; continue }
+        if int(i) == skip {
+            p_ = 1
+            continue
+        }
         if !insert(self, a, ByteSlice32(i)) {
             t.Errorf("failed inserting ith, %v, value in block of order %v", i+1, self.node.KeysPerBlock())
         }
@@ -72,9 +77,9 @@ func fill_block(self *BTree, a *KeyBlock, t *testing.T, skip int) {
 func testBalanceBlocks(self *BTree, t *testing.T) {
     a := self.getblock(self.info.Root())
     b := self.allocate()
-    
+
     fill_block(self, a, t, self.node.KeysPerBlock())
-    
+
     self.balance_blocks(a, b)
     if a.RecordCount() > b.RecordCount() {
         t.Errorf("a.RecordCount() > b.RecordCount()")
@@ -91,44 +96,42 @@ func testBalanceBlocks(self *BTree, t *testing.T) {
 }
 
 func TestBalanceBlocksO2(t *testing.T) {
-//     fmt.Println("\n\n\n------  TestBalanceBlocksO2  ------")
+    //     fmt.Println("\n\n\n------  TestBalanceBlocksO2  ------")
     self := makebtree(ORDER_2)
     defer cleanbtree(self)
     testBalanceBlocks(self, t)
 }
 
 func TestBalanceBlocksO3(t *testing.T) {
-//     fmt.Println("\n\n\n------  TestBalanceBlocksO3  ------")
+    //     fmt.Println("\n\n\n------  TestBalanceBlocksO3  ------")
     self := makebtree(ORDER_3)
     defer cleanbtree(self)
     testBalanceBlocks(self, t)
 }
 
 func TestBalanceBlocksO4(t *testing.T) {
-//     fmt.Println("\n\n\n------  TestBalanceBlocksO4  ------")
+    //     fmt.Println("\n\n\n------  TestBalanceBlocksO4  ------")
     self := makebtree(ORDER_4)
     defer cleanbtree(self)
     testBalanceBlocks(self, t)
 }
 
 func TestBalanceBlocksO5(t *testing.T) {
-//     fmt.Println("\n\n\n------  TestBalanceBlocksO5  ------")
+    //     fmt.Println("\n\n\n------  TestBalanceBlocksO5  ------")
     self := makebtree(ORDER_5)
     defer cleanbtree(self)
     testBalanceBlocks(self, t)
 }
 
 
-
-
 func validateSimpleSplit(self *BTree, a *KeyBlock, c *Record, dirty *dirty.DirtyBlocks, t *testing.T) {
-    
+
     b, rec, ok := self.split(a, c, nil, dirty)
-    
+
     if !ok {
         t.Error("Could not split a on c")
     }
-    
+
     i := 0
     for ; i < int(a.RecordCount()); i++ {
         r, left, right, ok := a.Get(i)
@@ -145,13 +148,12 @@ func validateSimpleSplit(self *BTree, a *KeyBlock, c *Record, dirty *dirty.Dirty
             t.Errorf("144 Error right, %v, does not equal 0x%x", right, i+2)
         }
     }
-    
+
     if int(rec.GetKey().Int32()) != i {
         t.Errorf("149 Error key, %v, does not equal %v", rec.GetKey().Int32(), i)
     }
     i++
-    
-    
+
     for j := 0; j < int(b.RecordCount()); j++ {
         r, left, right, ok := b.Get(j)
         if !ok {
@@ -171,22 +173,22 @@ func validateSimpleSplit(self *BTree, a *KeyBlock, c *Record, dirty *dirty.Dirty
 }
 
 func testSimpleSplit(self *BTree, t *testing.T) {
-//     fmt.Println("case 1")
+    //     fmt.Println("case 1")
     dirty := dirty.New(100)
     a := self.allocate()
     dirty.Insert(a)
     fill_block(self, a, t, self.node.KeysPerBlock())
     validateSimpleSplit(self, a, makerec(self, ByteSlice32(uint32(self.node.KeysPerBlock()))), dirty, t)
-    
-    
-//     fmt.Println("case 2")
+
+
+    //     fmt.Println("case 2")
     a = self.allocate()
     dirty.Insert(a)
     fill_block(self, a, t, self.node.KeysPerBlock()>>1)
     validateSimpleSplit(self, a, makerec(self, ByteSlice32(uint32(self.node.KeysPerBlock())>>1)), dirty, t)
-    
-    
-//     fmt.Println("case 3")
+
+
+    //     fmt.Println("case 3")
     a = self.allocate()
     dirty.Insert(a)
     fill_block(self, a, t, 0)
@@ -194,8 +196,8 @@ func testSimpleSplit(self *BTree, t *testing.T) {
 }
 
 func TestSimpleSplitO2(t *testing.T) {
-//     fmt.Println("\n\n\n------  TestSimpleSplitO2  ------")
-// func (self *BTree) split(block *KeyBlock, rec *Record, nextb *KeyBlock, dirty *dirty_blocks) (*KeyBlock, *Record, bool) {
+    //     fmt.Println("\n\n\n------  TestSimpleSplitO2  ------")
+    // func (self *BTree) split(block *KeyBlock, rec *Record, nextb *KeyBlock, dirty *dirty_blocks) (*KeyBlock, *Record, bool) {
     self := makebtree(ORDER_2)
     defer cleanbtree(self)
     testSimpleSplit(self, t)
@@ -203,45 +205,48 @@ func TestSimpleSplitO2(t *testing.T) {
 
 
 func TestSimpleSplitO3(t *testing.T) {
-//     fmt.Println("\n\n\n------  TestSimpleSplitO3  ------")
-// func (self *BTree) split(block *KeyBlock, rec *Record, nextb *KeyBlock, dirty *dirty_blocks) (*KeyBlock, *Record, bool) {
+    //     fmt.Println("\n\n\n------  TestSimpleSplitO3  ------")
+    // func (self *BTree) split(block *KeyBlock, rec *Record, nextb *KeyBlock, dirty *dirty_blocks) (*KeyBlock, *Record, bool) {
     self := makebtree(ORDER_3)
     defer cleanbtree(self)
     testSimpleSplit(self, t)
 }
 
 func TestSimpleSplitO4(t *testing.T) {
-//     fmt.Println("\n\n\n------  TestSimpleSplitO4  ------")
-// func (self *BTree) split(block *KeyBlock, rec *Record, nextb *KeyBlock, dirty *dirty_blocks) (*KeyBlock, *Record, bool) {
+    //     fmt.Println("\n\n\n------  TestSimpleSplitO4  ------")
+    // func (self *BTree) split(block *KeyBlock, rec *Record, nextb *KeyBlock, dirty *dirty_blocks) (*KeyBlock, *Record, bool) {
     self := makebtree(ORDER_4)
     defer cleanbtree(self)
     testSimpleSplit(self, t)
 }
 
 func TestSimpleSplitO5(t *testing.T) {
-//     fmt.Println("\n\n\n------  TestSimpleSplitO5  ------")
-// func (self *BTree) split(block *KeyBlock, rec *Record, nextb *KeyBlock, dirty *dirty_blocks) (*KeyBlock, *Record, bool) {
+    //     fmt.Println("\n\n\n------  TestSimpleSplitO5  ------")
+    // func (self *BTree) split(block *KeyBlock, rec *Record, nextb *KeyBlock, dirty *dirty_blocks) (*KeyBlock, *Record, bool) {
     self := makebtree(ORDER_5)
     defer cleanbtree(self)
     testSimpleSplit(self, t)
 }
 
 
-
 func constructCompleteLevel2(self *BTree, order, skip int) {
     dirty := dirty.New(100)
-    n := order*(order+2)
-    if (skip <= n) { n++ }
+    n := order * (order + 2)
+    if skip <= n {
+        n++
+    }
     root := self.getblock(self.info.Root())
     dirty.Insert(root)
     cur := self.allocate()
     dirty.Insert(cur)
     for i := 0; i < n; i++ {
-        if (i+1 == skip) { continue }
-        rec :=  makerec(self, ByteSlice32(uint32(i+1)))
+        if i+1 == skip {
+            continue
+        }
+        rec := makerec(self, ByteSlice32(uint32(i+1)))
         if cur.Full() {
             root.InsertPointer(int(root.PointerCount()), cur.Position())
-            cur = self.allocate() 
+            cur = self.allocate()
             dirty.Insert(cur)
             root.Add(rec)
         } else {
@@ -286,7 +291,7 @@ func verify_tree(self *BTree, n int, t *testing.T) {
     }
     j = traverse(self.getblock(self.info.Root()))
     if j-1 != n {
-        t.Errorf("tree missing a key", j-1,n )
+        t.Errorf("tree missing a key", j-1, n)
     }
 }
 
@@ -295,14 +300,14 @@ func verify_tree(self *BTree, n int, t *testing.T) {
 
 func TestSplitO2(t *testing.T) {
     test := func() {
-//         fmt.Println("------  TestSplitO2  ------")
+        //         fmt.Println("------  TestSplitO2  ------")
         order := 2
-        n := order*(order+2)+1
-        for i:= 1; i<=order*(order+2)+1; i++ {
+        n := order*(order+2) + 1
+        for i := 1; i <= order*(order+2)+1; i++ {
             self := makebtree(ORDER_2)
             constructCompleteLevel2(self, order, i)
             self.Insert(ByteSlice32(uint32(i)), rec)
-            verify_tree(self,n, t)
+            verify_tree(self, n, t)
             cleanbtree(self)
         }
     }
@@ -310,42 +315,44 @@ func TestSplitO2(t *testing.T) {
 }
 
 func TestSplitO3(t *testing.T) {
-//     fmt.Println("------  TestSplitO3  ------")
+    //     fmt.Println("------  TestSplitO3  ------")
     order := 3
-    n := order*(order+2)+1
-    for i:= 1; i<=n; i++ {
+    n := order*(order+2) + 1
+    for i := 1; i <= n; i++ {
         self := makebtree(ORDER_3)
         constructCompleteLevel2(self, order, i)
         self.Insert(ByteSlice32(uint32(i)), rec)
-        verify_tree(self,n, t)
+        verify_tree(self, n, t)
         cleanbtree(self)
     }
 }
 
 func TestSplitO4(t *testing.T) {
-//     fmt.Println("------  TestSplitO4  ------")
+    //     fmt.Println("------  TestSplitO4  ------")
     order := 4
-    n := order*(order+2)+1
-    for i:= 1; i<=order*(order+2)+1; i++ {
+    n := order*(order+2) + 1
+    for i := 1; i <= order*(order+2)+1; i++ {
         self := makebtree(ORDER_4)
         constructCompleteLevel2(self, order, i)
         self.Insert(ByteSlice32(uint32(i)), rec)
-        verify_tree(self,n, t)
+        verify_tree(self, n, t)
         cleanbtree(self)
     }
 }
 
 func TestSplitO5(t *testing.T) {
-//     fmt.Println("------  TestSplitO5  ------")
+    //     fmt.Println("------  TestSplitO5  ------")
     order := 5
-    n := order*(order+2)+1
-    for i:= 1; i<=order*(order+2)+1; i++ {
+    n := order*(order+2) + 1
+    for i := 1; i <= order*(order+2)+1; i++ {
         self := makebtree(ORDER_5)
         constructCompleteLevel2(self, order, i)
         self.Insert(ByteSlice32(uint32(i)), rec)
-        verify_tree(self,n, t)
+        verify_tree(self, n, t)
         name := fmt.Sprintf("%v.dot", i)
-        if len(name) < 6 { name = "0" + name }
+        if len(name) < 6 {
+            name = "0" + name
+        }
         Dotty(name, self)
         cleanbtree(self)
     }
@@ -353,20 +360,20 @@ func TestSplitO5(t *testing.T) {
 
 func TestRandomBuildO2(t *testing.T) {
     fmt.Println("------  TestRandomBuildO2  ------")
-    
+
     order := 2
-    n := order*order*order*(order+2)+1
-    for k:= 0; k < n; k++ {
+    n := order*order*order*(order+2) + 1
+    for k := 0; k < n; k++ {
         self := makebtree(ORDER_2)
-        for i:= 1; i<=n; i++ {
-            j := rand.Intn(n)+1
+        for i := 1; i <= n; i++ {
+            j := rand.Intn(n) + 1
             for _, ok := self.Find(ByteSlice32(uint32(j))); ok; {
-                j = rand.Intn(n)+1
+                j = rand.Intn(n) + 1
                 _, ok = self.Find(ByteSlice32(uint32(j)))
             }
             self.Insert(ByteSlice32(uint32(j)), rec)
         }
-        verify_tree(self,n, t)
+        verify_tree(self, n, t)
         if k+1 == n {
             Dotty("rand2.dot", self)
         }
@@ -376,20 +383,20 @@ func TestRandomBuildO2(t *testing.T) {
 
 func TestRandomBuildO3(t *testing.T) {
     fmt.Println("------  TestRandomBuildO3  ------")
-    
+
     order := 3
-    n := order*order*(order+2)+1
-    for k:= 0; k < n; k++ {
+    n := order*order*(order+2) + 1
+    for k := 0; k < n; k++ {
         self := makebtree(ORDER_3)
-        for i:= 1; i<=n; i++ {
-            j := rand.Intn(n)+1
+        for i := 1; i <= n; i++ {
+            j := rand.Intn(n) + 1
             for _, ok := self.Find(ByteSlice32(uint32(j))); ok; {
-                j = rand.Intn(n)+1
+                j = rand.Intn(n) + 1
                 _, ok = self.Find(ByteSlice32(uint32(j)))
             }
             self.Insert(ByteSlice32(uint32(j)), rec)
         }
-        verify_tree(self,n, t)
+        verify_tree(self, n, t)
         if k+1 == n {
             Dotty("rand3.dot", self)
         }
@@ -399,21 +406,21 @@ func TestRandomBuildO3(t *testing.T) {
 
 func TestRandomBuildO4(t *testing.T) {
     fmt.Println("------  TestRandomBuildO4  ------")
-    
+
     order := 4
-    n := order*order*(order+2)+1
+    n := order*order*(order+2) + 1
     top := 5
-    for k:= 0; k < top; k++ {
+    for k := 0; k < top; k++ {
         self := makebtree(ORDER_4)
-        for i:= 1; i<=n; i++ {
-            j := rand.Intn(n)+1
+        for i := 1; i <= n; i++ {
+            j := rand.Intn(n) + 1
             for _, ok := self.Find(ByteSlice32(uint32(j))); ok; {
-                j = rand.Intn(n)+1
+                j = rand.Intn(n) + 1
                 _, ok = self.Find(ByteSlice32(uint32(j)))
             }
             self.Insert(ByteSlice32(uint32(j)), rec)
         }
-        verify_tree(self,n, t)
+        verify_tree(self, n, t)
         if k+1 == top {
             Dotty("rand4.dot", self)
         }
@@ -423,16 +430,16 @@ func TestRandomBuildO4(t *testing.T) {
 
 func TestRandomBuildO5(t *testing.T) {
     fmt.Println("------  TestRandomBuildO5  ------")
-    
+
     order := 5
-    n := order*order*(order+2)+1
+    n := order*order*(order+2) + 1
     top := 5
-    for k:= 0; k < top; k++ {
+    for k := 0; k < top; k++ {
         self := makebtree(ORDER_5)
-        for i:= 1; i<=n; i++ {
-            j := rand.Intn(n)+1
+        for i := 1; i <= n; i++ {
+            j := rand.Intn(n) + 1
             for _, ok := self.Find(ByteSlice32(uint32(j))); ok; {
-                j = rand.Intn(n)+1
+                j = rand.Intn(n) + 1
                 _, ok = self.Find(ByteSlice32(uint32(j)))
             }
             self.Insert(ByteSlice32(uint32(j)), rec)
@@ -448,7 +455,7 @@ func TestRandomBuildO5(t *testing.T) {
 
 // func TestRandomBuild4096(t *testing.T) {
 //     fmt.Println("\n\n\n------  TestRandomBuild4096  ------")
-//     
+//
 //     order := 255
 //     n := order*(order+2)+1
 //     top := 1

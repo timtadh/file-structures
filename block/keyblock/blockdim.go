@@ -32,7 +32,7 @@ func (self *BlockDimensions) NewRecord(key ByteSlice) *Record {
 
 func (self *BlockDimensions) KeysPerBlock() int {
     var n int
-    if self.Mode&(POINTERS|EQUAPTRS) == (POINTERS|EQUAPTRS) {
+    if self.Mode&(POINTERS|EQUAPTRS) == (POINTERS | EQUAPTRS) {
         n = int((self.BlockSize - BLOCKHEADER) /
             (self.KeySize + self.PointerSize))
     } else if self.Mode&EXTRAPTR == (EXTRAPTR) {

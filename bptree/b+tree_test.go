@@ -5,7 +5,7 @@ import "os"
 import "fmt"
 import "treeinfo"
 
-var rec [][]byte = &([3][]byte{&[1]byte{1}, &[1]byte{1}, &[2]byte{1, 2}});
+var rec [][]byte = &([3][]byte{&[1]byte{1}, &[1]byte{1}, &[2]byte{1, 2}})
 var BLOCKSIZE uint32 = treeinfo.BLOCKSIZE
 
 func makebptree(size uint32, t *testing.T) *BpTree {
@@ -16,9 +16,7 @@ func makebptree(size uint32, t *testing.T) *BpTree {
     return self
 }
 
-func cleanbptree(self *BpTree) {
-    os.Remove(self.bf.Filename())
-}
+func cleanbptree(self *BpTree) { os.Remove(self.bf.Filename()) }
 
 func TestCreate(t *testing.T) {
     t.Log("------- TestCreate -------")

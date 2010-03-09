@@ -90,8 +90,8 @@ type lfu_item struct {
 func new_heap(size int) *lfu_heap {
     self := new(lfu_heap)
     self.slice = make([]lfu_item, size)[0:0]
-//     fmt.Println(cap(self.slice))
-//     fmt.Println(len(self.slice))
+    //     fmt.Println(cap(self.slice))
+    //     fmt.Println(len(self.slice))
     heap.Init(self)
     return self
 }
@@ -155,10 +155,10 @@ func (self *LFU) Read(p int64, length uint32) ([]byte, bool) {
         if len(bytes) != int(length) {
             return nil, false
         }
-//         fmt.Println("---------------------> Cache Hit")
+        //         fmt.Println("---------------------> Cache Hit")
         self.queue.Update(p)
         return bytes, true
     }
-//     fmt.Println("---------------------> Cache Miss")
+    //     fmt.Println("---------------------> Cache Miss")
     return nil, false
 }

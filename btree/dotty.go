@@ -10,15 +10,19 @@ var header string = "digraph btree {\n"
 var footer string = "}\n"
 
 func Dotty(filename string, tree *BTree) {
-    
-    file,_ := os.Open(filename, os.O_RDWR | os.O_CREAT, 0666)
+
+    file, _ := os.Open(filename, os.O_RDWR|os.O_CREAT, 0666)
     fmt.Fprintln(file, header)
 
-    label := func (vals []string, size int) string {
+    label := func(vals []string, size int) string {
         s := ""
         for i := 0; i < size; i++ {
-            if i < len(vals) { s += vals[i] }
-            if i+1 < size { s += "|" }
+            if i < len(vals) {
+                s += vals[i]
+            }
+            if i+1 < size {
+                s += "|"
+            }
         }
         return s
     }

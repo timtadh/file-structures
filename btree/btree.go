@@ -17,9 +17,9 @@ import . "block/byteslice"
 
 
 type BTree struct {
-    bf     *BlockFile
-    node   *BlockDimensions
-    info   *treeinfo.TreeInfo
+    bf   *BlockFile
+    node *BlockDimensions
+    info *treeinfo.TreeInfo
 }
 
 func NewBTree(filename string, keysize uint32, fields []uint32) (*BTree, bool) {
@@ -59,18 +59,18 @@ func NewBTree(filename string, keysize uint32, fields []uint32) (*BTree, bool) {
     } else {
         self.info = treeinfo.Load(self.bf)
     }
-    runtime.SetFinalizer(self, 
-        func(self *BTree) {
-            self.bf.Close()
-        })
+    runtime.SetFinalizer(self,
+        func(self *BTree) { self.bf.Close() })
     return self, true
 }
 
 func (self *BTree) Find(key ByteSlice) (*Record, bool) {
     var find func(*KeyBlock, int) *Record
     find = func(block *KeyBlock, ht int) *Record {
-        i, rec, _, _, found := block.Find(key);
-        if i >= int(block.RecordCount()) { i-- }
+        i, rec, _, _, found := block.Find(key)
+        if i >= int(block.RecordCount()) {
+            i--
+        }
         r, left, right, ok := block.Get(i)
         if found {
             return rec
@@ -83,7 +83,9 @@ func (self *BTree) Find(key ByteSlice) (*Record, bool) {
         return nil
     }
     r := find(self.getblock(self.info.Root()), self.info.Height())
-    if r == nil { return nil, false }
+    if r == nil {
+        return nil, false
+    }
     return r, true
 }
 

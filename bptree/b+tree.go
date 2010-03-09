@@ -13,10 +13,10 @@ import . "block/byteslice"
 
 type BpTree struct {
     blocksize uint32
-    bf     *BlockFile
-    internal   *BlockDimensions
-    external   *BlockDimensions
-    info   *treeinfo.TreeInfo
+    bf        *BlockFile
+    internal  *BlockDimensions
+    external  *BlockDimensions
+    info      *treeinfo.TreeInfo
 }
 
 func NewBpTree(filename string, keysize uint32, fields []uint32) (*BpTree, bool) {
@@ -65,9 +65,7 @@ func NewBpTree(filename string, keysize uint32, fields []uint32) (*BpTree, bool)
     } else {
         self.info = treeinfo.Load(self.bf)
     }
-    runtime.SetFinalizer(self, func(self *BpTree) {
-        self.bf.Close()
-    })
+    runtime.SetFinalizer(self, func(self *BpTree) { self.bf.Close() })
     return self, true
 }
 

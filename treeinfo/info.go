@@ -28,10 +28,16 @@ func Load(file *BlockFile) *TreeInfo {
     return self
 }
 
-func (self *TreeInfo) Height() int { return self.height }
+func (self *TreeInfo) Height() int     { return self.height }
 func (self *TreeInfo) Root() ByteSlice { return self.root }
-func (self *TreeInfo) SetHeight(h int) { self.height = h; self.Serialize() }
-func (self *TreeInfo) SetRoot(r ByteSlice) { self.root = r; self.Serialize() }
+func (self *TreeInfo) SetHeight(h int) {
+    self.height = h
+    self.Serialize()
+}
+func (self *TreeInfo) SetRoot(r ByteSlice) {
+    self.root = r
+    self.Serialize()
+}
 
 func (self *TreeInfo) Serialize() {
     bytes := make([]byte, BLOCKSIZE)

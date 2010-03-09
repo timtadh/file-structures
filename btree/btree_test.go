@@ -9,7 +9,7 @@ import "treeinfo"
 import . "block/keyblock"
 import . "block/buffers"
 
-var rec [][]byte = &([3][]byte{&[1]byte{1}, &[1]byte{1}, &[2]byte{1, 2}});
+var rec [][]byte = &([3][]byte{&[1]byte{1}, &[1]byte{1}, &[2]byte{1, 2}})
 var BLOCKSIZE uint32 = 65
 
 func testingNewBTree(blocksize uint32) (*BTree, bool) {
@@ -24,7 +24,7 @@ func testingNewBTree(blocksize uint32) (*BTree, bool) {
     } else {
         self.bf = bf
     }
-    file.OPENFLAG =  os.O_RDWR | os.O_CREAT
+    file.OPENFLAG = os.O_RDWR | os.O_CREAT
     if dim, ok := NewBlockDimensions(RECORDS|POINTERS, blocksize, keysize, 8, fields); !ok {
         fmt.Println("Block Dimensions invalid")
         return nil, false
@@ -52,9 +52,7 @@ func testingNewBTree(blocksize uint32) (*BTree, bool) {
         }
         self.info = treeinfo.New(self.bf, 1, b.Position())
     }
-    clean := func(self *BTree) {
-        self.bf.Close()
-    }
+    clean := func(self *BTree) { self.bf.Close() }
     runtime.SetFinalizer(self, clean)
     return self, true
 }
@@ -64,9 +62,7 @@ func makebtree(blocksize uint32) *BTree {
     return btree
 }
 
-func cleanbtree(btree *BTree) {
-    os.Remove(btree.Filename())
-}
+func cleanbtree(btree *BTree) { os.Remove(btree.Filename()) }
 
 // this is commented out because i intend to play with the blocksize, to do so i need to ensure
 // the test will not fail because of a miss aligned read or write so i disable O_DIRECT on linux
@@ -80,7 +76,7 @@ func cleanbtree(btree *BTree) {
 // }
 
 func TestAllocate(t *testing.T) {
-//     fmt.Println("\n------  TestAllocate  ------")
+    //     fmt.Println("\n------  TestAllocate  ------")
     self := makebtree(BLOCKSIZE)
     defer cleanbtree(self)
 
@@ -94,7 +90,7 @@ func TestAllocate(t *testing.T) {
 }
 
 func TestGetBlock(t *testing.T) {
-//     fmt.Println("\n\n\n------  TestGetBlock  ------")
+    //     fmt.Println("\n\n\n------  TestGetBlock  ------")
     self := makebtree(BLOCKSIZE)
     defer cleanbtree(self)
 
@@ -104,12 +100,12 @@ func TestGetBlock(t *testing.T) {
 }
 
 func TestValidateKey(t *testing.T) {
-//     fmt.Println("\n\n\n------  TestValidateKey  ------")
+    //     fmt.Println("\n\n\n------  TestValidateKey  ------")
     self := makebtree(BLOCKSIZE)
     defer cleanbtree(self)
 
-    goodkey := &[4]byte{1,2,3,4}
-    badkey := &[3]byte{1,2,3}
+    goodkey := &[4]byte{1, 2, 3, 4}
+    badkey := &[3]byte{1, 2, 3}
 
     if !self.ValidateKey(goodkey) {
         t.Error("valid key validated as bad")
@@ -120,16 +116,16 @@ func TestValidateKey(t *testing.T) {
 }
 
 func TestValidateRecord(t *testing.T) {
-//     fmt.Println("\n\n\n------  TestValidateRecord  ------")
+    //     fmt.Println("\n\n\n------  TestValidateRecord  ------")
     self := makebtree(BLOCKSIZE)
     defer cleanbtree(self)
 
     goodrec := rec
-    bacrec1 := &([3][]byte{&[2]byte{1,2}, &[1]byte{1}, &[2]byte{1, 2}});
-    bacrec2 := &([3][]byte{&[2]byte{1,2}, &[1]byte{1}, &[2]byte{1, 2}});
-    bacrec3 := &([2][]byte{&[1]byte{1}, &[2]byte{1, 2}});
-    bacrec4 := &([3][]byte{&[1]byte{1}, &[1]byte{1}, &[1]byte{1}});
-    bacrec5 := &([3][]byte{&[1]byte{}, &[1]byte{}, &[1]byte{}});
+    bacrec1 := &([3][]byte{&[2]byte{1, 2}, &[1]byte{1}, &[2]byte{1, 2}})
+    bacrec2 := &([3][]byte{&[2]byte{1, 2}, &[1]byte{1}, &[2]byte{1, 2}})
+    bacrec3 := &([2][]byte{&[1]byte{1}, &[2]byte{1, 2}})
+    bacrec4 := &([3][]byte{&[1]byte{1}, &[1]byte{1}, &[1]byte{1}})
+    bacrec5 := &([3][]byte{&[1]byte{}, &[1]byte{}, &[1]byte{}})
 
     if !self.ValidateRecord(goodrec) {
         t.Error("valid key validated as bad")

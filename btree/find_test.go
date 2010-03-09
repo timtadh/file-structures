@@ -4,11 +4,11 @@ import "testing"
 import . "block/byteslice"
 
 func TestFind(t *testing.T) {
-//     fmt.Println("\n------  TestFind  ------")
+    //     fmt.Println("\n------  TestFind  ------")
     self := makebtree(ORDER_5)
     defer cleanbtree(self)
     order := 5
-    n := order*(order+2)
+    n := order * (order + 2)
     constructCompleteLevel2(self, order, n)
     self.Insert(ByteSlice32(uint32(n)), rec)
 
