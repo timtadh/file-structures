@@ -7,6 +7,7 @@ const (
     RECORDS = 1 << iota
     POINTERS
     EXTRAPTR
+    EQUAPTRS
 )
 
 type BlockDimensions struct {
@@ -31,7 +32,10 @@ func (self *BlockDimensions) NewRecord(key ByteSlice) *Record {
 
 func (self *BlockDimensions) KeysPerBlock() int {
     var n int
-    if self.Mode&EXTRAPTR != 0 {
+    if self.Mode&(POINTERS|EQUAPTRS) == (POINTERS|EQUAPTRS) {
+        n = int((self.BlockSize - BLOCKHEADER) /
+            (self.KeySize + self.PointerSize))
+    } else if self.Mode&EXTRAPTR == (EXTRAPTR) {
         n = int((self.BlockSize - self.PointerSize - BLOCKHEADER) /
             (self.RecordSize() + self.KeySize))
     } else {
@@ -56,21 +60,35 @@ func (self *BlockDimensions) Valid() bool {
     switch self.Mode {
     case RECORDS:
         if self.RecordSize() > 0 && self.PointerSize == 0 &&
-            self.BlockSize >= self.RecordSize()+self.KeySize {
+            self.BlockSize >= self.RecordSize()+self.KeySize+BLOCKHEADER {
             return true
         } else {
             return false
         }
     case POINTERS:
         if self.PointerSize > 0 && self.RecordSize() == 0 &&
-            self.BlockSize >= self.PointerSize+self.KeySize {
+            self.BlockSize >= (2*self.PointerSize)+self.KeySize+BLOCKHEADER {
             return true
         } else {
             return false
         }
-    case RECORDS | POINTERS, RECORDS | EXTRAPTR:
+    case POINTERS | EQUAPTRS:
+        if self.PointerSize > 0 && self.RecordSize() == 0 &&
+            self.BlockSize >= self.PointerSize+self.KeySize+BLOCKHEADER {
+            return true
+        } else {
+            return false
+        }
+    case RECORDS | EXTRAPTR:
         if self.RecordSize() > 0 && self.PointerSize > 0 &&
-            self.BlockSize >= self.PointerSize+self.RecordSize()+self.KeySize {
+            self.BlockSize >= self.PointerSize+self.RecordSize()+self.KeySize+BLOCKHEADER {
+            return true
+        } else {
+            return false
+        }
+    case RECORDS | POINTERS:
+        if self.RecordSize() > 0 && self.PointerSize > 0 &&
+            self.BlockSize >= (2*self.PointerSize)+self.RecordSize()+self.KeySize+BLOCKHEADER {
             return true
         } else {
             return false

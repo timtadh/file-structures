@@ -36,11 +36,13 @@ func newKeyBlock(bf *BlockFile, pos ByteSlice, dim *BlockDimensions) *KeyBlock {
     self.position = pos
     self.rec_count = 0
     self.ptr_count = 0
-    if self.dim.Mode&RECORDS != 0 {
+    if self.dim.Mode&RECORDS == RECORDS {
         self.records = make(RecordsSlice, n)
     }
-    if self.dim.Mode&POINTERS != 0 {
+    if self.dim.Mode&POINTERS == POINTERS && self.dim.Mode&EQUAPTRS == 0 {
         self.pointers = make([]ByteSlice, n+1)
+    } else if self.dim.Mode&(POINTERS|EQUAPTRS) == (POINTERS|EQUAPTRS) {
+        self.pointers = make([]ByteSlice, n)
     }
     return self
 }

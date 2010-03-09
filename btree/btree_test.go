@@ -10,7 +10,7 @@ import . "block/keyblock"
 import . "block/buffers"
 
 var rec [][]byte = &([3][]byte{&[1]byte{1}, &[1]byte{1}, &[2]byte{1, 2}});
-var BLOCKSIZE uint32 = treeinfo.BLOCKSIZE
+var BLOCKSIZE uint32 = 65
 
 func testingNewBTree(blocksize uint32) (*BTree, bool) {
     filename := "test.btree"
@@ -83,7 +83,7 @@ func TestAllocate(t *testing.T) {
 //     fmt.Println("\n------  TestAllocate  ------")
     self := makebtree(BLOCKSIZE)
     defer cleanbtree(self)
-    
+
     k := self.allocate()
     if k == nil {
         t.Error("could not allocate a new block")
@@ -97,7 +97,7 @@ func TestGetBlock(t *testing.T) {
 //     fmt.Println("\n\n\n------  TestGetBlock  ------")
     self := makebtree(BLOCKSIZE)
     defer cleanbtree(self)
-    
+
     if self.getblock(self.info.Root()) == nil {
         t.Error("could not read the root block")
     }
@@ -107,10 +107,10 @@ func TestValidateKey(t *testing.T) {
 //     fmt.Println("\n\n\n------  TestValidateKey  ------")
     self := makebtree(BLOCKSIZE)
     defer cleanbtree(self)
-    
+
     goodkey := &[4]byte{1,2,3,4}
     badkey := &[3]byte{1,2,3}
-    
+
     if !self.ValidateKey(goodkey) {
         t.Error("valid key validated as bad")
     }
@@ -123,14 +123,14 @@ func TestValidateRecord(t *testing.T) {
 //     fmt.Println("\n\n\n------  TestValidateRecord  ------")
     self := makebtree(BLOCKSIZE)
     defer cleanbtree(self)
-    
+
     goodrec := rec
     bacrec1 := &([3][]byte{&[2]byte{1,2}, &[1]byte{1}, &[2]byte{1, 2}});
     bacrec2 := &([3][]byte{&[2]byte{1,2}, &[1]byte{1}, &[2]byte{1, 2}});
     bacrec3 := &([2][]byte{&[1]byte{1}, &[2]byte{1, 2}});
     bacrec4 := &([3][]byte{&[1]byte{1}, &[1]byte{1}, &[1]byte{1}});
     bacrec5 := &([3][]byte{&[1]byte{}, &[1]byte{}, &[1]byte{}});
-    
+
     if !self.ValidateRecord(goodrec) {
         t.Error("valid key validated as bad")
     }

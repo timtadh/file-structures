@@ -35,14 +35,6 @@ func (self BTree) balance_blocks(full *KeyBlock, empty *KeyBlock) {
         }
         full.RemovePointer(j + 1)
     }
-    //     if full.PointerCount() == full. {
-    //         if p, ok := full.GetPointer(m); ok {
-    //             empty.InsertPointer(0, p)
-    //         }
-    //         full.RemovePointer(m)
-    //     }
-//     fmt.Println("   full:\n", full)
-//     fmt.Println("   emtpy:\n", empty)
 }
 
 /*
@@ -187,8 +179,6 @@ func (self *BTree) Insert(key ByteSlice, record []ByteSlice) bool {
     if !self.ValidateKey(key) || !self.ValidateRecord(record) {
         return false
     }
-    //     block, path := self.find_block(key, self.root, make([]ByteSlice, self.height)[0:0])
-    //     dirty.insert(block)
 
     // makes the record
     rec := self.node.NewRecord(key)

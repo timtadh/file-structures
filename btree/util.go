@@ -10,7 +10,6 @@ import . "block/keyblock"
 import . "block/byteslice"
 
 func (self *BTree) allocate() *KeyBlock {
-
     b, ok := NewKeyBlock(self.bf, self.node)
     if !ok {
         fmt.Println("Could not allocate block PANIC")
