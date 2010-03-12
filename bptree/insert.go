@@ -67,6 +67,10 @@ func (self BpTree) balance_blocks(full *KeyBlock, empty *KeyBlock) {
     }
 }
 
+func (self *BpTree) split(block *KeyBlock, rec *Record, nextb *KeyBlock, dirty *dirty.DirtyBlocks) (*KeyBlock, *Record, bool) {
+    return nil, nil, false
+}
+
 // notes:
 //     for allocation in case of split we may always be able to allocate the type of block being split
 //     except in the case of a root split in which case the new root is always a internal node
