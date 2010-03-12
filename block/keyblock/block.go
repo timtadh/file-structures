@@ -56,12 +56,11 @@ func (self *KeyBlock) RecordSize() uint32     { return self.dim.RecordSize() }
 func (self *KeyBlock) KeySize() uint32        { return self.dim.KeySize }
 func (self *KeyBlock) PointerSize() uint32    { return self.dim.PointerSize }
 func (self *KeyBlock) MaxRecordCount() uint16 { return uint16(len(self.records)) }
-
 func (self *KeyBlock) Full() bool { return len(self.records) == int(self.rec_count) }
-
 func (self *KeyBlock) RecordCount() uint16  { return self.rec_count }
 func (self *KeyBlock) PointerCount() uint16 { return self.ptr_count }
 func (self *KeyBlock) Position() ByteSlice  { return self.position }
+func (self *KeyBlock) Mode() uint8          { return self.dim.Mode }
 
 func (self *KeyBlock) SetExtraPtr(ptr ByteSlice) bool {
     if self.dim.Mode&EXTRAPTR != 0 && len(ptr) == int(self.dim.PointerSize) {
