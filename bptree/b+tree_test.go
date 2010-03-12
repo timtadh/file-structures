@@ -73,14 +73,53 @@ func TestFind(t *testing.T) {
     self := makebptree(BLOCKSIZE, t)
     defer cleanbptree(self)
     b := self.allocate(self.internal)
+
     if i, _, _, _, _ := b.Find(ByteSlice32(4)); i != 0 {
-        t.Errorf("insert pos != to 0, i=%v\n%v", i, b)
+        t.Errorf("insert pos != to 0, i=%v\n%v\n", i, b)
     }
+
     b.Add(self.internal.NewRecord(ByteSlice32(2)))
     if i, _, _, _, _ := b.Find(ByteSlice32(0)); i != 0 {
-        t.Errorf("insert pos != to 0, i=%v\n%v", i, b)
+        t.Errorf("insert pos != to 0, i=%v\n%v\n", i, b)
     }
     if i, _, _, _, _ := b.Find(ByteSlice32(4)); i != 1 {
-        t.Errorf("Insert pos != to 1, i=%v\n%v", i, b)
+        t.Errorf("Insert pos != to 1, i=%v\n%v\n", i, b)
+    }
+    if i, _, _, _, _ := b.Find(ByteSlice32(2)); i != 0 {
+        t.Errorf("insert pos != to 0, i=%v\n%v\n", i, b)
+    }
+
+    b.Add(self.internal.NewRecord(ByteSlice32(6)))
+    if i, _, _, _, _ := b.Find(ByteSlice32(0)); i != 0 {
+        t.Errorf("insert pos != to 0, i=%v\n%v\n", i, b)
+    }
+    if i, _, _, _, _ := b.Find(ByteSlice32(4)); i != 1 {
+        t.Errorf("Insert pos != to 1, i=%v\n%v\n", i, b)
+    }
+    if i, _, _, _, _ := b.Find(ByteSlice32(2)); i != 0 {
+        t.Errorf("insert pos != to 0, i=%v\n%v\n", i, b)
+    }
+    if i, _, _, _, _ := b.Find(ByteSlice32(8)); i != 2 {
+        t.Errorf("insert pos != to 1, i=%v\n%v\n", i, b)
+    }
+    if i, _, _, _, _ := b.Find(ByteSlice32(6)); i != 1 {
+        t.Errorf("insert pos != to 1, i=%v\n%v\n", i, b)
+    }
+
+    b.Add(self.internal.NewRecord(ByteSlice32(4)))
+    if i, _, _, _, _ := b.Find(ByteSlice32(0)); i != 0 {
+        t.Errorf("insert pos != to 0, i=%v\n%v\n", i, b)
+    }
+    if i, _, _, _, _ := b.Find(ByteSlice32(4)); i != 1 {
+        t.Errorf("Insert pos != to 1, i=%v\n%v\n", i, b)
+    }
+    if i, _, _, _, _ := b.Find(ByteSlice32(2)); i != 0 {
+        t.Errorf("insert pos != to 0, i=%v\n%v\n", i, b)
+    }
+    if i, _, _, _, _ := b.Find(ByteSlice32(8)); i != 3 {
+        t.Errorf("insert pos != to 1, i=%v\n%v\n", i, b)
+    }
+    if i, _, _, _, _ := b.Find(ByteSlice32(6)); i != 2 {
+        t.Errorf("insert pos != to 1, i=%v\n%v\n", i, b)
     }
 }
