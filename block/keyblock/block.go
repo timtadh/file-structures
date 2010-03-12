@@ -106,7 +106,9 @@ func (self *KeyBlock) InsertPointer(i int, ptr ByteSlice) bool {
         return false
     }
     j := len(self.records)
-    self.pointers[j] = self.pointers[j-1]
+    if self.dim.Mode&EQUAPTRS != EQUAPTRS {
+        self.pointers[j] = self.pointers[j-1]
+    }
     j -= 1
     for ; j > int(i); j-- {
         self.pointers[j] = self.pointers[j-1]
