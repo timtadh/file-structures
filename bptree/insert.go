@@ -87,6 +87,9 @@ func (self *BpTree) insert(block *KeyBlock, rec *tmprec, height int, dirty *dirt
         // if the next block split we will insert the key passed up the chain.
         // and of course check to see if this block needs to split
         // if does we will split the block, in this case we will allocate another internal node
+        // we also need to handle the case where the record inserted goes into the 0th bucket,
+        // but is actually smaller than the key in that bucket, in this case the search key needs
+        // to be updated with the new smaller value.
     }
     return nil, nil, false
 }
