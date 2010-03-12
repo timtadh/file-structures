@@ -11,8 +11,8 @@ type tmprec struct {
     record []ByteSlice
 }
 
-func pkg_rec(key ByteSlice, rec []ByteSlice) (*tmprec, bool) {
-    if !self.ValidateKey(key) || !self.ValidateRecord(record) {
+func pkg_rec(bptree *BpTree, key ByteSlice, rec []ByteSlice) (*tmprec, bool) {
+    if !bptree.ValidateKey(key) || !bptree.ValidateRecord(rec) {
         return nil, false
     }
     self := new(tmprec)
@@ -57,7 +57,7 @@ func (self *BpTree) Insert(key ByteSlice, record []ByteSlice) bool {
     dirty := dirty.New(self.info.Height() * 4)
 
     // package the temp rec
-    rec, valid := pkg_rec(key, record)
+    rec, valid := pkg_rec(self, key, record)
     if !valid { return false }
 
 

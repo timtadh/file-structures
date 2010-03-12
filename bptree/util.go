@@ -9,44 +9,44 @@ import . "block/keyblock"
 // import . "block/buffers"
 import . "block/byteslice"
 
-// TODO: update these functions for different types of B+ Tree blocks
-// func (self *BpTree) allocate() *KeyBlock {
-//     b, ok := NewKeyBlock(self.bf, self.node)
-//     if !ok {
-//         fmt.Println("Could not allocate block PANIC")
-//         os.Exit(1)
-//     }
-//     return b
-// }
-//
-// func (self *BpTree) getblock(pos ByteSlice) *KeyBlock {
-//     cblock, ok := DeserializeFromFile(self.bf, self.node, pos)
-//     if !ok {
-//         fmt.Println("Bad block pointer PANIC")
-//         os.Exit(7)
-//     }
-//     return cblock
-// }
+// Allocates a new key block. This isn't quite as convient as the method
+// for BTrees as we have to tell it if we are allocating an internal or an
+// external block.
+func (self *BpTree) allocate(dim *BlockDimensions) *KeyBlock {
+    if dim != self.external && dim != self.internal {
+        log.Exit("Cannot allocate a block that has dimensions that are niether the dimensions of internal or external nodes.")
+    }
+    block, ok := NewKeyBlock(self.bf, dim)
+    if ! ok {
+        log.Exit("Could not allocate block PANIC")
+    }
+    return block
+}
 
 // This version of getblock needs to find out what kind of block
 // it is getting. It does this by checking the mode of the block
 // before deserialization thus we cannot use the convience method
 // DeserializeFromFile
 func (self *BpTree) getblock(pos ByteSlice) *KeyBlock {
-    if bytes, read := self.bf.ReadBlock(pos.Int64(), self.blocksize); read {
+    if bytes, read := self.bf.ReadBlock(int64(pos.Int64()), self.blocksize); read {
         if bytes[0] == self.external.Mode {
-            if block, ok := Deserialize(bf, dim, bytes, pos); !ok {
+            if block, ok := Deserialize(self.bf, self.external, bytes, pos); !ok {
                 log.Exit("Unable to deserialize block at position: ", pos)
             } else {
                 return block
             }
         } else if bytes[0] == self.internal.Mode {
-
+            if block, ok := Deserialize(self.bf, self.internal, bytes, pos); !ok {
+                log.Exit("Unable to deserialize block at position: ", pos)
+            } else {
+                return block
+            }
         } else {
             log.Exitf("Block at position %v has an invalid mode\n", pos)
         }
     }
     log.Exit("Error reading block at postion: ", pos)
+    return nil
 }
 
 func (self *BpTree) ValidateKey(key ByteSlice) bool {
