@@ -67,3 +67,20 @@ func TestGetBlock(t *testing.T) {
         t.Error("block read from file is not the same as the one written out for b2")
     }
 }
+
+func TestFind(t *testing.T) {
+    t.Log("------- TestFind -------")
+    self := makebptree(BLOCKSIZE, t)
+    defer cleanbptree(self)
+    b := self.allocate(self.internal)
+    if i, _, _, _, _ := b.Find(ByteSlice32(4)); i != 0 {
+        t.Errorf("insert pos != to 0, i=%v\n%v", i, b)
+    }
+    b.Add(self.internal.NewRecord(ByteSlice32(2)))
+    if i, _, _, _, _ := b.Find(ByteSlice32(0)); i != 0 {
+        t.Errorf("insert pos != to 0, i=%v\n%v", i, b)
+    }
+    if i, _, _, _, _ := b.Find(ByteSlice32(4)); i != 1 {
+        t.Errorf("Insert pos != to 1, i=%v\n%v", i, b)
+    }
+}
