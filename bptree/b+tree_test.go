@@ -25,6 +25,7 @@ func TestCreate(t *testing.T) {
     fmt.Println(self)
 }
 
+// TODO write tests for allocate, getblock, and finding the next block in an internal node
 // func TestAllocate(t *testing.T) {
 //
 // }
