@@ -24,3 +24,7 @@ func TestCreate(t *testing.T) {
     defer cleanbptree(self)
     fmt.Println(self)
 }
+
+// func TestAllocate(t *testing.T) {
+//
+// }
