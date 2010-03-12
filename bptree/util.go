@@ -17,7 +17,7 @@ func (self *BpTree) allocate(dim *BlockDimensions) *KeyBlock {
         log.Exit("Cannot allocate a block that has dimensions that are niether the dimensions of internal or external nodes.")
     }
     block, ok := NewKeyBlock(self.bf, dim)
-    if ! ok {
+    if !ok {
         log.Exit("Could not allocate block PANIC")
     }
     return block

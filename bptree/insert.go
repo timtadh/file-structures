@@ -7,7 +7,7 @@ import . "block/keyblock"
 import "block/dirty"
 
 type tmprec struct {
-    key ByteSlice
+    key    ByteSlice
     record []ByteSlice
 }
 
@@ -58,7 +58,9 @@ func (self *BpTree) Insert(key ByteSlice, record []ByteSlice) bool {
 
     // package the temp rec
     rec, valid := pkg_rec(self, key, record)
-    if !valid { return false }
+    if !valid {
+        return false
+    }
 
 
     // insert the block if split is true then we need to split the root
