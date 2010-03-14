@@ -2,6 +2,7 @@ package bptree
 
 import "fmt"
 import "os"
+import "rand"
 import . "block/byteslice"
 import . "block/keyblock"
 import "block/dirty"
@@ -25,6 +26,18 @@ func pkg_rec(bptree *BpTree, key ByteSlice, rec []ByteSlice) (*tmprec, bool) {
     return self, true
 }
 
+func rec_to_tmp(bptree *BpTree, rec *Record) *tmprec {
+    self := new(tmprec)
+    self.exdim = bptree.external
+    self.indim = bptree.internal
+    self.key = rec.GetKey()
+    self.record = make([][]byte, rec.Fields())
+    for i := 0; i < int(rec.Fields()); i++ {
+        self.record[i] = rec.Get(uint32(i))
+    }
+    return self
+}
+
 func (self *tmprec) makerec(rec *Record) *Record {
     for i, f := range self.record {
         rec.Set(uint32(i), f)
@@ -38,6 +51,17 @@ func (self *tmprec) external() *Record {
 
 func (self *tmprec) internal() *Record {
     return self.indim.NewRecord(self.key)
+}
+
+func (self *tmprec) String() string {
+    if self == nil { return "<nil tmprec>" }
+    s := "tmprec:\n{\n"
+    s += fmt.Sprintln("  exdim:", self.exdim)
+    s += fmt.Sprintln("  indim:", self.indim)
+    s += fmt.Sprintln("  key:", self.key)
+    s += fmt.Sprintln("  record:", self.record)
+    s += "}\n"
+    return s
 }
 
 /*
@@ -67,8 +91,24 @@ func (self BpTree) balance_blocks(full *KeyBlock, empty *KeyBlock) {
     }
 }
 
-func (self *BpTree) split(block *KeyBlock, rec *Record, nextb *KeyBlock, dirty *dirty.DirtyBlocks) (*KeyBlock, *Record, bool) {
-    return nil, nil, false
+func (self *BpTree) split(a *KeyBlock, rec *tmprec, nextb *KeyBlock, dirty *dirty.DirtyBlocks) (*KeyBlock, *tmprec, bool) {
+    b,r := func() (*KeyBlock, *Record) {
+        if a.Mode() == self.external.Mode {
+            return self.allocate(self.external), rec.external()
+        }
+        return self.allocate(self.internal), rec.internal()
+    }()
+    self.balance_blocks(a, b)
+    if rand.Float() > 0.5 {
+        a.Add(r)
+    } else {
+        b.Add(r)
+    }
+    splitr, _, _, ok := b.Get(0);
+    if  !ok {
+        return b, nil, false
+    }
+    return b, rec_to_tmp(self, splitr), true
 }
 
 // notes:

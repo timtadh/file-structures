@@ -1,10 +1,4 @@
 
-
-# if [ "$GOOS" == "linux" ];
-# then
-# # else if [ "$GOOS" == "darwin" ]; then ignore="block/file/linuxconst.go"; else ignore=""; fi;
-# fi;
-
 ifeq ($(GOOS), linux)
 	ignore="block/file/const_darwin.go";
 endif
