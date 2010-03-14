@@ -5,7 +5,7 @@ import . "block/keyblock"
 import . "block/byteslice"
 import "block/dirty"
 
-var record []ByteSlice = []ByteSlice(&[3][]byte{&[1]byte{1}, &[1]byte{2}, &[2]byte{3,4}})
+var record []ByteSlice = []ByteSlice(&[3][]byte{&[1]byte{1}, &[1]byte{2}, &[2]byte{3, 4}})
 
 func insert(a *KeyBlock, key ByteSlice) bool {
     r := a.NewRecord(key)
@@ -83,7 +83,7 @@ func TestSplit(t *testing.T) {
                 }
                 n := int(a.RecordCount())
                 if n > 0 {
-                    if last, _, _, ok := a.Get(n-1); ok {
+                    if last, _, _, ok := a.Get(n - 1); ok {
                         if first.GetKey().Lt(last.GetKey()) {
                             t.Error("the first key in b is less than the last key in a")
                         }

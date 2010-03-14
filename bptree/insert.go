@@ -8,10 +8,10 @@ import . "block/keyblock"
 import "block/dirty"
 
 type tmprec struct {
-    exdim *BlockDimensions
-    indim *BlockDimensions
-    key      ByteSlice
-    record   []ByteSlice
+    exdim  *BlockDimensions
+    indim  *BlockDimensions
+    key    ByteSlice
+    record []ByteSlice
 }
 
 func pkg_rec(bptree *BpTree, key ByteSlice, rec []ByteSlice) (*tmprec, bool) {
@@ -45,16 +45,14 @@ func (self *tmprec) makerec(rec *Record) *Record {
     return rec
 }
 
-func (self *tmprec) external() *Record {
-    return self.makerec(self.exdim.NewRecord(self.key))
-}
+func (self *tmprec) external() *Record { return self.makerec(self.exdim.NewRecord(self.key)) }
 
-func (self *tmprec) internal() *Record {
-    return self.indim.NewRecord(self.key)
-}
+func (self *tmprec) internal() *Record { return self.indim.NewRecord(self.key) }
 
 func (self *tmprec) String() string {
-    if self == nil { return "<nil tmprec>" }
+    if self == nil {
+        return "<nil tmprec>"
+    }
     s := "tmprec:\n{\n"
     s += fmt.Sprintln("  exdim:", self.exdim)
     s += fmt.Sprintln("  indim:", self.indim)
@@ -92,7 +90,7 @@ func (self BpTree) balance_blocks(full *KeyBlock, empty *KeyBlock) {
 }
 
 func (self *BpTree) split(a *KeyBlock, rec *tmprec, nextb *KeyBlock, dirty *dirty.DirtyBlocks) (*KeyBlock, *tmprec, bool) {
-    b,r := func() (*KeyBlock, *Record) {
+    b, r := func() (*KeyBlock, *Record) {
         if a.Mode() == self.external.Mode {
             return self.allocate(self.external), rec.external()
         }
@@ -104,8 +102,8 @@ func (self *BpTree) split(a *KeyBlock, rec *tmprec, nextb *KeyBlock, dirty *dirt
     } else {
         b.Add(r)
     }
-    splitr, _, _, ok := b.Get(0);
-    if  !ok {
+    splitr, _, _, ok := b.Get(0)
+    if !ok {
         return b, nil, false
     }
     return b, rec_to_tmp(self, splitr), true
