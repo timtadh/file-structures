@@ -70,7 +70,8 @@ func (self *tmprec) String() string {
 func (self BpTree) balance_blocks(full *KeyBlock, empty *KeyBlock) {
     n := int(full.MaxRecordCount())
     m := n >> 1
-    for j := n - 1; j >= m; j-- {
+    if n%2 == 0 { m -= 1}
+    for j := n - 1; j > m; j-- {
         if r, _, _, ok := full.Get(j); !ok {
             fmt.Printf("could not get index j<%v> from block: %v", j, full)
             os.Exit(5)
@@ -97,15 +98,53 @@ func (self *BpTree) split(a *KeyBlock, rec *tmprec, nextb *KeyBlock, dirty *dirt
         }
         return self.allocate(self.internal), rec.internal()
     }()
+    dirty.Insert(b)
+    var split_rec *Record
+    var return_rec *Record
     success := true
+    {
+        i, _, _, _, _ := a.Find(r.GetKey())
+        n := int(a.MaxRecordCount()) + 1
+        m := n >> 1
+        //     fmt.Println("m=", m)
+        if m > i {
+            split_rec, _, _, _ = a.Get(m - 1)
+            a.RemoveAtIndex(m - 1)
+            if _, ok := a.Add(r); !ok {
+                fmt.Println("Inserting record into block failed PANIC")
+                os.Exit(3)
+            }
+        } else if m < i {
+            split_rec, _, _, _ = a.Get(m)
+            a.RemoveAtIndex(m)
+            if _, ok := a.Add(r); !ok {
+                fmt.Println("Inserting record into block failed PANIC")
+                os.Exit(3)
+            }
+        } else {
+            split_rec = r
+        }
+    }
     self.balance_blocks(a, b)
     var block *KeyBlock
-    if rand.Float() > 0.5 {
-        block = a
+    return_rec = split_rec
+    if a.MaxRecordCount()%2 == 1 {
+        if rand.Float() > 0.5 {
+//             block = a
+//             if rec, _, _, ok := b.Get(0); !ok {
+//                 fmt.Println("Could not get the first record from block b PANIC")
+//                 os.Exit(3)
+//             } else {
+//                 return_rec = rec
+//             }
+            block = b
+        } else {
+            block = b
+        }
     } else {
         block = b
     }
-    if i, ok := block.Add(r); !ok {
+    if i, ok := block.Add(split_rec); !ok {
         success = false
     } else {
         if block.Mode()&POINTERS == POINTERS && nextb != nil {
@@ -114,17 +153,20 @@ func (self *BpTree) split(a *KeyBlock, rec *tmprec, nextb *KeyBlock, dirty *dirt
             log.Exit("tried to set a pointer on a block with no pointers")
         }
     }
-    splitr, _, _, ok := b.Get(0)
-    if !ok {
-        return b, nil, false
-    }
-    return b, rec_to_tmp(self, splitr), success
+    return b, rec_to_tmp(self, return_rec), success
 }
 
 // notes:
 //     for allocation in case of split we may always be able to allocate the type of block being split
 //     except in the case of a root split in which case the new root is always a internal node
 func (self *BpTree) insert(block *KeyBlock, rec *tmprec, height int, dirty *dirty.DirtyBlocks) (*KeyBlock, *tmprec, bool) {
+    r := func() (*Record) {
+        if block.Mode() == self.external.Mode {
+            return rec.external()
+        }
+        return rec.internal()
+    }()
+    var nextb *KeyBlock
     if height == 0 {
         // external node
         if block.Full() {
@@ -133,7 +175,9 @@ func (self *BpTree) insert(block *KeyBlock, rec *tmprec, height int, dirty *dirt
         } else {
             // normal insert
         }
-    } else {
+    }
+
+    if height > 0 {
         // internal node
         // first we will need to find the next block to traverse down to
         // after we have found the position we get the block
@@ -145,7 +189,22 @@ func (self *BpTree) insert(block *KeyBlock, rec *tmprec, height int, dirty *dirt
         // but is actually smaller than the key in that bucket, in this case the search key needs
         // to be updated with the new smaller value.
     }
-    return nil, nil, false
+    // this block is changed
+    dirty.Insert(block)
+    if i, ok := block.Add(r); ok {
+        // Block isn't full record inserted, now insert pointer (if one exists)
+        // return to parent saying it has nothing to do
+        if block.Mode()&POINTERS == POINTERS && nextb != nil {
+            if ok := block.InsertPointer(i, nextb.Position()); !ok {
+                log.Exit("pointer insert failed")
+            }
+        } else if block.Mode()&POINTERS == 0 && nextb != nil {
+            log.Exit("tried to set a pointer on a block with no pointers")
+        }
+        return nil, nil, false
+    }
+    // Block is full split the block
+    return self.split(block, rec, nextb, dirty)
 }
 
 func (self *BpTree) Insert(key ByteSlice, record []ByteSlice) bool {
