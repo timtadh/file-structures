@@ -3,6 +3,7 @@ package bptree
 import "fmt"
 import "os"
 import "rand"
+import "log"
 import . "block/byteslice"
 import . "block/keyblock"
 import "block/dirty"
@@ -96,17 +97,28 @@ func (self *BpTree) split(a *KeyBlock, rec *tmprec, nextb *KeyBlock, dirty *dirt
         }
         return self.allocate(self.internal), rec.internal()
     }()
+    success := true
     self.balance_blocks(a, b)
+    var block *KeyBlock
     if rand.Float() > 0.5 {
-        a.Add(r)
+        block = a
     } else {
-        b.Add(r)
+        block = b
+    }
+    if i, ok := block.Add(r); !ok {
+        success = false
+    } else {
+        if block.Mode()&POINTERS == POINTERS && nextb != nil {
+            success = block.InsertPointer(i, nextb.Position())
+        } else if block.Mode()&POINTERS == 0 && nextb != nil {
+            log.Exit("tried to set a pointer on a block with no pointers")
+        }
     }
     splitr, _, _, ok := b.Get(0)
     if !ok {
         return b, nil, false
     }
-    return b, rec_to_tmp(self, splitr), true
+    return b, rec_to_tmp(self, splitr), success
 }
 
 // notes:
