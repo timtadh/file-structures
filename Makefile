@@ -15,6 +15,9 @@ endif
 build:
 	gobuild -a -ignore=$(ignore)
 
+lib:
+	gobuild -lib -ignore=$(ignore)
+
 block: build
 	-rm hello.btree
 	./block/test
