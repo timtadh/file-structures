@@ -213,16 +213,33 @@ func (self *BpTree) insert(block *KeyBlock, rec *tmprec, height int, dirty *dirt
         // first we will need to find the next block to traverse down to
         var pos ByteSlice
         {
+            // we find where in the block this key would be inserted
             i, _, _, _, _ := block.Find(rec.key)
-            if i == int(block.MaxRecordCount()) { i-- }
-            r, p, _, ok := block.Get(i)
-            for ; ok && rec.key.Lt(r.GetKey()); i++ {
-                r, p, _, ok = block.Get(i)
+
+            if i == 0 {
+                // if that spot is zero it means that it is less than the smallest key the block
+                // so we adjust the block appropriately
+                if r, p, _, ok := block.Get(i); ok {
+                    dirty.Insert(block)
+                    r.SetKey(rec.key)
+                    pos = p
+                } else {
+                    log.Exitf("227 Error could not get record %v from block %v", i, block)
+                }
+            } else {
+                // else this spot is one to many so we get the previous spot
+                i--
+                if _, p, _, ok := block.Get(i); ok {
+                    pos = p
+                } else {
+                    log.Exitf("235 Error could not get record %v from block %v", i, block)
+                }
             }
-            pos = p
         }
+
+        // if pos is nil we have a serious
         if pos == nil {
-            log.Exit("Nil Pointer")
+            log.Exit("242 Nil Pointer")
         }
 
         // after we have found the position we get the block
@@ -235,11 +252,6 @@ func (self *BpTree) insert(block *KeyBlock, rec *tmprec, height int, dirty *dirt
         } else {
             return nil, nil, false
         }
-        // and of course check to see if this block needs to split
-        // if does we will split the block, in this case we will allocate another internal node
-        // we also need to handle the case where the record inserted goes into the 0th bucket,
-        // but is actually smaller than the key in that bucket, in this case the search key needs
-        // to be updated with the new smaller value.
     }
     // this block is changed
     dirty.Insert(block)
@@ -268,20 +280,28 @@ func (self *BpTree) Insert(key ByteSlice, record []ByteSlice) bool {
         return false
     }
 
-
-    root := self.getblock(self.info.Root())
-    var first *tmprec
-    if f, _, _, ok := root.Get(0); ok {
-        first = rec_to_tmp(self, f)
-    }
-
     // insert the block if split is true then we need to split the root
-    if b, r, split := self.insert(root, rec, self.info.Height()-1, dirty); split {
+    if b, r, split := self.insert(self.getblock(self.info.Root()), rec, self.info.Height()-1, dirty); split {
         // This is where the root split goes.
-//         fmt.Println(b, r, split)
+
+        // we have to sync the blocks back because the first key in the root will have been
+        // modified if the key we inserted was less than any key in the b+ tree
+        dirty.Sync()
+
+        // we get the oldroot so we can get the first key from it, this key becomes the first key in
+        // the new root.
+        oldroot := self.getblock(self.info.Root())
+        var first *tmprec
+        if f, _, _, ok := oldroot.Get(0); ok {
+            first = rec_to_tmp(self, f)
+        }
+
         // first allocate a new root then insert the key record and the associated pointers
         root := self.allocate(self.internal) // the new root will always be an internal node
         dirty.Insert(root)
+
+        // first we insert the first key from the old root into the new root and point it at the
+        // old root
         if i, ok := root.Add(first.internal()); ok {
             root.InsertPointer(i, self.info.Root())
         } else {
@@ -289,6 +309,8 @@ func (self *BpTree) Insert(key ByteSlice, record []ByteSlice) bool {
             os.Exit(2)
             return false
         }
+
+        // then we point the split rec's key at the the split block
         if i, ok := root.Add(r.internal()); ok {
             root.InsertPointer(i, b.Position())
         } else {
@@ -296,6 +318,7 @@ func (self *BpTree) Insert(key ByteSlice, record []ByteSlice) bool {
             os.Exit(2)
             return false
         }
+
         // don't forget to update the height of the tree and the root
         self.info.SetRoot(root.Position())
         self.info.SetHeight(self.info.Height() + 1)

@@ -1,7 +1,7 @@
 package bptree
 
 import "testing"
-// import "fmt"
+import "fmt"
 import . "block/keyblock"
 import . "block/byteslice"
 import "block/dirty"
@@ -203,15 +203,15 @@ func make_complete(self *BpTree, skip int, t *testing.T) {
     self.info.SetHeight(2)
 }
 
-func validate(self *BpTree, t *testing.T) {
+func validate(self *BpTree, expect int, t *testing.T) {
     var i int = 0
     var walk func(*KeyBlock, ByteSlice)
     walk = func(block *KeyBlock, first ByteSlice) {
         if int32(first.Int32()) != -1 {
             if r, _, _, ok := block.Get(0); ok && !r.GetKey().Eq(first) {
                 t.Logf("first %v != %v", r.GetKey(), first)
-//                 t.Log(block)
-//                 t.Log(self)
+                t.Log(block)
+                t.Log(self)
                 t.FailNow()
             }
         }
@@ -252,20 +252,24 @@ func validate(self *BpTree, t *testing.T) {
         }
     }
     walk(self.getblock(self.info.Root()), ByteSlice32(0xffffffff))
-    n := self.external.KeysPerBlock()
-    if n*n + 1 != i {
-        t.Fatalf("too few keys in the b+tree expected %v got %v", n*n+1, i)
+    if expect != i {
+        t.Fatalf("too few keys in the b+tree expected %v got %v", expect, i)
     }
 }
 
 func TestInsert(t *testing.T) {
-    self := makebptree(ORDER_4_4, t)
-    defer cleanbptree(self)
-    i := 16
-    make_complete(self, i, t)
-    if ok := self.Insert(ByteSlice32(uint32(i)), record); !ok {
-        t.Fatal("Insert returned false")
+    for j, size := range sizes {
+        n := (j+2)*(j+2)
+        fmt.Printf("testing block size %v, b+ tree order %v, with %v tests\n", size, j+2, n)
+        for i := 0; i < n; i++ {
+            t.Log(i)
+            self := makebptree(size, t)
+            make_complete(self, i, t)
+            if ok := self.Insert(ByteSlice32(uint32(i)), record); !ok {
+                t.Fatal("Insert returned false")
+            }
+            validate(self, n+1, t)
+            cleanbptree(self)
+        }
     }
-    validate(self, t)
-    t.Log(self)
 }
