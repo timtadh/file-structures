@@ -1,10 +1,4 @@
 
-
-# if [ "$GOOS" == "linux" ];
-# then
-# # else if [ "$GOOS" == "darwin" ]; then ignore="block/file/linuxconst.go"; else ignore=""; fi;
-# fi;
-
 ifeq ($(GOOS), linux)
 	ignore="block/file/const_darwin.go";
 endif
@@ -26,7 +20,7 @@ btree: build
 	-rm hello.btree
 	./btree/test
 
-runtest:
+test:
 	-rm test.btree
 	-rm -rf dot png *.dot *.png
 	gobuild -run -t -ignore=$(ignore)
@@ -35,7 +29,7 @@ runtest:
 	mkdir dot
 	-mv *.dot dot/
 
-test: runtest
+pictest: test
 	-rm -rf png
 	mkdir png
 	-for file in dot/*.dot; do echo $$file | cut -d "/" -f 2 - | xargs -I"%s" dot -Tpng $$file -o png/%s.png; done

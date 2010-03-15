@@ -36,9 +36,7 @@ func newKeyBlock(bf *BlockFile, pos ByteSlice, dim *BlockDimensions) *KeyBlock {
     self.position = pos
     self.rec_count = 0
     self.ptr_count = 0
-    if self.dim.Mode&RECORDS == RECORDS {
-        self.records = make(RecordsSlice, n)
-    }
+    self.records = make(RecordsSlice, n)
     if self.dim.Mode&POINTERS == POINTERS && self.dim.Mode&EQUAPTRS == 0 {
         self.pointers = make([]ByteSlice, n+1)
     } else if self.dim.Mode&(POINTERS|EQUAPTRS) == (POINTERS | EQUAPTRS) {
@@ -56,12 +54,12 @@ func (self *KeyBlock) RecordSize() uint32     { return self.dim.RecordSize() }
 func (self *KeyBlock) KeySize() uint32        { return self.dim.KeySize }
 func (self *KeyBlock) PointerSize() uint32    { return self.dim.PointerSize }
 func (self *KeyBlock) MaxRecordCount() uint16 { return uint16(len(self.records)) }
-
-func (self *KeyBlock) Full() bool { return len(self.records) == int(self.rec_count) }
-
-func (self *KeyBlock) RecordCount() uint16  { return self.rec_count }
-func (self *KeyBlock) PointerCount() uint16 { return self.ptr_count }
-func (self *KeyBlock) Position() ByteSlice  { return self.position }
+func (self *KeyBlock) Full() bool             { return len(self.records) == int(self.rec_count) }
+func (self *KeyBlock) RecordCount() uint16    { return self.rec_count }
+func (self *KeyBlock) PointerCount() uint16   { return self.ptr_count }
+func (self *KeyBlock) Position() ByteSlice    { return self.position }
+func (self *KeyBlock) Mode() uint8            { return self.dim.Mode }
+func (self *KeyBlock) Dim() BlockDimensions   { return *self.dim }
 
 func (self *KeyBlock) SetExtraPtr(ptr ByteSlice) bool {
     if self.dim.Mode&EXTRAPTR != 0 && len(ptr) == int(self.dim.PointerSize) {
@@ -109,7 +107,9 @@ func (self *KeyBlock) InsertPointer(i int, ptr ByteSlice) bool {
         return false
     }
     j := len(self.records)
-    self.pointers[j] = self.pointers[j-1]
+    if self.dim.Mode&EQUAPTRS != EQUAPTRS {
+        self.pointers[j] = self.pointers[j-1]
+    }
     j -= 1
     for ; j > int(i); j-- {
         self.pointers[j] = self.pointers[j-1]
@@ -139,7 +139,14 @@ func (self *KeyBlock) Find(k ByteSlice) (int, *Record, ByteSlice, ByteSlice, boo
 }
 
 func (self *KeyBlock) Get(i int) (*Record, ByteSlice, ByteSlice, bool) {
-    if i < int(self.RecordCount()) && i >= 0 {
+    if self.dim.Mode&POINTERS == 0 && i < int(self.RecordCount()) && i >= 0 {
+        return self.records[i], nil, nil, true
+    } else if self.dim.Mode&EQUAPTRS == 0 && i < int(self.RecordCount()) && i >= 0 {
+        return self.records[i], self.pointers[i], self.pointers[i+1], true
+    } else if self.dim.Mode&EQUAPTRS == EQUAPTRS && i < int(self.RecordCount()) && i >= 0 {
+        if i+1 == int(self.RecordCount()) {
+            return self.records[i], self.pointers[i], nil, true
+        }
         return self.records[i], self.pointers[i], self.pointers[i+1], true
     }
     return nil, nil, nil, false
