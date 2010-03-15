@@ -44,15 +44,6 @@ func fill_block(self *BpTree, a *KeyBlock, t *testing.T, skip int) {
     }
 }
 
-func TestInsert(t *testing.T) {
-    self := makebptree(BLOCKSIZE, t)
-    defer cleanbptree(self)
-    for i := 0; i < int(self.internal.KeysPerBlock())+1; i++ {
-        b := self.allocate(self.internal)
-        fill_block(self, b, t, i)
-    }
-}
-
 func test_split(i, n int, self *BpTree, dirty *dirty.DirtyBlocks, t *testing.T) {
     log := func(a, b *KeyBlock, r, split *tmprec, ok bool) {t.Logf("\nsplit info:\n{\nblock a:\n%v\n\nnew rec:\n%v\n\nblock b:\n%v\n\nsplit rec:\n%v\n\nsuccess: %v\n}\n", a, r, b, split, ok)}
     a := self.allocate(self.external)
@@ -155,17 +146,43 @@ func TestSplit(t *testing.T) {
     }
 }
 
-// func TestSize(t *testing.T) {
-//     self := makebptree(ORDER_2_2, t)
-//     fmt.Println(self.external.KeysPerBlock(), self.internal.KeysPerBlock())
-//     cleanbptree(self)
-//     self = makebptree(ORDER_3_3, t)
-//     fmt.Println(self.external.KeysPerBlock(), self.internal.KeysPerBlock())
-//     cleanbptree(self)
-//     self = makebptree(ORDER_4_4, t)
-//     fmt.Println(self.external.KeysPerBlock(), self.internal.KeysPerBlock())
-//     cleanbptree(self)
-//     self = makebptree(ORDER_5_5, t)
-//     fmt.Println(self.external.KeysPerBlock(), self.internal.KeysPerBlock())
-//     cleanbptree(self)
-// }
+func make_complete(self *BpTree, t *testing.T) {
+    dirty := dirty.New(10)
+    n := int(self.external.KeysPerBlock())
+    c := self.getblock(self.info.Root())
+    root := self.allocate(self.internal)
+    self.info.SetRoot(root.Position())
+    dirty.Insert(c)
+    dirty.Insert(root)
+    r, _ := pkg_rec(self, ByteSlice32(uint32(0)), record)
+    if p, ok := root.Add(r.internal()); ok {
+        root.InsertPointer(p, c.Position())
+    } else {
+        t.Fatal("could not add a record to the root")
+    }
+    for i := 0; i < n*n; i++ {
+        r, _ := pkg_rec(self, ByteSlice32(uint32(i)), record)
+        if c.Full() {
+            t.Log(c.Position())
+            c = self.allocate(self.external)
+            dirty.Insert(c)
+            if p, ok := root.Add(r.internal()); ok {
+                root.InsertPointer(p, c.Position())
+            } else {
+                t.Fatal("could not add a record to the root")
+            }
+        }
+        if _, ok := c.Add(r.external()); !ok {
+            t.Fatal("could not add a record to the leaf")
+        }
+    }
+    dirty.Sync()
+}
+
+func TestInsert(t *testing.T) {
+    self := makebptree(ORDER_4_4, t)
+    defer cleanbptree(self)
+    make_complete(self, t)
+    t.Log(self)
+    t.Fail()
+}
