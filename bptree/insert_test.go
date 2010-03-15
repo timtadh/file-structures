@@ -121,13 +121,17 @@ func test_split(j, n int, self *BpTree, dirty *dirty.DirtyBlocks, t *testing.T) 
                 t.Errorf("121 Error key, %v, does not equal %v", split.key.Int32(), i)
             }
 
-            for j := 0; j < int(b.RecordCount()); j++ {
-                r, p, _, ok := b.Get(j)
+            for k := 0; k < int(b.RecordCount()); k++ {
+                r, p, _, ok := b.Get(k)
                 if !ok {
                     t.Error("Error getting rec at index ", i)
                 }
                 if int(r.GetKey().Int32()) != i {
                     t.Errorf("130 Error key, %v, does not equal %v", r.GetKey().Int32(), i)
+                }
+                if !p.Eq(ByteSlice64(uint64(i))) && !(i == j && p.Eq(nextb.Position())) {
+                    t.Log(i, j, nextb.Position())
+                    t.Errorf("115 Pointer, %v, does not equal %v", p, ByteSlice64(uint64(i)))
                 }
                 t.Log(r.GetKey(), p)
                 i++
