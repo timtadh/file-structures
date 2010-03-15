@@ -8,6 +8,17 @@ import . "block/byteslice"
 import . "block/keyblock"
 import "block/dirty"
 
+func init() {
+    if urandom, err := os.Open("/dev/urandom", os.O_RDONLY, 0666); err != nil {
+        return
+    } else {
+        seed := make([]byte, 8)
+        if _, err := urandom.Read(seed); err == nil {
+            rand.Seed(int64(ByteSlice(seed).Int64()))
+        }
+    }
+}
+
 type tmprec struct {
     exdim  *BlockDimensions
     indim  *BlockDimensions
@@ -145,7 +156,9 @@ func (self *BpTree) split(a *KeyBlock, rec *tmprec, nextb *KeyBlock, dirty *dirt
     var block *KeyBlock
     return_rec = split_rec
     if a.MaxRecordCount()%2 == 0 {
-        if rand.Float() > 0.5 {
+        f := rand.Float()
+        fmt.Println("rand value:", f)
+        if f > 0.5 {
             block = a
             if rec, _, _, ok := b.Get(0); !ok {
                 log.Exit("Could not get the first record from block b PANIC")
@@ -210,7 +223,7 @@ func (self *BpTree) insert(block *KeyBlock, rec *tmprec, height int, dirty *dirt
         if pos == nil {
             log.Exit("Nil Pointer")
         }
-        
+
         // after we have found the position we get the block
         // then make a recursive call to insert to insert the record into the next block
         if b, srec, s := self.insert(self.getblock(pos), rec, height-1, dirty); s {

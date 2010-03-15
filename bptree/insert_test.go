@@ -48,7 +48,7 @@ func test_split(i, n int, self *BpTree, dirty *dirty.DirtyBlocks, t *testing.T) 
     log := func(a, b *KeyBlock, r, split *tmprec, ok bool) {
         t.Logf("\nsplit info:\n{\nblock a:\n%v\n\nnew rec:\n%v\n\nblock b:\n%v\n\nsplit rec:\n%v\n\nsuccess: %v\n}\n", a, r, b, split, ok)
     }
-    a := self.allocate(self.external)
+    a := self.allocate(self.internal)
     fill_block(self, a, t, i)
     if r, ok := pkg_rec(self, ByteSlice32(uint32(i)), record); ok {
         b, split, ok := self.split(a, r, nil, dirty)
@@ -100,15 +100,17 @@ func test_split(i, n int, self *BpTree, dirty *dirty.DirtyBlocks, t *testing.T) 
             t.Fatal("could not get the first record from b, ie b is empty!")
         }
         {
+            t.Log(a, b)
             i := 0
             for ; i < int(a.RecordCount()); i++ {
-                r, _, _, ok := a.Get(i)
+                r, p, _, ok := a.Get(i)
                 if !ok {
                     t.Error("Error getting rec at index ", i)
                 }
                 if int(r.GetKey().Int32()) != i {
                     t.Errorf("116 Error key, %v, does not equal %v", r.GetKey().Int32(), i)
                 }
+                t.Log(r.GetKey(), p)
             }
 
             if int(split.key.Int32()) != i {
@@ -116,19 +118,21 @@ func test_split(i, n int, self *BpTree, dirty *dirty.DirtyBlocks, t *testing.T) 
             }
 
             for j := 0; j < int(b.RecordCount()); j++ {
-                r, _, _, ok := b.Get(j)
+                r, p, _, ok := b.Get(j)
                 if !ok {
                     t.Error("Error getting rec at index ", i)
                 }
                 if int(r.GetKey().Int32()) != i {
                     t.Errorf("130 Error key, %v, does not equal %v", r.GetKey().Int32(), i)
                 }
+                t.Log(r.GetKey(), p)
                 i++
             }
         }
     } else {
         t.Error("could not create tmprec", i, record)
     }
+    t.FailNow()
 }
 
 func TestSplit(t *testing.T) {
@@ -199,7 +203,8 @@ func validate(self *BpTree, t *testing.T) {
         if int32(first.Int32()) != -1 {
             if r, _, _, ok := block.Get(0); ok && !r.GetKey().Eq(first) {
                 t.Logf("first %v != %v", r.GetKey(), first)
-                t.Log(self)
+//                 t.Log(block)
+//                 t.Log(self)
                 t.FailNow()
             }
         }
