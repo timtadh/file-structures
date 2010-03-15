@@ -128,16 +128,15 @@ func (self *BpTree) split(a *KeyBlock, rec *tmprec, nextb *KeyBlock, dirty *dirt
     self.balance_blocks(a, b)
     var block *KeyBlock
     return_rec = split_rec
-    if a.MaxRecordCount()%2 == 1 {
+    if a.MaxRecordCount()%2 == 0 {
         if rand.Float() > 0.5 {
-//             block = a
-//             if rec, _, _, ok := b.Get(0); !ok {
-//                 fmt.Println("Could not get the first record from block b PANIC")
-//                 os.Exit(3)
-//             } else {
-//                 return_rec = rec
-//             }
-            block = b
+            block = a
+            if rec, _, _, ok := b.Get(0); !ok {
+                fmt.Println("Could not get the first record from block b PANIC")
+                os.Exit(3)
+            } else {
+                return_rec = rec
+            }
         } else {
             block = b
         }

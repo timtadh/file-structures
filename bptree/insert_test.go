@@ -184,5 +184,5 @@ func TestInsert(t *testing.T) {
     defer cleanbptree(self)
     make_complete(self, t)
     t.Log(self)
-    t.Fail()
+//     t.Fail()
 }
