@@ -124,6 +124,7 @@ func (self *BpTree) split(a *KeyBlock, rec *tmprec, nextb *KeyBlock, dirty *dirt
         if m > i {
             split_rec, nextp, _, _ = a.Get(m - 1)
             a.RemoveAtIndex(m - 1)
+            a.RemovePointer(m - 1)
             if i, ok := a.Add(r); !ok {
                 log.Exit("Inserting record into block failed PANIC")
             } else {
@@ -137,6 +138,7 @@ func (self *BpTree) split(a *KeyBlock, rec *tmprec, nextb *KeyBlock, dirty *dirt
         } else if m < i {
             split_rec, nextp, _, _ = a.Get(m)
             a.RemoveAtIndex(m)
+            a.RemovePointer(m)
             if i, ok := a.Add(r); !ok {
                 log.Exit("Inserting record into block failed PANIC")
             } else {
@@ -157,7 +159,6 @@ func (self *BpTree) split(a *KeyBlock, rec *tmprec, nextb *KeyBlock, dirty *dirt
     return_rec = split_rec
     if a.MaxRecordCount()%2 == 0 {
         f := rand.Float()
-        fmt.Println("rand value:", f)
         if f > 0.5 {
             block = a
             if rec, _, _, ok := b.Get(0); !ok {
@@ -178,6 +179,8 @@ func (self *BpTree) split(a *KeyBlock, rec *tmprec, nextb *KeyBlock, dirty *dirt
             success = block.InsertPointer(i, nextp)
         } else if block.Mode()&POINTERS == 0 && nextp != nil {
             log.Exit("tried to set a pointer on a block with no pointers")
+        } else if block.Mode()&POINTERS == POINTERS && nextp == nil {
+            log.Exit("splitting an internal block split requires a next block to point at")
         }
     }
     return b, rec_to_tmp(self, return_rec), success
@@ -213,10 +216,8 @@ func (self *BpTree) insert(block *KeyBlock, rec *tmprec, height int, dirty *dirt
             i, _, _, _, _ := block.Find(rec.key)
             if i == int(block.MaxRecordCount()) { i-- }
             r, p, _, ok := block.Get(i)
-            fmt.Println("-------------->", r, p, ok, i)
             for ; ok && rec.key.Lt(r.GetKey()); i++ {
                 r, p, _, ok = block.Get(i)
-                fmt.Println("-------------->", p)
             }
             pos = p
         }
@@ -242,7 +243,6 @@ func (self *BpTree) insert(block *KeyBlock, rec *tmprec, height int, dirty *dirt
     }
     // this block is changed
     dirty.Insert(block)
-    fmt.Println("inserting ", r)
     if i, ok := block.Add(r); ok {
         // Block isn't full record inserted, now insert pointer (if one exists)
         // return to parent saying it has nothing to do

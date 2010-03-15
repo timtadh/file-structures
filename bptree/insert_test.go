@@ -44,14 +44,15 @@ func fill_block(self *BpTree, a *KeyBlock, t *testing.T, skip int) {
     }
 }
 
-func test_split(i, n int, self *BpTree, dirty *dirty.DirtyBlocks, t *testing.T) {
+func test_split(j, n int, self *BpTree, dirty *dirty.DirtyBlocks, t *testing.T) {
     log := func(a, b *KeyBlock, r, split *tmprec, ok bool) {
         t.Logf("\nsplit info:\n{\nblock a:\n%v\n\nnew rec:\n%v\n\nblock b:\n%v\n\nsplit rec:\n%v\n\nsuccess: %v\n}\n", a, r, b, split, ok)
     }
     a := self.allocate(self.internal)
-    fill_block(self, a, t, i)
-    if r, ok := pkg_rec(self, ByteSlice32(uint32(i)), record); ok {
-        b, split, ok := self.split(a, r, nil, dirty)
+    nextb := self.allocate(self.external)
+    fill_block(self, a, t, j)
+    if r, ok := pkg_rec(self, ByteSlice32(uint32(j)), record); ok {
+        b, split, ok := self.split(a, r, nextb, dirty)
         if b == nil {
             log(a, b, r, split, ok)
             t.Fatal("split returned a nil block")
@@ -108,7 +109,10 @@ func test_split(i, n int, self *BpTree, dirty *dirty.DirtyBlocks, t *testing.T) 
                     t.Error("Error getting rec at index ", i)
                 }
                 if int(r.GetKey().Int32()) != i {
-                    t.Errorf("116 Error key, %v, does not equal %v", r.GetKey().Int32(), i)
+                    t.Errorf("112 Error key, %v, does not equal %v", r.GetKey().Int32(), i)
+                }
+                if !p.Eq(ByteSlice64(uint64(i))) && !(i == j && p.Eq(nextb.Position())) {
+                    t.Errorf("115 Pointer, %v, does not equal %v", p, ByteSlice64(uint64(i)))
                 }
                 t.Log(r.GetKey(), p)
             }
@@ -130,9 +134,8 @@ func test_split(i, n int, self *BpTree, dirty *dirty.DirtyBlocks, t *testing.T) 
             }
         }
     } else {
-        t.Error("could not create tmprec", i, record)
+        t.Error("could not create tmprec", j, record)
     }
-    t.FailNow()
 }
 
 func TestSplit(t *testing.T) {
@@ -260,5 +263,5 @@ func TestInsert(t *testing.T) {
         t.Fatal("Insert returned false")
     }
     validate(self, t)
-    //     t.Fail()
+    t.Log(self)
 }

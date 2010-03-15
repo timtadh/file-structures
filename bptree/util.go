@@ -43,7 +43,7 @@ func (self *BpTree) getblock(pos ByteSlice) *KeyBlock {
                 return block
             }
         } else {
-            a,b,c,d := runtime.Caller(6)
+            a,b,c,d := runtime.Caller(1)
             log.Exitf("Block at position %v has an invalid mode\n%v\n%v\n%v\n%v\n", pos, a, b, c, d)
         }
     }
