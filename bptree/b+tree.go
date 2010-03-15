@@ -77,12 +77,11 @@ func (self *BpTree) String() string {
         e := stack.Front()
         pos := e.Value.(ByteSlice)
         stack.Remove(e)
-        if block, ok := DeserializeFromFile(self.bf, self.external, pos); ok {
-            s += fmt.Sprintln(block)
-            for i := 0; i < int(block.PointerCount()); i++ {
-                if p, ok := block.GetPointer(i); ok {
-                    stack.PushBack(p)
-                }
+        block := self.getblock(pos)
+        s += fmt.Sprintln(block)
+        for i := 0; i < int(block.PointerCount()); i++ {
+            if p, ok := block.GetPointer(i); ok {
+                stack.PushBack(p)
             }
         }
     }
