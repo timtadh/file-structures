@@ -55,19 +55,25 @@ func (self *BlockFile) resize(size int64) bool {
 }
 
 // TODO: Return Block Position
-func (self *BlockFile) Allocate(size uint32) bool {
-    return self.resize(int64(size))
+func (self *BlockFile) Allocate(amt uint32) (uint64, bool) {
+    size, ok := self.Size()
+    if ok {
+        if self.resize(int64(size + uint64(amt))) {
+            return size, true
+        }
+    }
+    return 0, false
 }
 
-func (self *BlockFile) NewBlock(size uint32) (uint64, bool) {
-	oldSize, ok1 := self.Size()
-	if ok1 {
-		if self.resize(int64(oldSize+uint64(size))) {
-		return oldSize, true
-		}
-	}
-	return 0, false
-}
+// func (self *BlockFile) NewBlock(size uint32) (uint64, bool) {
+// 	oldSize, ok1 := self.Size()
+// 	if ok1 {
+// 		if self.resize(int64(oldSize+uint64(size))) {
+// 		return oldSize, true
+// 		}
+// 	}
+// 	return 0, false
+// }
 
 func (self *BlockFile) WriteBlock(p int64, block []byte) bool {
     if !self.opened {

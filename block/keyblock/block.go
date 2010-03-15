@@ -19,9 +19,8 @@ type KeyBlock struct {
 }
 
 func NewKeyBlock(bf *BlockFile, dim *BlockDimensions) (*KeyBlock, bool) {
-    if size, ok := bf.Size(); ok {
+    if size, ok := bf.Allocate(dim.BlockSize); ok {
         b := newKeyBlock(bf, ByteSlice64(size), dim)
-        bf.Allocate(uint32(size) + dim.BlockSize)
         return b, true
     }
     return nil, false
