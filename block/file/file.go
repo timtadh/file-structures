@@ -59,6 +59,16 @@ func (self *BlockFile) Allocate(size uint32) bool {
     return self.resize(int64(size))
 }
 
+func (self *BlockFile) NewBlock(size uint32) (uint64, bool) {
+	oldSize, ok1 := self.Size()
+	if ok1 {
+		if self.resize(int64(oldSize+uint64(size))) {
+		return oldSize, true
+		}
+	}
+	return 0, false
+}
+
 func (self *BlockFile) WriteBlock(p int64, block []byte) bool {
     if !self.opened {
         return false
