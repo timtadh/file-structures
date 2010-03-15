@@ -135,7 +135,7 @@ func (self *BTree) insert(block *KeyBlock, rec *Record, height int, dirty *dirty
             k := rec.GetKey()
             i, _, _, _, _ := block.Find(k) // find where the key would go in the block
             if i >= int(block.RecordCount()) {
-                i--  // is it after the last key?
+                i-- // is it after the last key?
             }
             r, left, right, ok := block.Get(i) // get the record
             if ok && (k.Lt(r.GetKey())) && left != nil {

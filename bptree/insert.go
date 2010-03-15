@@ -70,7 +70,9 @@ func (self *tmprec) String() string {
 func (self BpTree) balance_blocks(full *KeyBlock, empty *KeyBlock) {
     n := int(full.MaxRecordCount())
     m := n >> 1
-    if n%2 == 0 { m -= 1}
+    if n%2 == 0 {
+        m -= 1
+    }
     for j := n - 1; j > m; j-- {
         if r, _, _, ok := full.Get(j); !ok {
             fmt.Printf("could not get index j<%v> from block: %v", j, full)
@@ -159,7 +161,7 @@ func (self *BpTree) split(a *KeyBlock, rec *tmprec, nextb *KeyBlock, dirty *dirt
 //     for allocation in case of split we may always be able to allocate the type of block being split
 //     except in the case of a root split in which case the new root is always a internal node
 func (self *BpTree) insert(block *KeyBlock, rec *tmprec, height int, dirty *dirty.DirtyBlocks) (*KeyBlock, *tmprec, bool) {
-    r := func() (*Record) {
+    r := func() *Record {
         if block.Mode() == self.external.Mode {
             return rec.external()
         }

@@ -45,7 +45,9 @@ func fill_block(self *BpTree, a *KeyBlock, t *testing.T, skip int) {
 }
 
 func test_split(i, n int, self *BpTree, dirty *dirty.DirtyBlocks, t *testing.T) {
-    log := func(a, b *KeyBlock, r, split *tmprec, ok bool) {t.Logf("\nsplit info:\n{\nblock a:\n%v\n\nnew rec:\n%v\n\nblock b:\n%v\n\nsplit rec:\n%v\n\nsuccess: %v\n}\n", a, r, b, split, ok)}
+    log := func(a, b *KeyBlock, r, split *tmprec, ok bool) {
+        t.Logf("\nsplit info:\n{\nblock a:\n%v\n\nnew rec:\n%v\n\nblock b:\n%v\n\nsplit rec:\n%v\n\nsuccess: %v\n}\n", a, r, b, split, ok)
+    }
     a := self.allocate(self.external)
     fill_block(self, a, t, i)
     if r, ok := pkg_rec(self, ByteSlice32(uint32(i)), record); ok {
@@ -146,24 +148,34 @@ func TestSplit(t *testing.T) {
     }
 }
 
-func make_complete(self *BpTree, t *testing.T) {
+func make_complete(self *BpTree, skip int, t *testing.T) {
     dirty := dirty.New(10)
     n := int(self.external.KeysPerBlock())
+    m := n * n
+    if skip < m {
+        m++
+    }
+
     c := self.getblock(self.info.Root())
     root := self.allocate(self.internal)
     self.info.SetRoot(root.Position())
     dirty.Insert(c)
     dirty.Insert(root)
-    r, _ := pkg_rec(self, ByteSlice32(uint32(0)), record)
+
+    first := 0
+    if first == skip { first = 1 }
+
+    r, _ := pkg_rec(self, ByteSlice32(uint32(first)), record)
     if p, ok := root.Add(r.internal()); ok {
         root.InsertPointer(p, c.Position())
     } else {
         t.Fatal("could not add a record to the root")
     }
-    for i := 0; i < n*n; i++ {
+
+    for i := 0; i < m; i++ {
+        if i == skip { continue }
         r, _ := pkg_rec(self, ByteSlice32(uint32(i)), record)
         if c.Full() {
-            t.Log(c.Position())
             c = self.allocate(self.external)
             dirty.Insert(c)
             if p, ok := root.Add(r.internal()); ok {
@@ -179,10 +191,55 @@ func make_complete(self *BpTree, t *testing.T) {
     dirty.Sync()
 }
 
+func validate(self *BpTree, t *testing.T) {
+    var i int = 0
+    var walk func(*KeyBlock, ByteSlice)
+    walk = func(block *KeyBlock, first ByteSlice) {
+        if int32(first.Int32()) != -1 {
+            if r, _, _, ok := block.Get(0); ok && !r.GetKey().Eq(first) {
+                t.Log(self)
+                t.Fatalf("first %v != %v", r.GetKey(), first)
+            }
+        }
+        if block.Mode() == self.internal.Mode {
+            for j := 0; j < int(block.RecordCount()); j++ {
+                if r, p, _, ok := block.Get(j); ok {
+                    walk(self.getblock(p), r.GetKey())
+                } else {
+                    t.Log(self)
+                    t.Fatalf("Could not get record %v from block \n%v", j, block)
+                }
+            }
+        } else {
+            for j := 0; j < int(block.RecordCount()); j++ {
+                if r, _, _, ok := block.Get(j); ok {
+                    if !r.GetKey().Eq(ByteSlice32(uint32(i))) {
+                        t.Log(self)
+                        t.Fatalf("expected %v got %v", i, r.GetKey().Int32())
+                    }
+                } else {
+                    t.Log(self)
+                    t.Fatalf("Could not get record %v from block \n%v", j, block)
+                }
+                i++
+            }
+        }
+    }
+    walk(self.getblock(self.info.Root()), ByteSlice32(0xffffffff))
+    n := self.external.KeysPerBlock()
+    if n*n + 1 != i {
+        t.Fatalf("too few keys in the b+tree expected %v got %v", n*n+1, i)
+    }
+}
+
 func TestInsert(t *testing.T) {
     self := makebptree(ORDER_4_4, t)
     defer cleanbptree(self)
-    make_complete(self, t)
-    t.Log(self)
-//     t.Fail()
+    i := 16
+    make_complete(self, i, t)
+    if ok := self.Insert(ByteSlice32(uint32(i)), record); !ok {
+        t.Fatal("Insert returned false")
+    }
+    validate(self, t)
+    //     t.Fail()
 }
