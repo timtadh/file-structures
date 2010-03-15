@@ -189,6 +189,7 @@ func make_complete(self *BpTree, skip int, t *testing.T) {
         }
     }
     dirty.Sync()
+    self.info.SetHeight(2)
 }
 
 func validate(self *BpTree, t *testing.T) {
@@ -197,29 +198,42 @@ func validate(self *BpTree, t *testing.T) {
     walk = func(block *KeyBlock, first ByteSlice) {
         if int32(first.Int32()) != -1 {
             if r, _, _, ok := block.Get(0); ok && !r.GetKey().Eq(first) {
+                t.Logf("first %v != %v", r.GetKey(), first)
                 t.Log(self)
-                t.Fatalf("first %v != %v", r.GetKey(), first)
+                t.FailNow()
             }
         }
         if block.Mode() == self.internal.Mode {
             for j := 0; j < int(block.RecordCount()); j++ {
                 if r, p, _, ok := block.Get(j); ok {
+                    if r == nil {
+                        t.Fatal("Nil record")
+                    }
+                    if p == nil {
+//                         t.Log(self)
+//                         t.Log(block)
+//                         t.Log(r)
+                        t.Fatal("Nil Pointer")
+                    }
                     walk(self.getblock(p), r.GetKey())
                 } else {
+                    t.Logf("Could not get record %v from block \n%v", j, block)
                     t.Log(self)
-                    t.Fatalf("Could not get record %v from block \n%v", j, block)
+                    t.FailNow()
                 }
             }
         } else {
             for j := 0; j < int(block.RecordCount()); j++ {
                 if r, _, _, ok := block.Get(j); ok {
                     if !r.GetKey().Eq(ByteSlice32(uint32(i))) {
+                        t.Logf("expected %v got %v", i, r.GetKey().Int32())
                         t.Log(self)
-                        t.Fatalf("expected %v got %v", i, r.GetKey().Int32())
+                        t.FailNow()
                     }
                 } else {
+                    t.Logf("Could not get record %v from block \n%v", j, block)
                     t.Log(self)
-                    t.Fatalf("Could not get record %v from block \n%v", j, block)
+                    t.FailNow()
                 }
                 i++
             }
