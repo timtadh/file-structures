@@ -183,6 +183,11 @@ func (self *BpTree) split(a *KeyBlock, rec *tmprec, nextb *KeyBlock, dirty *dirt
             log.Exit("splitting an internal block split requires a next block to point at")
         }
     }
+    if a.Mode() == self.external.Mode {
+        tmp, _ := a.GetExtraPtr()
+        b.SetExtraPtr(tmp)
+        a.SetExtraPtr(b.Position())
+    }
     return b, rec_to_tmp(self, return_rec), success
 }
 

@@ -314,13 +314,15 @@ func TestRandomBuild(t *testing.T) {
                 m := n
                 j := rand.Intn(m)
                 for _, ok := inserted[j]; ok; {
-    //                 fmt.Println(0, j, m)
                     j = rand.Intn(m)
                     _, ok = inserted[j]
                 }
                 inserted[j] = true
                 self.Insert(ByteSlice32(uint32(j)), record)
             }
+//             if k == 0 && order == 4 {
+//                 fmt.Println(self)
+//             }
             validate(self, n, t)
             cleanbptree(self)
         }
