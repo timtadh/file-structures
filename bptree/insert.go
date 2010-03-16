@@ -198,15 +198,6 @@ func (self *BpTree) insert(block *KeyBlock, rec *tmprec, height int, dirty *dirt
     }
     r := _convert(rec)
     var nextb *KeyBlock
-    if height == 0 {
-        // external node
-        if block.Full() {
-            // block is full we will need to split the block!
-            // in this split case we will need to allocate another external node
-        } else {
-            // normal insert
-        }
-    }
 
     if height > 0 {
         // internal node
@@ -277,6 +268,7 @@ func (self *BpTree) Insert(key ByteSlice, record []ByteSlice) bool {
     // package the temp rec
     rec, valid := pkg_rec(self, key, record)
     if !valid {
+        fmt.Println("key or record not valid")
         return false
     }
 

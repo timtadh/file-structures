@@ -6,6 +6,18 @@ import . "block/keyblock"
 import . "block/byteslice"
 import "block/dirty"
 import "rand"
+import "os"
+
+func init() {
+    if urandom, err := os.Open("/dev/urandom", os.O_RDONLY, 0666); err != nil {
+        return
+    } else {
+        seed := make([]byte, 8)
+        if _, err := urandom.Read(seed); err == nil {
+            rand.Seed(int64(ByteSlice(seed).Int64()))
+        }
+    }
+}
 
 const ORDER_2 = 45
 const ORDER_3 = 65

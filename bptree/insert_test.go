@@ -2,9 +2,22 @@ package bptree
 
 import "testing"
 import "fmt"
+import "rand"
+import "os"
 import . "block/keyblock"
 import . "block/byteslice"
 import "block/dirty"
+
+func init() {
+    if urandom, err := os.Open("/dev/urandom", os.O_RDONLY, 0666); err != nil {
+        return
+    } else {
+        seed := make([]byte, 8)
+        if _, err := urandom.Read(seed); err == nil {
+            rand.Seed(int64(ByteSlice(seed).Int64()))
+        }
+    }
+}
 
 var record []ByteSlice = []ByteSlice(&[3][]byte{&[2]byte{1, 2}, &[2]byte{3, 4}, &[4]byte{5, 6, 7, 8}})
 
@@ -13,7 +26,7 @@ const ORDER_3_3 = 50
 const ORDER_4_4 = 61
 const ORDER_5_5 = 73
 
-var sizes [4]uint32 = [4]uint32{ORDER_2_2, ORDER_3_3, ORDER_4_4, ORDER_5_5}
+var sizes [5]uint32 = [5]uint32{ORDER_2_2, ORDER_3_3, ORDER_4_4, ORDER_5_5, 256}
 
 func insert(a *KeyBlock, key ByteSlice) bool {
     r := a.NewRecord(key)
@@ -160,7 +173,7 @@ func TestSplit(t *testing.T) {
 }
 
 func make_complete(self *BpTree, skip int, t *testing.T) {
-    dirty := dirty.New(10)
+    dirty := dirty.New(self.internal.KeysPerBlock()*3)
     n := int(self.external.KeysPerBlock())
     m := n * n
     if skip < m {
@@ -253,14 +266,23 @@ func validate(self *BpTree, expect int, t *testing.T) {
     }
     walk(self.getblock(self.info.Root()), ByteSlice32(0xffffffff))
     if expect != i {
+        t.Log(self)
         t.Fatalf("too few keys in the b+tree expected %v got %v", expect, i)
     }
 }
 
 func TestInsert(t *testing.T) {
-    for j, size := range sizes {
-        n := (j+2)*(j+2)
-        fmt.Printf("testing block size %v, b+ tree order %v, with %v tests\n", size, j+2, n)
+    fmt.Println("----------- Exhaustive Insert Test -----------")
+    for _, size := range sizes {
+        var i int
+        {
+            self := makebptree(size, t)
+            i = self.internal.KeysPerBlock()
+            cleanbptree(self)
+        }
+
+        n := (i)*(i)
+        fmt.Printf("testing block size %v, b+ tree order %v, with %v tests\n", size, i, n)
         for i := 0; i < n; i++ {
             t.Log(i)
             self := makebptree(size, t)
@@ -269,6 +291,37 @@ func TestInsert(t *testing.T) {
                 t.Fatal("Insert returned false")
             }
             validate(self, n+1, t)
+            cleanbptree(self)
+        }
+    }
+}
+
+func TestRandomBuild(t *testing.T) {
+    fmt.Println("----------- Random Build -----------")
+    for _,size := range sizes {
+        var order int
+        {
+            self := makebptree(size, t)
+            order = self.internal.KeysPerBlock()
+            cleanbptree(self)
+        }
+        n := order*order*(order+2)+1
+        fmt.Printf("testing block size %v, b+ tree order %v, with %v inserts\n", size, order, n)
+        for k := 0; k < 15; k++ {
+            inserted := make(map[int] bool)
+            self := makebptree(size, t)
+            for i := 0; i < n; i++ {
+                m := n
+                j := rand.Intn(m)
+                for _, ok := inserted[j]; ok; {
+    //                 fmt.Println(0, j, m)
+                    j = rand.Intn(m)
+                    _, ok = inserted[j]
+                }
+                inserted[j] = true
+                self.Insert(ByteSlice32(uint32(j)), record)
+            }
+            validate(self, n, t)
             cleanbptree(self)
         }
     }
