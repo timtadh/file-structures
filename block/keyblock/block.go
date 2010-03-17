@@ -137,6 +137,18 @@ func (self *KeyBlock) Find(k ByteSlice) (int, *Record, ByteSlice, ByteSlice, boo
     return i, nil, nil, nil, false
 }
 
+func (self *KeyBlock) Count(k ByteSlice) int {
+    i, ok := self.find(k)
+    if !ok { return 0 }
+    count := 0
+    for j := i;
+        j < len(self.records) && self.records[j] != nil && self.records[j].GetKey().Eq(k);
+        j++ {
+            count++
+    }
+    return count
+}
+
 func (self *KeyBlock) Get(i int) (*Record, ByteSlice, ByteSlice, bool) {
     if self.dim.Mode&POINTERS == 0 && i < int(self.RecordCount()) && i >= 0 {
         return self.records[i], nil, nil, true
@@ -379,6 +391,7 @@ func (b *KeyBlock) find(k ByteSlice) (int, bool) {
     }
     return l, false
 }
+
 
 func (b *KeyBlock) String() string {
     if b == nil {

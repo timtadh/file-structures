@@ -69,6 +69,10 @@ func NewBpTree(filename string, keysize uint32, fields []uint32) (*BpTree, bool)
     return self, true
 }
 
+func (self *BpTree) Find(key ByteSlice) (*Record, bool) {
+    return nil, false
+}
+
 func (self *BpTree) String() string {
     s := "B+Tree:\n{\n"
     stack := list.New()
