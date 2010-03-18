@@ -131,10 +131,9 @@ func (self *KeyBlock) SetPointer(i int, ptr ByteSlice) bool {
 
 func (self *KeyBlock) Find(k ByteSlice) (int, *Record, ByteSlice, ByteSlice, bool) {
     i, ok := self.find(k)
-    if ok {
-        return i, self.records[i], self.pointers[i], self.pointers[i+1], true
-    }
-    return i, nil, nil, nil, false
+    if !ok { return i, nil, nil, nil, false }
+    rec, l, r, ok := self.Get(i)
+    return i, rec, l, r, ok
 }
 
 func (self *KeyBlock) Count(k ByteSlice) int {
@@ -147,6 +146,31 @@ func (self *KeyBlock) Count(k ByteSlice) int {
             count++
     }
     return count
+}
+
+func (self *KeyBlock) FindAll(k ByteSlice) (<-chan *Record, chan<- bool) {
+    records := make(chan *Record)
+    ack := make(chan bool)
+
+    go func(yield chan<- *Record, ack <-chan bool) {
+        i, ok := self.find(k)
+        if !ok {
+            close(ack)
+            close(yield)
+            return
+        }
+        for j := i;
+            j < len(self.records) && self.records[j] != nil && self.records[j].GetKey().Eq(k);
+            j++ {
+                yield<-self.records[j]
+                <-ack
+
+        }
+        close(yield)
+        return
+    }(records, ack)
+
+    return records, ack
 }
 
 func (self *KeyBlock) Get(i int) (*Record, ByteSlice, ByteSlice, bool) {

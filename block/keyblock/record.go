@@ -24,8 +24,8 @@ func newRecord(key ByteSlice, dim *BlockDimensions) *Record {
 func (r *Record) Size() uint32             { return r.dim.RecordSize() }
 func (r *Record) KeySize() uint32          { return r.dim.KeySize }
 func (r *Record) Fields() uint32           { return uint32(len(r.data)) }
-func (r *Record) Get(i uint32) []byte      { return r.data[i] }
-func (r *Record) Set(i uint32, val []byte) { r.data[i] = val }
+func (r *Record) Get(i uint32) ByteSlice      { return r.data[i] }
+func (r *Record) Set(i uint32, val ByteSlice) { r.data[i] = val }
 func (r *Record) SetKey(k ByteSlice)       { r.key = k }
 func (r *Record) GetKey() ByteSlice        { return r.key }
 

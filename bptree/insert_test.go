@@ -298,7 +298,8 @@ func TestInsert(t *testing.T) {
 
 func TestRandomBuild(t *testing.T) {
     fmt.Println("----------- Random Build -----------")
-    for _,size := range sizes {
+    for i,size := range sizes {
+        if i == 4 { break }                                     // REMOVE THIS FOR REAL TESTS
         var order int
         {
             self := makebptree(size, t)
@@ -327,4 +328,47 @@ func TestRandomBuild(t *testing.T) {
             cleanbptree(self)
         }
     }
+}
+
+func TestDuplicate(t *testing.T) {
+    fmt.Println("----------- Test Duplicate -----------")
+    size := uint32(ORDER_4_4)
+    var order int
+    {
+        self := makebptree(size, t)
+        order = self.internal.KeysPerBlock()
+        cleanbptree(self)
+    }
+    n := order*order*(order+2)+1
+    fmt.Printf("testing block size %v, b+ tree order %v, with %v inserts\n", size, order, n)
+    inserted := make(map[int] bool)
+    self := makebptree(size, t)
+    for i := 0; i < n; i++ {
+        m := n
+        j := rand.Intn(m)
+        for _, ok := inserted[j]; ok; {
+            j = rand.Intn(m)
+            _, ok = inserted[j]
+        }
+        inserted[j] = true
+        self.Insert(ByteSlice32(uint32(j)), record)
+    }
+    for i := 0; i < 15; i++ {
+        rec := []ByteSlice(&[3][]byte{&[2]byte{1, 2}, &[2]byte{3, 4}, ByteSlice32(uint32(i))})
+        self.Insert(ByteSlice32(uint32(1)), rec)
+    }
+
+    records, ack := self.Find(ByteSlice64(1))
+    i := 15
+    for rec := range records {
+        if !rec.Get(0).Eq(ByteSlice32(uint32(i))) {
+            t.Errorf("\n\nexpected %v as the value of the record got %v\n\n%v", i, rec.Get(0).Int32(), self)
+        }
+        i--
+        ack <- true
+    }
+    if i != -1 {
+        t.Error("Expected to get 15 records instead found ", 15 - i)
+    }
+    cleanbptree(self)
 }
