@@ -87,15 +87,12 @@ func (self *BpTree) Find(left ByteSlice, right ByteSlice) (<-chan *Record, chan<
                 var pos ByteSlice
                 {
                     // we find where in the block this key would be inserted
-                    i, r, p, _, ok := block.Find(key)
+                    i, _, p, _, _ := block.Find(key)
 
                     if i == 0 {
-                        if ok && r.GetKey().Eq(key) {
-                            pos = p
-                        } else {
-                            // this key can't be in the b+ tree
-                            return  0, nil, false
-                        }
+                        // even if this key doesn't equal the key we are looking for it will be at
+                        // least greater than the key we are looking for.
+                        pos = p
                     } else {
                         // else this spot is one to many so we get the previous spot
                         i--
@@ -108,8 +105,7 @@ func (self *BpTree) Find(left ByteSlice, right ByteSlice) (<-chan *Record, chan<
                 }
                 return find(key, self.getblock(pos), height-1)
             }
-            i, _, _, _, ok := block.Find(key)
-            if !ok { return 0, nil, false }
+            i, _, _, _, _ := block.Find(key)
             return i, block, true
         }
         i, block, ok := find(left, self.getblock(self.info.Root()), self.info.Height()-1)
@@ -118,10 +114,9 @@ func (self *BpTree) Find(left ByteSlice, right ByteSlice) (<-chan *Record, chan<
             close(ack)
             return
         }
-        var returns func(int, *KeyBlock) bool
-        returns = func(start int, block *KeyBlock) bool {
-            i := start
-            for ; i < int(block.RecordCount()); i++ {
+
+        returns := func(start int, block *KeyBlock) bool {
+            for i := start; i < int(block.RecordCount()); i++ {
                 rec, _, _, ok := block.Get(i)
                 if !ok { return false }
                 if  rec.GetKey().Eq(left) ||
@@ -135,6 +130,7 @@ func (self *BpTree) Find(left ByteSlice, right ByteSlice) (<-chan *Record, chan<
             }
             return true
         }
+
         start := i
         for returns(start, block) {
             p, _ := block.GetExtraPtr()
@@ -146,6 +142,7 @@ func (self *BpTree) Find(left ByteSlice, right ByteSlice) (<-chan *Record, chan<
         close(ack)
         return;
     }(records, ack);
+
     return records, ack
 }
 
