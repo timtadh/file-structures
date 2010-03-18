@@ -168,6 +168,7 @@ func (self *BpTree) split(a *KeyBlock, rec *tmprec, nextb *KeyBlock, dirty *dirt
 }
 
 func (self *BpTree) insert(block *KeyBlock, rec *tmprec, height int, dirty *dirty.DirtyBlocks) (*KeyBlock, *tmprec, bool) {
+    // function to take a tmprec and turn it into the appropriate type of *Record
     _convert := func(rec *tmprec) *Record {
         if block.Mode() == self.external.Mode {
             return rec.external()
@@ -175,6 +176,8 @@ func (self *BpTree) insert(block *KeyBlock, rec *tmprec, height int, dirty *dirt
         return rec.internal()
     }
     r := _convert(rec)
+
+    // nextb is the block to be passed up the the caller in the case of a split at this level.
     var nextb *KeyBlock
 
     if height > 0 {
@@ -206,7 +209,7 @@ func (self *BpTree) insert(block *KeyBlock, rec *tmprec, height int, dirty *dirt
             }
         }
 
-        // if pos is nil we have a serious
+        // if pos is nil we have a serious problem
         if pos == nil {
             log.Exit("242 Nil Pointer")
         }
