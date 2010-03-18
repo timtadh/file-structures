@@ -248,6 +248,12 @@ func (self *BpTree) insert(block *KeyBlock, rec *tmprec, height int, dirty *dirt
         } else {
             return nil, nil, false
         }
+    } else {
+        c := block.Count(rec.key)
+        ratio := float(c) / float(block.MaxRecordCount())
+        if c > 1 && block.Full() || ratio > .5 {
+            fmt.Println("Magic Heres Abouts")
+        }
     }
     // this block is changed
     dirty.Insert(block)

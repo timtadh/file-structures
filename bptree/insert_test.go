@@ -308,7 +308,7 @@ func TestRandomBuild(t *testing.T) {
         }
         n := order*order*(order+2)+1
         fmt.Printf("testing block size %v, b+ tree order %v, with %v inserts\n", size, order, n)
-        for k := 0; k < 15; k++ {
+        for k := 0; k < 1; k++ {
             inserted := make(map[int] bool)
             self := makebptree(size, t)
             for i := 0; i < n; i++ {
@@ -321,10 +321,16 @@ func TestRandomBuild(t *testing.T) {
                 inserted[j] = true
                 self.Insert(ByteSlice32(uint32(j)), record)
             }
-//             if k == 0 && order == 4 {
-//                 fmt.Println(self)
-//             }
             validate(self, n, t)
+            records, ack := self.Find(ByteSlice32(uint32(0)), ByteSlice32(uint32(n)))
+            i := 0
+            for rec := range records {
+                if !rec.GetKey().Eq(ByteSlice32(uint32(i))) {
+                    t.Errorf("329 Expected %v go %v", i, rec.GetKey().Int64())
+                }
+                i++
+                ack <- true
+            }
             cleanbptree(self)
         }
     }
@@ -355,14 +361,14 @@ func TestDuplicate(t *testing.T) {
     }
     for i := 0; i < 15; i++ {
         rec := []ByteSlice(&[3][]byte{&[2]byte{1, 2}, &[2]byte{3, 4}, ByteSlice32(uint32(i))})
-        self.Insert(ByteSlice32(uint32(1)), rec)
+        self.Insert(ByteSlice32(uint32(n)), rec)
     }
 
-    records, ack := self.Find(ByteSlice64(1))
-    i := 15
+    records, ack := self.Find(ByteSlice32(uint32(n)), ByteSlice32(uint32(n)))
+    i := 14
     for rec := range records {
-        if !rec.Get(0).Eq(ByteSlice32(uint32(i))) {
-            t.Errorf("\n\nexpected %v as the value of the record got %v\n\n%v", i, rec.Get(0).Int32(), self)
+        if !rec.Get(2).Eq(ByteSlice32(uint32(i))) {
+            t.Fatalf("\n\n371 expected %v as the value of the record got %v\n\n", i, rec.Get(2).Int32())
         }
         i--
         ack <- true
@@ -371,4 +377,5 @@ func TestDuplicate(t *testing.T) {
         t.Error("Expected to get 15 records instead found ", 15 - i)
     }
     cleanbptree(self)
+    t.Fatal(i)
 }

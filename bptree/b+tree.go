@@ -2,6 +2,7 @@ package bptree
 
 import "fmt"
 // import "os"
+import "log"
 import "runtime"
 import "container/list"
 import "treeinfo"
@@ -69,14 +70,82 @@ func NewBpTree(filename string, keysize uint32, fields []uint32) (*BpTree, bool)
     return self, true
 }
 
-func (self *BpTree) Find(key ByteSlice) (<-chan *Record, chan<- bool) {
+func (self *BpTree) Find(left ByteSlice, right ByteSlice) (<-chan *Record, chan<- bool) {
     records := make(chan *Record)
     ack := make(chan bool)
 
     go func(yield chan<- *Record, ack <-chan bool) {
+        if left == nil || right == nil || (!left.Eq(right) && right.Lt(left)) {
+            close(yield)
+            close(ack)
+            return
+        }
+
+        var find func(ByteSlice, *KeyBlock, int) (int, *KeyBlock, bool)
+        find = func(key ByteSlice, block *KeyBlock, height int) (int, *KeyBlock, bool) {
+            if height > 0 {
+                var pos ByteSlice
+                {
+                    // we find where in the block this key would be inserted
+                    i, r, p, _, ok := block.Find(key)
+
+                    if i == 0 {
+                        if ok && r.GetKey().Eq(key) {
+                            pos = p
+                        } else {
+                            // this key can't be in the b+ tree
+                            return  0, nil, false
+                        }
+                    } else {
+                        // else this spot is one to many so we get the previous spot
+                        i--
+                        if _, p, _, ok := block.Get(i); ok {
+                            pos = p
+                        } else {
+                            log.Exitf("235 Error could not get record %v from block %v", i, block)
+                        }
+                    }
+                }
+                return find(key, self.getblock(pos), height-1)
+            }
+            i, _, _, _, ok := block.Find(key)
+            if !ok { return 0, nil, false }
+            return i, block, true
+        }
+        i, block, ok := find(left, self.getblock(self.info.Root()), self.info.Height()-1)
+        if !ok {
+            close(yield)
+            close(ack)
+            return
+        }
+        var returns func(int, *KeyBlock) bool
+        returns = func(start int, block *KeyBlock) bool {
+            i := start
+            for ; i < int(block.RecordCount()); i++ {
+                rec, _, _, ok := block.Get(i)
+                if !ok { return false }
+                if  rec.GetKey().Eq(left) ||
+                    rec.GetKey().Eq(right) ||
+                    (rec.GetKey().Gt(left) && rec.GetKey().Lt(right)) {
+                        yield<-rec
+                        <-ack
+                } else {
+                    return false
+                }
+            }
+            return true
+        }
+        start := i
+        for returns(start, block) {
+            p, _ := block.GetExtraPtr()
+            if p.Eq(ByteSlice64(0)) { break }
+            block = self.getblock(p)
+            start = 0
+        }
         close(yield)
         close(ack)
-    }(records, ack)
+        return;
+    }(records, ack);
     return records, ack
 }
 
