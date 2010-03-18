@@ -19,61 +19,6 @@ func init() {
     }
 }
 
-type tmprec struct {
-    exdim  *BlockDimensions
-    indim  *BlockDimensions
-    key    ByteSlice
-    record []ByteSlice
-}
-
-func pkg_rec(bptree *BpTree, key ByteSlice, rec []ByteSlice) (*tmprec, bool) {
-    if !bptree.ValidateKey(key) || !bptree.ValidateRecord(rec) {
-        return nil, false
-    }
-    self := new(tmprec)
-    self.exdim = bptree.external
-    self.indim = bptree.internal
-    self.key = key
-    self.record = rec
-    return self, true
-}
-
-func rec_to_tmp(bptree *BpTree, rec *Record) *tmprec {
-    self := new(tmprec)
-    self.exdim = bptree.external
-    self.indim = bptree.internal
-    self.key = rec.GetKey()
-    self.record = make([][]byte, rec.Fields())
-    for i := 0; i < int(rec.Fields()); i++ {
-        self.record[i] = rec.Get(uint32(i))
-    }
-    return self
-}
-
-func (self *tmprec) makerec(rec *Record) *Record {
-    for i, f := range self.record {
-        rec.Set(uint32(i), f)
-    }
-    return rec
-}
-
-func (self *tmprec) external() *Record { return self.makerec(self.exdim.NewRecord(self.key)) }
-
-func (self *tmprec) internal() *Record { return self.indim.NewRecord(self.key) }
-
-func (self *tmprec) String() string {
-    if self == nil {
-        return "<nil tmprec>"
-    }
-    s := "tmprec:\n{\n"
-    s += fmt.Sprintln("  exdim:", self.exdim)
-    s += fmt.Sprintln("  indim:", self.indim)
-    s += fmt.Sprintln("  key:", self.key)
-    s += fmt.Sprintln("  record:", self.record)
-    s += "}\n"
-    return s
-}
-
 /*
    balance blocks takes two keyblocks full, and empty and balances the records between them. full must be full
    empty must be empty
@@ -81,10 +26,13 @@ func (self *tmprec) String() string {
 func (self BpTree) balance_blocks(full *KeyBlock, empty *KeyBlock) {
     n := int(full.MaxRecordCount())
     m := n >> 1
+    // we have to subtract 1 from m if n is even because otherwise the blocks will not correctly
+    // balance in this case, do some examples out on paper to really understand this.
     if n%2 == 0 {
         m -= 1
     }
     for j := n - 1; j > m; j-- {
+        // move the records
         if r, _, _, ok := full.Get(j); !ok {
             fmt.Printf("could not get index j<%v> from block: %v", j, full)
             os.Exit(5)
@@ -97,6 +45,8 @@ func (self BpTree) balance_blocks(full *KeyBlock, empty *KeyBlock) {
             }
             empty.Add(r)
         }
+
+        //move the pointers
         if p, ok := full.GetPointer(j); ok {
             empty.InsertPointer(0, p)
         }
@@ -105,6 +55,10 @@ func (self BpTree) balance_blocks(full *KeyBlock, empty *KeyBlock) {
 }
 
 func (self *BpTree) split(a *KeyBlock, rec *tmprec, nextb *KeyBlock, dirty *dirty.DirtyBlocks) (*KeyBlock, *tmprec, bool) {
+
+    // this closure figures out which kind of block and record we need, either external or internal
+    // we make this choice based on the mode of a because b+ trees have the property that the
+    // allocated block always has the same node as the block to be split.
     b, r := func() (*KeyBlock, *Record) {
         if a.Mode() == self.external.Mode {
             return self.allocate(self.external), rec.external()
@@ -112,58 +66,67 @@ func (self *BpTree) split(a *KeyBlock, rec *tmprec, nextb *KeyBlock, dirty *dirt
         return self.allocate(self.internal), rec.internal()
     }()
     dirty.Insert(b)
+
+    // This dependent block finds which record or split the block on.
+    // it also identifies which the record should point at
     var split_rec *Record
-    var return_rec *Record
     var nextp ByteSlice
-    success := true
     {
         i, _, _, _, _ := a.Find(r.GetKey())
         n := int(a.MaxRecordCount()) + 1
         m := n >> 1
-        //     fmt.Println("m=", m)
+
         if m > i {
+            // the mid point is after the spot where we would insert the key so we take the record
+            // just before the mid point as our new record would shift the mid point over by 1
             split_rec, nextp, _, _ = a.Get(m - 1)
             a.RemoveAtIndex(m - 1)
             a.RemovePointer(m - 1)
-            if i, ok := a.Add(r); !ok {
-                log.Exit("Inserting record into block failed PANIC")
-            } else {
-                if nextb != nil {
-                    a.InsertPointer(i, nextb.Position())
-                    nextb = nil
-                } else {
-                    nextp = nil
-                }
-            }
         } else if m < i {
+            // the mid point is before the new record so we can take the record at the mid point as
+            // the split record.
             split_rec, nextp, _, _ = a.Get(m)
             a.RemoveAtIndex(m)
             a.RemovePointer(m)
+        }
+
+        if i == m {
+            // the mid point is where the new record would go so in this case the new record will be
+            // the split record for this split, and the nextb (which is associate with our new key)
+            // become the nextp pointer
+            split_rec = r
+            if nextb != nil { nextp = nextb.Position() }
+        } else {
+            // otherwise we now need to insert our new record into the block before it is balanced
             if i, ok := a.Add(r); !ok {
                 log.Exit("Inserting record into block failed PANIC")
             } else {
+                // after it is inserted we need to associate the next block with its key (which is
+                // the key we just inserted).
                 if nextb != nil {
                     a.InsertPointer(i, nextb.Position())
                     nextb = nil
-                } else {
-                    nextp = nil
                 }
             }
-        } else {
-            split_rec = r
-            if nextb != nil { nextp = nextb.Position() }
         }
     }
     self.balance_blocks(a, b)
+
+    var return_rec *Record = split_rec
     var block *KeyBlock
-    return_rec = split_rec
+
+    // choose which block to insert the record into
     if a.MaxRecordCount()%2 == 0 {
+        // if the btree is of even order we want to randomly choose block so it will be balanced
+        // over time. if we always choose in the sameway the tree will be unbalanced over time.
         f := rand.Float()
         if f > 0.5 {
             block = a
             if rec, _, _, ok := b.Get(0); !ok {
                 log.Exit("Could not get the first record from block b PANIC")
             } else {
+                // we change the record returned because the first record in block b will now not
+                // be the record we split on which is ok we just need to return the correct record.
                 return_rec = rec
             }
         } else {
@@ -172,28 +135,38 @@ func (self *BpTree) split(a *KeyBlock, rec *tmprec, nextb *KeyBlock, dirty *dirt
     } else {
         block = b
     }
+
+    // add the record to the block
     if i, ok := block.Add(split_rec); !ok {
-        success = false
+        log.Exit("Could not add the split_rec to the selected block PANIC")
     } else {
+        // we now insert the pointer if we have one
         if block.Mode()&POINTERS == POINTERS && nextp != nil {
-            success = block.InsertPointer(i, nextp)
+            // we have a block that supports a pointer and a pointer
+            if !block.InsertPointer(i, nextp) {
+
+            }
         } else if block.Mode()&POINTERS == 0 && nextp != nil {
+            // we don't have a block that supports a pointer but we do have a pointer
             log.Exit("tried to set a pointer on a block with no pointers")
         } else if block.Mode()&POINTERS == POINTERS && nextp == nil {
+            // we have a block that supports a pointer but don't have a pointer
             log.Exit("splitting an internal block split requires a next block to point at")
-        }
+        } // else
+        //    we have a block that doesn't support a pointer and we don't have pointer
     }
+
+    // if we have an external node (leaf) then we need to hook up the pointers between the leaf
+    // nodes to support range queries and duplicate keys
     if a.Mode() == self.external.Mode {
         tmp, _ := a.GetExtraPtr()
         b.SetExtraPtr(tmp)
         a.SetExtraPtr(b.Position())
     }
-    return b, rec_to_tmp(self, return_rec), success
+
+    return b, rec_to_tmp(self, return_rec), true
 }
 
-// notes:
-//     for allocation in case of split we may always be able to allocate the type of block being split
-//     except in the case of a root split in which case the new root is always a internal node
 func (self *BpTree) insert(block *KeyBlock, rec *tmprec, height int, dirty *dirty.DirtyBlocks) (*KeyBlock, *tmprec, bool) {
     _convert := func(rec *tmprec) *Record {
         if block.Mode() == self.external.Mode {

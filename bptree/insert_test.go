@@ -298,8 +298,8 @@ func TestInsert(t *testing.T) {
 
 func TestRandomBuild(t *testing.T) {
     fmt.Println("----------- Random Build -----------")
-    for i,size := range sizes {
-        if i == 4 { break }                                     // REMOVE THIS FOR REAL TESTS
+    for _,size := range sizes {
+//         if i == 4 { break }                                     // REMOVE THIS FOR REAL TESTS
         var order int
         {
             self := makebptree(size, t)
@@ -308,7 +308,7 @@ func TestRandomBuild(t *testing.T) {
         }
         n := order*order*(order+2)+1
         fmt.Printf("testing block size %v, b+ tree order %v, with %v inserts\n", size, order, n)
-        for k := 0; k < 1; k++ {
+        for k := 0; k < 15; k++ {
             inserted := make(map[int] bool)
             self := makebptree(size, t)
             for i := 0; i < n; i++ {
@@ -336,7 +336,7 @@ func TestRandomBuild(t *testing.T) {
     }
 }
 
-func TestDuplicate(t *testing.T) {
+/*func TestDuplicate(t *testing.T) {
     fmt.Println("----------- Test Duplicate -----------")
     size := uint32(ORDER_4_4)
     var order int
@@ -378,4 +378,4 @@ func TestDuplicate(t *testing.T) {
     }
     cleanbptree(self)
     t.Fatal(i)
-}
+}*/
