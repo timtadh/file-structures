@@ -3,6 +3,7 @@ package bptree
 import "fmt"
 import "os"
 import "rand"
+import "math"
 import "log"
 import . "block/byteslice"
 import . "block/keyblock"
@@ -72,9 +73,25 @@ func (self *BpTree) split(a *KeyBlock, rec *tmprec, nextb *KeyBlock, dirty *dirt
     var split_rec *Record
     var nextp ByteSlice
     {
+        findm := func() int {
+            getk := func(i int) ByteSlice {
+                r, _, _, _ := a.Get(i)
+                return r.GetKey()
+            }
+            n := int(a.MaxRecordCount()) + 1
+            m := n >> 1
+            key := getk(m)
+            i, _, _, _, _ := a.Find(key)
+            j := i
+            for ; j < n-1 && getk(j).Eq(key); j++ { }
+            j--
+            ir := math.Fabs(float64(i)/float64(n))
+            jr := math.Fabs(float64(j)/float64(n))
+            if ir <= jr { return i }
+            return j
+        }
         i, _, _, _, _ := a.Find(r.GetKey())
-        n := int(a.MaxRecordCount()) + 1
-        m := n >> 1
+        m := findm()
 
         if m > i {
             // the mid point is after the spot where we would insert the key so we take the record
