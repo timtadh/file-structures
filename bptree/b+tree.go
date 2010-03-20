@@ -70,19 +70,31 @@ func NewBpTree(filename string, keysize uint32, fields []uint32) (*BpTree, bool)
     return self, true
 }
 
+/*
+get all the records between the left key and the right key
+Usage:
+    records, ack := bptree.Find(ByteSlice64(1), ByteSlice64(15))
+    for record := range records {
+        do something with the record
+        ack<-true;                              // ack<-true must be the last line of the loop.
+    }
+*/
 func (self *BpTree) Find(left ByteSlice, right ByteSlice) (<-chan *Record, chan<- bool) {
     records := make(chan *Record)
     ack := make(chan bool)
 
+    // Go Routine which finds and returns the records
     go func(yield chan<- *Record, ack <-chan bool) {
+        // parameters are invalid or will yield the empty set
         if left == nil || right == nil || (!left.Eq(right) && right.Lt(left)) {
             close(yield)
             close(ack)
             return
         }
 
-        var find func(ByteSlice, *KeyBlock, int) (int, *KeyBlock, bool)
-        find = func(key ByteSlice, block *KeyBlock, height int) (int, *KeyBlock, bool) {
+        // recursively finds the first matching record
+        var find func(ByteSlice, *KeyBlock, int) (int, *KeyBlock)
+        find = func(key ByteSlice, block *KeyBlock, height int) (int, *KeyBlock) {
             if height > 0 {
                 var pos ByteSlice
                 {
@@ -106,15 +118,14 @@ func (self *BpTree) Find(left ByteSlice, right ByteSlice) (<-chan *Record, chan<
                 return find(key, self.getblock(pos), height-1)
             }
             i, _, _, _, _ := block.Find(key)
-            return i, block, true
+            return i, block
         }
-        i, block, ok := find(left, self.getblock(self.info.Root()), self.info.Height()-1)
-        if !ok {
-            close(yield)
-            close(ack)
-            return
-        }
+        i, block := find(left, self.getblock(self.info.Root()), self.info.Height()-1)
 
+        // for a given block and a starting index returns the matching records in that block
+        // if it ends on a matching record it will return true, else it will return false.
+        // returning true indicates that the next block may have matching records. returning false
+        // indicates the next block will never have matching records
         returns := func(start int, block *KeyBlock) bool {
             for i := start; i < int(block.RecordCount()); i++ {
                 rec, _, _, ok := block.Get(i)
@@ -133,6 +144,7 @@ func (self *BpTree) Find(left ByteSlice, right ByteSlice) (<-chan *Record, chan<
 
         start := i
         for returns(start, block) {
+            // the extra pointer is in the block points to the next block
             p, _ := block.GetExtraPtr()
             if p.Eq(ByteSlice64(0)) { break }
             block = self.getblock(p)
