@@ -306,7 +306,7 @@ func TestRandomBuild(t *testing.T) {
             order = self.internal.KeysPerBlock()
             cleanbptree(self)
         }
-        n := order*order*(order+2)+1
+        n := order*(order+2)+1
         fmt.Printf("testing block size %v, b+ tree order %v, with %v inserts\n", size, order, n)
         for k := 0; k < 15; k++ {
             inserted := make(map[int] bool)
@@ -331,11 +331,12 @@ func TestRandomBuild(t *testing.T) {
                 i++
                 ack <- true
             }
+            if size == ORDER_2_2 { Dotty("bptree.dot", self) }
             cleanbptree(self)
         }
     }
 }
-
+/*
 func TestDupSplitO3(t *testing.T) {
     tests := [4][3]int{[3]int{1, 1, 2},
                       [3]int{2, 2, 3},
@@ -386,10 +387,10 @@ func TestDupSplitO5(t *testing.T) {
         t.Error(test)
     }
 }
-
-/*func TestDuplicate(t *testing.T) {
+*/
+func TestDuplicate(t *testing.T) {
     fmt.Println("----------- Test Duplicate -----------")
-    size := uint32(ORDER_4_4)
+    size := uint32(ORDER_2_2)
     var order int
     {
         self := makebptree(size, t)
@@ -418,6 +419,7 @@ func TestDupSplitO5(t *testing.T) {
     records, ack := self.Find(ByteSlice32(uint32(n)), ByteSlice32(uint32(n)))
     i := 14
     for rec := range records {
+        t.Log(rec)
         if !rec.Get(2).Eq(ByteSlice32(uint32(i))) {
             t.Fatalf("\n\n371 expected %v as the value of the record got %v\n\n", i, rec.Get(2).Int32())
         }
@@ -425,8 +427,8 @@ func TestDupSplitO5(t *testing.T) {
         ack <- true
     }
     if i != -1 {
-        t.Error("Expected to get 15 records instead found ", 15 - i)
+        t.Error("Expected to get 15 records instead found ", i)
     }
     cleanbptree(self)
-    t.Fatal(i)
-}*/
+//     t.Fatal(i)
+}
