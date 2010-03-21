@@ -24,15 +24,9 @@ func init() {
    balance blocks takes two keyblocks full, and empty and balances the records between them. full must be full
    empty must be empty
 */
-func (self BpTree) balance_blocks(full *KeyBlock, empty *KeyBlock) {
+func (self BpTree) balance_blocks(s int, full, empty *KeyBlock) {
     n := int(full.MaxRecordCount())
-    m := n >> 1
-    // we have to subtract 1 from m if n is even because otherwise the blocks will not correctly
-    // balance in this case, do some examples out on paper to really understand this.
-    if n%2 == 0 {
-        m -= 1
-    }
-    for j := n - 1; j > m; j-- {
+    for j := n - 1; j > s; j-- {
         // move the records
         if r, _, _, ok := full.Get(j); !ok {
             fmt.Printf("could not get index j<%v> from block: %v", j, full)
@@ -68,30 +62,41 @@ func (self *BpTree) split(a *KeyBlock, rec *tmprec, nextb *KeyBlock, dirty *dirt
     }()
     dirty.Insert(b)
 
+    // m is the record to take as the "mid" point it is no longer stictly the mid point because
+    //      one must be careful to not split up duplicate keys. instead m is the closest point to
+    //      the mid point which is on the edge of the run of duplicate keys
+    //
+    // s is the point which the blocks should be balanced against. (ie the balance point)
+    m, s := func() (m int, s int) {
+                getk := func(i int) ByteSlice {
+                    r, _, _, _ := a.Get(i)
+                    return r.GetKey()
+                }
+                n := int(a.MaxRecordCount()) + 1
+                key := getk(n >> 1)
+                l, _, _, _, _ := a.Find(key) // l = left the left side of the run of dup keys
+                r := l                       // r = right the right side of the run of dup keys
+                for ; r < n-1 && getk(r).Eq(key); r++ { }
+                r--
+                lr := math.Fabs(float64(l)/float64(n)) // left ratio (ie. how close is left to mid)
+                rr := math.Fabs(float64(r)/float64(n)) // right ration (ie. how close is right to mid)
+                // we return which ever has a ratio closer to zero
+                if lr <= rr {
+                    m = l
+                    s = l - 1 // since it is the left one we *must* subtract one from the balance point
+                } else {
+                    m = r
+                    s = r
+                }
+                return
+            }()
+
     // This dependent block finds which record or split the block on.
     // it also identifies which the record should point at
     var split_rec *Record
     var nextp ByteSlice
     {
-        findm := func() int {
-            getk := func(i int) ByteSlice {
-                r, _, _, _ := a.Get(i)
-                return r.GetKey()
-            }
-            n := int(a.MaxRecordCount()) + 1
-            m := n >> 1
-            key := getk(m)
-            i, _, _, _, _ := a.Find(key)
-            j := i
-            for ; j < n-1 && getk(j).Eq(key); j++ { }
-            j--
-            ir := math.Fabs(float64(i)/float64(n))
-            jr := math.Fabs(float64(j)/float64(n))
-            if ir <= jr { return i }
-            return j
-        }
         i, _, _, _, _ := a.Find(r.GetKey())
-        m := findm()
 
         if m > i {
             // the mid point is after the spot where we would insert the key so we take the record
@@ -127,7 +132,7 @@ func (self *BpTree) split(a *KeyBlock, rec *tmprec, nextb *KeyBlock, dirty *dirt
             }
         }
     }
-    self.balance_blocks(a, b)
+    self.balance_blocks(s, a, b)    // using s as the balance point
 
     var return_rec *Record = split_rec
     var block *KeyBlock
