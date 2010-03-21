@@ -298,8 +298,8 @@ func TestInsert(t *testing.T) {
 
 func TestRandomBuild(t *testing.T) {
     fmt.Println("----------- Random Build -----------")
-    for _,size := range sizes {
-//         if i == 4 { break }                                     // REMOVE THIS FOR REAL TESTS
+    for i,size := range sizes {
+        if i == 4 { break }                                     // REMOVE THIS FOR REAL TESTS
         var order int
         {
             self := makebptree(size, t)
@@ -333,6 +333,57 @@ func TestRandomBuild(t *testing.T) {
             }
             cleanbptree(self)
         }
+    }
+}
+
+func TestDupSplitO3(t *testing.T) {
+    tests := [4][3]int{[3]int{1, 1, 2},
+                      [3]int{2, 2, 3},
+                      [3]int{1, 2, 2},
+                      [3]int{1, 3, 3},
+    }
+    for _,test := range tests {
+        t.Error(test)
+    }
+}
+
+func TestDupSplitO4(t *testing.T) {
+    tests := [][4]int{[4]int{1, 1, 2, 3},
+                      [4]int{1, 1, 1, 3},
+                      [4]int{1, 2, 2, 3},
+                      [4]int{2, 2, 2, 3},
+                      [4]int{1, 2, 2, 2},
+                      [4]int{1, 2, 3, 3},
+                      [4]int{1, 3, 3, 3},
+                      [4]int{1, 1, 3, 3},
+    }
+    for _,test := range tests {
+        t.Error(test)
+    }
+}
+
+
+func TestDupSplitO5(t *testing.T) {
+    tests := [][5]int{[5]int{1, 1, 2, 3, 5},
+                      [5]int{1, 1, 1, 4, 5},
+                      [5]int{1, 1, 1, 1, 5},
+                      [5]int{1, 2, 2, 3, 5},
+                      [5]int{2, 2, 3, 4, 5},
+                      [5]int{2, 2, 2, 4, 5},
+                      [5]int{1, 2, 2, 2, 5},
+                      [5]int{2, 2, 2, 2, 5},
+                      [5]int{1, 2, 2, 2, 2},
+                      [5]int{1, 3, 3, 4, 5},
+                      [5]int{1, 2, 3, 3, 5},
+                      [5]int{1, 3, 3, 3, 5},
+                      [5]int{3, 3, 3, 3, 5},
+                      [5]int{1, 3, 3, 3, 3},
+                      [5]int{1, 2, 4, 4, 5},
+                      [5]int{1, 4, 4, 4, 5},
+                      [5]int{1, 4, 4, 4, 5},
+    }
+    for _,test := range tests {
+        t.Error(test)
     }
 }
 
