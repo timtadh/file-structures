@@ -108,7 +108,18 @@ func (self *BpTree) split(a *KeyBlock, rec *tmprec, nextb *KeyBlock, dirty *dirt
     var split_rec *Record
     var nextp ByteSlice
     {
-        i, _, _, _, _ := a.Find(r.GetKey())
+        i, _, _, _, ok := a.Find(r.GetKey())
+
+        // so what is going on here is if the key is in a certain block we need to make sure
+        // we insert our next key in that block. This is the cleanest way to do that for now. even
+        // though it is hideously ugly.
+        if ok && m > i {
+//             fmt.Println("choosing a", i, m, ok)
+            choice = true
+        } else {
+//             fmt.Println("choosing b", i, m, ok)
+            choice = false
+        }
 
         if m > i {
             // the mid point is after the spot where we would insert the key so we take the record
@@ -151,6 +162,7 @@ func (self *BpTree) split(a *KeyBlock, rec *tmprec, nextb *KeyBlock, dirty *dirt
 
     // choose which block to insert the record into
     if choice {
+//         fmt.Println("chose a")
         block = a
         if rec, _, _, ok := b.Get(0); !ok {
             log.Exit("Could not get the first record from block b PANIC")
@@ -160,8 +172,14 @@ func (self *BpTree) split(a *KeyBlock, rec *tmprec, nextb *KeyBlock, dirty *dirt
             return_rec = rec
         }
     } else {
+//         fmt.Println("chose b")
         block = b
     }
+
+//     fmt.Println("Full:\n", a)
+//     fmt.Println("Empty:\n", b)
+//     fmt.Println("Rec:", r)
+//     fmt.Println("return rec:", return_rec)
 
     // add the record to the block
     if i, ok := block.Add(split_rec); !ok {
@@ -190,11 +208,6 @@ func (self *BpTree) split(a *KeyBlock, rec *tmprec, nextb *KeyBlock, dirty *dirt
         b.SetExtraPtr(tmp)
         a.SetExtraPtr(b.Position())
     }
-
-    //     fmt.Println("Full:\n", a)
-    //     fmt.Println("Empty:\n", b)
-    //     fmt.Println("Rec:", r)
-    //     fmt.Println("return rec:", return_rec)
 
     return b, rec_to_tmp(self, return_rec), true
 }
@@ -263,11 +276,11 @@ func (self *BpTree) insert(block *KeyBlock, rec *tmprec, height int, dirty *dirt
             return nil, nil, false
         }
     } else {
-        c := block.Count(rec.key)
-        ratio := float(c) / float(block.MaxRecordCount())
-        if c > 1 && block.Full() || ratio > .5 {
-            fmt.Println("Magic Heres Abouts")
-        }
+//         c := block.Count(rec.key)
+//         ratio := float(c) / float(block.MaxRecordCount())
+//         if block.Full() {
+//             fmt.Println("Magic Heres Abouts", r, "\n", block)
+//         }
     }
     // this block is changed
     dirty.Insert(block)
