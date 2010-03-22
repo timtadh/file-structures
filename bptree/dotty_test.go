@@ -8,14 +8,14 @@ import . "block/byteslice"
 import "container/list"
 
 var header string = "digraph btree {\n"
-var footer string = "}\n"
+var footer string = "}\n\n"
 
-var subgraph string = "subgraph graph0 {\ngraph[rank=same];\n"
+var subgraph string = "\n    subgraph graph0 {\n        graph[rank=same];\n"
 
 func Dotty(filename string, tree *BpTree) {
-
-    file, _ := os.Open(filename, os.O_RDWR|os.O_CREAT, 0666)
-    fmt.Fprintln(file, header)
+    s := ""
+    file, _ := os.Open(filename, os.O_WRONLY|os.O_CREAT|os.O_TRUNC, 0666)
+    s += header
 
     label := func(vals []string, size int) string {
         s := ""
@@ -50,7 +50,7 @@ func Dotty(filename string, tree *BpTree) {
                     log.Exitf("nil block returned by self.getblock(p)", i, block.RecordCount())
                 }
                 c++
-                edges.PushBack(fmt.Sprintf("%v->%v", name, traverse(nblock, height - 1)))
+                edges.PushBack(fmt.Sprintf("    %v->%v", name, traverse(nblock, height - 1)))
             }
             vals[i] = fmt.Sprintf("%v", rec.GetKey().Int32())
         }
@@ -60,7 +60,7 @@ func Dotty(filename string, tree *BpTree) {
                 log.Exitf("nil block returned by self.getblock(p)", i, block.RecordCount())
             }
             c++
-            edges.PushBack(fmt.Sprintf("%v->%v", name, traverse(nblock, height - 1)))
+            edges.PushBack(fmt.Sprintf("    %v->%v", name, traverse(nblock, height - 1)))
         }
         return vals
     }
@@ -71,9 +71,9 @@ func Dotty(filename string, tree *BpTree) {
         names[block.Position().Int64()] = name
         vals := values(name, height, block, edges)
         if height > 0 {
-            fmt.Fprintf(file, "%v[shape=record, label=\"%v\"]\n", name, label(vals, int(block.MaxRecordCount())))
+            s += fmt.Sprintf("    %v[shape=record, label=\"%v\"]\n", name, label(vals, int(block.MaxRecordCount())))
         } else {
-            external.PushBack(fmt.Sprintf("%v[shape=record, label=\"%v\"]",
+            external.PushBack(fmt.Sprintf("        %v[shape=record, label=\"%v\"]",
                                           name, label(vals, int(block.MaxRecordCount()))))
         }
         return name
@@ -95,25 +95,26 @@ func Dotty(filename string, tree *BpTree) {
             name := fmt.Sprintf("node%v", c)
             names[block.Position().Int64()] = name
             vals := values(name, 0, block, edges)
-            external.PushBack(fmt.Sprintf("%v[shape=record, label=\"%v\"]",
+            external.PushBack(fmt.Sprintf("        %v[shape=record, label=\"%v\"]",
                                           name, label(vals, int(block.MaxRecordCount()))))
         }
-        edges.PushBack(fmt.Sprintf("%v->%v", names[block.Position().Int64()], names[p.Int64()]))
+        edges.PushBack(fmt.Sprintf("    %v->%v", names[block.Position().Int64()], names[p.Int64()]))
         block = tree.getblock(p)
         p, _ = block.GetExtraPtr()
     }
-    file.WriteString(fmt.Sprintln(subgraph))
+    s += subgraph
     for e := range external.Iter() {
         if node, ok := e.(string); ok {
-            file.WriteString(fmt.Sprintln(node))
+            s += fmt.Sprintln(node)
         }
     }
-    file.WriteString(fmt.Sprintln(footer))
+    s += "    " + footer
     for e := range edges.Iter() {
         if edge, ok := e.(string); ok {
-            file.WriteString(fmt.Sprintln(edge))
+            s += fmt.Sprintln(edge)
         }
     }
-    file.WriteString(fmt.Sprintln(footer))
+    s += footer
+    fmt.Fprint(file, s)
     file.Close()
 }
