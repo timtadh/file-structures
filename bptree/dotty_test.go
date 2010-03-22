@@ -90,11 +90,11 @@ func Dotty(filename string, tree *BpTree) {
     block := first(tree.getblock(tree.info.Root()), tree.info.Height()-1)
     p, _ := block.GetExtraPtr()
     for !p.Eq(ByteSlice64(0)) {
-        if _,ok := names[block.Position().Int64()]; !ok {
+        if _,ok := names[p.Int64()]; !ok {
             c++
             name := fmt.Sprintf("node%v", c)
-            names[block.Position().Int64()] = name
-            vals := values(name, 0, block, edges)
+            names[p.Int64()] = name
+            vals := values(name, 0, tree.getblock(p), edges)
             external.PushBack(fmt.Sprintf("        %v[shape=record, label=\"%v\"]",
                                           name, label(vals, int(block.MaxRecordCount()))))
         }

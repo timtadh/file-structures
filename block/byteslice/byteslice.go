@@ -97,6 +97,28 @@ func (a ByteSlice) Gt(b ByteSlice) bool {
     return t
 }
 
+func (self ByteSlice) Copy() ByteSlice {
+    bytes := make(ByteSlice, len(self))
+    for i,b := range self {
+        bytes[i] = b
+    }
+    return bytes
+}
+
+func (self ByteSlice) Inc() ByteSlice {
+    bytes := self.Copy()
+    inc := true
+    for i := len(bytes) - 1; i >= 0; i-- {
+        if inc {
+            bytes[i] = self[i] + 1
+            if bytes[i] != 0 { inc = false }
+        } else {
+            bytes[i] = self[i]
+        }
+    }
+    return bytes
+}
+
 func (b ByteSlice) String() string {
     if b == nil {
         return "<nil>"

@@ -389,7 +389,7 @@ func TestDupSplitO5(t *testing.T) {
 */
 func TestDuplicate(t *testing.T) {
     fmt.Println("----------- Test Duplicate -----------")
-    size := uint32(ORDER_3_3)
+    size := uint32(ORDER_4_4)
     var order int
     {
         self := makebptree(size, t)
@@ -409,24 +409,24 @@ func TestDuplicate(t *testing.T) {
             _, ok = inserted[j]
         }
         inserted[j] = true
-        if j == skip { continue }
+        if j == skip || j == skip+1 { continue }
         self.Insert(ByteSlice32(uint32(j)), record)
     }
-    for i := 0; i < 3; i++ {
+    for i := 0; i < 15; i++ {
         rec := []ByteSlice(&[3][]byte{&[2]byte{1, 2}, &[2]byte{3, 4}, ByteSlice32(uint32(i))})
         self.Insert(ByteSlice32(uint32(skip)), rec)
     }
 
     records, ack := self.Find(ByteSlice32(uint32(skip)), ByteSlice32(uint32(skip)))
-    i := 2
+    i := 14
     for rec := range records {
         t.Log(rec)
-        if !rec.Get(2).Eq(ByteSlice32(uint32(i))) {
-            t.Logf("\n\n371 expected %v as the value of the record got %v\n\n", i, rec.Get(2).Int32())
-        }
         i--
         ack <- true
     }
+
+    self.Insert(ByteSlice32(uint32(skip+1)), record)
+
     if i != -1 {
         t.Error("Expected to get 15 records instead found ", i)
     }

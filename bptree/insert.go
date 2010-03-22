@@ -20,6 +20,22 @@ func init() {
     }
 }
 
+func (self BpTree) findlastblock(block *KeyBlock, key ByteSlice) *KeyBlock {
+    p, _ := block.GetExtraPtr()
+    if p.Eq(ByteSlice64(0)) {
+        return block
+    }
+    next := self.getblock(p)
+    if r, _, _, ok := next.Get(0); !ok {
+        return block
+    } else {
+        if r.GetKey().Eq(key) {
+            return self.findlastblock(next, key)
+        }
+    }
+    return block
+}
+
 /*
    balance blocks takes two keyblocks full, and empty and balances the records between them. full must be full
    empty must be empty
@@ -278,9 +294,31 @@ func (self *BpTree) insert(block *KeyBlock, rec *tmprec, height int, dirty *dirt
     } else {
 //         c := block.Count(rec.key)
 //         ratio := float(c) / float(block.MaxRecordCount())
-//         if block.Full() {
-//             fmt.Println("Magic Heres Abouts", r, "\n", block)
-//         }
+        if block.Full() {
+            firstr, _, _, _ := block.Get(0)
+            if block.Count(firstr.GetKey()) == int(block.MaxRecordCount()) {
+                block := self.findlastblock(block, firstr.GetKey())
+                dirty.Insert(block)
+                fmt.Println("Magic Heres Abouts", r, "\n", block)
+                if block.Full() || !r.GetKey().Eq(firstr.GetKey()) {
+                    newblock := self.allocate(self.external)
+                    dirty.Insert(newblock)
+                    p, _ := block.GetExtraPtr()
+                    newblock.SetExtraPtr(p)
+                    block.SetExtraPtr(newblock.Position())
+                    newblock.Add(r)
+                    if r.GetKey().Eq(firstr.GetKey()) {
+                        return nil, nil, false
+                    } else {
+                        return newblock, rec, true
+                    }
+                } else {
+                    fmt.Println("adding r")
+                    block.Add(r)
+                    return nil, nil, false
+                }
+            }
+        }
     }
     // this block is changed
     dirty.Insert(block)
