@@ -331,7 +331,7 @@ func TestRandomBuild(t *testing.T) {
                 i++
                 ack <- true
             }
-            if size == ORDER_2_2 { Dotty("bptree.dot", self) }
+            if size == ORDER_4_4 && k == 0{ Dotty("bptree.dot", self) }
             cleanbptree(self)
         }
     }

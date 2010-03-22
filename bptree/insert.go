@@ -67,7 +67,9 @@ func (self *BpTree) split(a *KeyBlock, rec *tmprec, nextb *KeyBlock, dirty *dirt
     //      the mid point which is on the edge of the run of duplicate keys
     //
     // s is the point which the blocks should be balanced against. (ie the balance point)
-    m, s := func() (m int, s int) {
+    //
+    // choice is the block to insert into, true is a, false is b
+    m, s, choice := func() (m int, s int, choice bool) {
                 getk := func(i int) ByteSlice {
                     r, _, _, _ := a.Get(i)
                     return r.GetKey()
@@ -84,9 +86,11 @@ func (self *BpTree) split(a *KeyBlock, rec *tmprec, nextb *KeyBlock, dirty *dirt
                 if lr <= rr {
                     m = l
                     s = l - 1 // since it is the left one we *must* subtract one from the balance point
+                    choice = false
                 } else {
                     m = r
                     s = r
+                    choice = true
                 }
                 return
             }()
@@ -138,21 +142,14 @@ func (self *BpTree) split(a *KeyBlock, rec *tmprec, nextb *KeyBlock, dirty *dirt
     var block *KeyBlock
 
     // choose which block to insert the record into
-    if a.MaxRecordCount()%2 == 0 {
-        // if the btree is of even order we want to randomly choose block so it will be balanced
-        // over time. if we always choose in the sameway the tree will be unbalanced over time.
-        f := rand.Float()
-        if f > 0.5 {
-            block = a
-            if rec, _, _, ok := b.Get(0); !ok {
-                log.Exit("Could not get the first record from block b PANIC")
-            } else {
-                // we change the record returned because the first record in block b will now not
-                // be the record we split on which is ok we just need to return the correct record.
-                return_rec = rec
-            }
+    if choice {
+        block = a
+        if rec, _, _, ok := b.Get(0); !ok {
+            log.Exit("Could not get the first record from block b PANIC")
         } else {
-            block = b
+            // we change the record returned because the first record in block b will now not
+            // be the record we split on which is ok we just need to return the correct record.
+            return_rec = rec
         }
     } else {
         block = b
