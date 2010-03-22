@@ -409,7 +409,7 @@ func TestDuplicate(t *testing.T) {
             _, ok = inserted[j]
         }
         inserted[j] = true
-        if j == skip || j == skip+1 { continue }
+        if j == skip || j == skip+1 || j == skip+2 { continue }
         self.Insert(ByteSlice32(uint32(j)), record)
     }
     for i := 0; i < 15; i++ {
@@ -425,7 +425,8 @@ func TestDuplicate(t *testing.T) {
         ack <- true
     }
 
-    self.Insert(ByteSlice32(uint32(skip+1)), record)
+    self.Insert(ByteSlice32(uint32(skip+2)), record)
+//     self.Insert(ByteSlice32(uint32(skip+1)), record)
 
     if i != -1 {
         t.Error("Expected to get 15 records instead found ", i)

@@ -99,7 +99,7 @@ func (self *BpTree) split(a *KeyBlock, rec *tmprec, nextb *KeyBlock, dirty *dirt
                 lr := math.Fabs(float64(l)/float64(n)) // left ratio (ie. how close is left to mid)
                 rr := math.Fabs(float64(r)/float64(n)) // right ration (ie. how close is right to mid)
                 // we return which ever has a ratio closer to zero
-                if lr <= rr {
+                if lr <= rr && l != 0{
                     m = l
                     s = l - 1 // since it is the left one we *must* subtract one from the balance point
                     choice = false
@@ -192,13 +192,13 @@ func (self *BpTree) split(a *KeyBlock, rec *tmprec, nextb *KeyBlock, dirty *dirt
         block = b
     }
 
-//     fmt.Println("Full:\n", a)
-//     fmt.Println("Empty:\n", b)
-//     fmt.Println("Rec:", r)
-//     fmt.Println("return rec:", return_rec)
-
     // add the record to the block
     if i, ok := block.Add(split_rec); !ok {
+        fmt.Println(m, s, choice)
+        fmt.Println("Full:\n", a)
+        fmt.Println("Empty:\n", b)
+        fmt.Println("Rec:", r)
+        fmt.Println("return rec:", return_rec)
         log.Exit("Could not add the split_rec to the selected block PANIC")
     } else {
         // we now insert the pointer if we have one
@@ -310,7 +310,7 @@ func (self *BpTree) insert(block *KeyBlock, rec *tmprec, height int, dirty *dirt
                     if r.GetKey().Eq(firstr.GetKey()) {
                         return nil, nil, false
                     } else {
-                        return newblock, rec, true
+                        return newblock, rec_to_tmp(self, self.internal.NewRecord(firstr.GetKey().Inc())), true
                     }
                 } else {
                     fmt.Println("adding r")
