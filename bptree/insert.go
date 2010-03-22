@@ -92,6 +92,13 @@ func (self *BpTree) split(a *KeyBlock, rec *tmprec, nextb *KeyBlock, dirty *dirt
                     s = r
                     choice = true
                 }
+                // we can only make a random choice about which block to insert the new record into
+                // if there are no duplicate keys in the block, and the block fits and even number
+                // of keys
+                if (n-1)%2 == 0 && a.Count(rec.key) == 0 {
+                    f := rand.Float()
+                    if f > .5 { choice = true } else { choice = false }
+                }
                 return
             }()
 
@@ -163,7 +170,7 @@ func (self *BpTree) split(a *KeyBlock, rec *tmprec, nextb *KeyBlock, dirty *dirt
         if block.Mode()&POINTERS == POINTERS && nextp != nil {
             // we have a block that supports a pointer and a pointer
             if !block.InsertPointer(i, nextp) {
-
+                log.Exit("166 pointer insert failed! PANIC")
             }
         } else if block.Mode()&POINTERS == 0 && nextp != nil {
             // we don't have a block that supports a pointer but we do have a pointer

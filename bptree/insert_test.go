@@ -306,7 +306,7 @@ func TestRandomBuild(t *testing.T) {
             order = self.internal.KeysPerBlock()
             cleanbptree(self)
         }
-        n := order*(order+2)+1
+        n := order*order*(order+2)+1
         fmt.Printf("testing block size %v, b+ tree order %v, with %v inserts\n", size, order, n)
         for k := 0; k < 15; k++ {
             inserted := make(map[int] bool)
