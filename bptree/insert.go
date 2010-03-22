@@ -92,6 +92,7 @@ func (self *BpTree) split(a *KeyBlock, rec *tmprec, nextb *KeyBlock, dirty *dirt
                     s = r
                     choice = true
                 }
+
                 // we can only make a random choice about which block to insert the new record into
                 // if there are no duplicate keys in the block, and the block fits and even number
                 // of keys
@@ -190,6 +191,11 @@ func (self *BpTree) split(a *KeyBlock, rec *tmprec, nextb *KeyBlock, dirty *dirt
         a.SetExtraPtr(b.Position())
     }
 
+    //     fmt.Println("Full:\n", a)
+    //     fmt.Println("Empty:\n", b)
+    //     fmt.Println("Rec:", r)
+    //     fmt.Println("return rec:", return_rec)
+
     return b, rec_to_tmp(self, return_rec), true
 }
 
@@ -212,7 +218,7 @@ func (self *BpTree) insert(block *KeyBlock, rec *tmprec, height int, dirty *dirt
         var pos ByteSlice
         {
             // we find where in the block this key would be inserted
-            i, _, _, _, _ := block.Find(rec.key)
+            i, _, _, _, ok := block.Find(rec.key)
 
             if i == 0 {
                 // if that spot is zero it means that it is less than the smallest key the block
@@ -223,6 +229,12 @@ func (self *BpTree) insert(block *KeyBlock, rec *tmprec, height int, dirty *dirt
                     pos = p
                 } else {
                     log.Exitf("227 Error could not get record %v from block %v", i, block)
+                }
+            } else if ok {
+                if _, p, _, ok := block.Get(i); ok {
+                    pos = p
+                } else {
+                    log.Exitf("235 Error could not get record %v from block %v", i, block)
                 }
             } else {
                 // else this spot is one to many so we get the previous spot

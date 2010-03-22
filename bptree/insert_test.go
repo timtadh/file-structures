@@ -331,7 +331,6 @@ func TestRandomBuild(t *testing.T) {
                 i++
                 ack <- true
             }
-            if size == ORDER_4_4 && k == 0{ Dotty("bptree.dot", self) }
             cleanbptree(self)
         }
     }
@@ -397,7 +396,7 @@ func TestDuplicate(t *testing.T) {
         order = self.internal.KeysPerBlock()
         cleanbptree(self)
     }
-    n := order*order*(order+2)+1
+    n := order*(order+2)+1
     fmt.Printf("testing block size %v, b+ tree order %v, with %v inserts\n", size, order, n)
     inserted := make(map[int] bool)
     self := makebptree(size, t)
@@ -411,13 +410,13 @@ func TestDuplicate(t *testing.T) {
         inserted[j] = true
         self.Insert(ByteSlice32(uint32(j)), record)
     }
-    for i := 0; i < 15; i++ {
+    for i := 0; i < 2; i++ {
         rec := []ByteSlice(&[3][]byte{&[2]byte{1, 2}, &[2]byte{3, 4}, ByteSlice32(uint32(i))})
         self.Insert(ByteSlice32(uint32(n)), rec)
     }
 
     records, ack := self.Find(ByteSlice32(uint32(n)), ByteSlice32(uint32(n)))
-    i := 14
+    i := 1
     for rec := range records {
         t.Log(rec)
         if !rec.Get(2).Eq(ByteSlice32(uint32(i))) {
@@ -429,6 +428,7 @@ func TestDuplicate(t *testing.T) {
     if i != -1 {
         t.Error("Expected to get 15 records instead found ", i)
     }
+    Dotty("bptree.dot", self)
     cleanbptree(self)
 //     t.Fatal(i)
 }
