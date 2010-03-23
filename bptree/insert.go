@@ -128,7 +128,6 @@ func (self *BpTree) split(a *KeyBlock, rec *tmprec, nextb *KeyBlock, dirty *dirt
     var nextp ByteSlice
     {
         i, _, _, _, ok := a.Find(r.GetKey())
-        i--
         fmt.Printf("m=%v, s=%v, i=%v, choice=%v\n", m, s, i, choice)
 
         // so what is going on here is if the key is in a certain block we need to make sure
@@ -322,7 +321,9 @@ func (self *BpTree) insert(block *KeyBlock, rec *tmprec, height int, dirty *dirt
                     p, _ := block.GetExtraPtr()
                     newblock.SetExtraPtr(p)
                     block.SetExtraPtr(newblock.Position())
-                    newblock.Add(r)
+                    if _, ok := newblock.Add(r); !ok {
+                        log.Exit("325 could not add to empty block")
+                    }
                     if r.GetKey().Eq(firstr.GetKey()) {
                         return nil, nil, false
                     } else {
@@ -350,6 +351,11 @@ func (self *BpTree) insert(block *KeyBlock, rec *tmprec, height int, dirty *dirt
             log.Exit("tried to set a pointer on a block with no pointers")
         }
         return nil, nil, false
+    } else if i == -2 {
+        Dotty("error.dot", self)
+        dirty.Sync()
+        Dotty("error2.dot", self)
+        log.Exit("tried to insert a duplicate key into a block which does not allow that.\n", r, "\n", block)
     }
     // Block is full split the block
     return self.split(block, rec, nextb, dirty)

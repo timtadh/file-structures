@@ -346,23 +346,41 @@ func TestDupSplitO3(t *testing.T) {
         t.Error(test)
     }
 }
+*/
 
 func TestDupSplitO4(t *testing.T) {
-    tests := [][4]int{[4]int{1, 1, 2, 3},
-                      [4]int{1, 1, 1, 3},
-                      [4]int{1, 2, 2, 3},
-                      [4]int{2, 2, 2, 3},
-                      [4]int{1, 2, 2, 2},
-                      [4]int{1, 2, 3, 3},
-                      [4]int{1, 3, 3, 3},
-                      [4]int{1, 1, 3, 3},
+    tests := [][5]uint32{
+                      [5]uint32{1, 1, 2, 3, 1},
+                      [5]uint32{1, 1, 2, 3, 2},
+                      [5]uint32{1, 1, 2, 3, 3},
+                      [5]uint32{1, 1, 1, 3, 3},
+                      [5]uint32{1, 1, 1, 3, 1},
+                      [5]uint32{1, 2, 2, 3, 1},
+                      [5]uint32{1, 2, 2, 3, 2},
+                      [5]uint32{1, 2, 2, 3, 3},
+                      [5]uint32{2, 2, 2, 3, 2},
+                      [5]uint32{2, 2, 2, 3, 3},
+                      [5]uint32{1, 2, 2, 2, 1},
+                      [5]uint32{1, 2, 2, 2, 2},
+                      [5]uint32{1, 2, 3, 3, 1},
+                      [5]uint32{1, 2, 3, 3, 2},
+                      [5]uint32{1, 2, 3, 3, 3},
+                      [5]uint32{1, 3, 3, 3, 1},
+                      [5]uint32{1, 3, 3, 3, 3},
+                      [5]uint32{1, 1, 3, 3, 1},
+                      [5]uint32{1, 1, 3, 3, 3},
     }
     for _,test := range tests {
-        t.Error(test)
+        self := makebptree(ORDER_4_4, t)
+        for _,i := range test {
+            self.Insert(ByteSlice32(i), record)
+        }
+        cleanbptree(self)
+        fmt.Println("\n\n-----------------------------------------------------------------------\n\n\n\n")
     }
 }
 
-
+/*
 func TestDupSplitO5(t *testing.T) {
     tests := [][5]int{[5]int{1, 1, 2, 3, 5},
                       [5]int{1, 1, 1, 4, 5},
@@ -396,7 +414,7 @@ func TestDuplicate(t *testing.T) {
         order = self.internal.KeysPerBlock()
         cleanbptree(self)
     }
-    n := (order+2)
+    n := order*(order+2)
     fmt.Printf("testing block size %v, b+ tree order %v, with %v inserts\n", size, order, n)
     inserted := make(map[int] bool)
     self := makebptree(size, t)
