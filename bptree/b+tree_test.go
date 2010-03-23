@@ -24,7 +24,7 @@ func newBpTree(blocksize uint32, filename string, keysize uint32, fields []uint3
         self.bf = bf
     }
     self.blocksize = blocksize
-    if inter, ok := NewBlockDimensions(POINTERS|EQUAPTRS, self.blocksize, keysize, 8, nil); !ok {
+    if inter, ok := NewBlockDimensions(POINTERS|EQUAPTRS|NODUP, self.blocksize, keysize, 8, nil); !ok {
         fmt.Println("Block Dimensions invalid")
         return nil, false
     } else {

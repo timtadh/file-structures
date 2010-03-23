@@ -67,6 +67,8 @@ func (self BpTree) balance_blocks(s int, full, empty *KeyBlock) {
 
 func (self *BpTree) split(a *KeyBlock, rec *tmprec, nextb *KeyBlock, dirty *dirty.DirtyBlocks) (*KeyBlock, *tmprec, bool) {
 
+    fmt.Println("Original:\n", a)
+
     // this closure figures out which kind of block and record we need, either external or internal
     // we make this choice based on the mode of a because b+ trees have the property that the
     // allocated block always has the same node as the block to be split.
@@ -225,6 +227,11 @@ func (self *BpTree) split(a *KeyBlock, rec *tmprec, nextb *KeyBlock, dirty *dirt
         a.SetExtraPtr(b.Position())
     }
 
+    fmt.Println("Full:\n", a)
+    fmt.Println("Empty:\n", b)
+    fmt.Println("Rec:", r)
+    fmt.Println("return rec:", return_rec)
+
     return b, rec_to_tmp(self, return_rec), true
 }
 
@@ -237,6 +244,8 @@ func (self *BpTree) insert(block *KeyBlock, rec *tmprec, height int, dirty *dirt
         return rec.internal()
     }
     r := _convert(rec)
+
+    fmt.Println("INSERTING ", r, block, "\n\n\n")
 
     // nextb is the block to be passed up the the caller in the case of a split at this level.
     var nextb *KeyBlock
@@ -310,7 +319,8 @@ func (self *BpTree) insert(block *KeyBlock, rec *tmprec, height int, dirty *dirt
                     if r.GetKey().Eq(firstr.GetKey()) {
                         return nil, nil, false
                     } else {
-                        return newblock, rec_to_tmp(self, self.internal.NewRecord(firstr.GetKey().Inc())), true
+//                         return newblock, rec_to_tmp(self, self.internal.NewRecord(firstr.GetKey().Inc())), true
+                        return newblock, rec_to_tmp(self, r), true
                     }
                 } else {
                     fmt.Println("adding r")

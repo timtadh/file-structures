@@ -3,6 +3,7 @@ package keyblock
 import "fmt"
 import . "block/file"
 import . "block/byteslice"
+import "log"
 
 const BLOCKHEADER = 5
 
@@ -81,7 +82,11 @@ func (b *KeyBlock) Add(r *Record) (int, bool) {
     }
     //     fmt.Println()
     //     fmt.Println(r)
-    i, _ := b.find(r.key)
+    i, ok := b.find(r.key)
+    if b.dim.Mode&NODUP == NODUP && ok {
+        log.Exit("tried to insert a duplicate key into a block which does not allow that.")
+        return -1, false
+    }
     //     fmt.Printf("i=%v, k=%v\n", i, r.GetKey())
     //     if !ok {
     j := len(b.records)

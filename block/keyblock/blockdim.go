@@ -8,6 +8,7 @@ const (
     POINTERS
     EXTRAPTR
     EQUAPTRS
+    NODUP
 )
 
 type BlockDimensions struct {
@@ -58,35 +59,35 @@ func (self *BlockDimensions) Valid() bool {
         return false
     }
     switch self.Mode {
-    case RECORDS:
+    case RECORDS, RECORDS|NODUP:
         if self.RecordSize() > 0 && self.PointerSize == 0 &&
             self.BlockSize >= self.RecordSize()+self.KeySize+BLOCKHEADER {
             return true
         } else {
             return false
         }
-    case POINTERS:
+    case POINTERS, POINTERS|NODUP:
         if self.PointerSize > 0 && self.RecordSize() == 0 &&
             self.BlockSize >= (2*self.PointerSize)+self.KeySize+BLOCKHEADER {
             return true
         } else {
             return false
         }
-    case POINTERS | EQUAPTRS:
+    case POINTERS | EQUAPTRS, POINTERS|EQUAPTRS|NODUP:
         if self.PointerSize > 0 && self.RecordSize() == 0 &&
             self.BlockSize >= self.PointerSize+self.KeySize+BLOCKHEADER {
             return true
         } else {
             return false
         }
-    case RECORDS | EXTRAPTR:
+    case RECORDS | EXTRAPTR, RECORDS|EXTRAPTR|NODUP:
         if self.RecordSize() > 0 && self.PointerSize > 0 &&
             self.BlockSize >= self.PointerSize+self.RecordSize()+self.KeySize+BLOCKHEADER {
             return true
         } else {
             return false
         }
-    case RECORDS | POINTERS:
+    case RECORDS | POINTERS, RECORDS|POINTERS|NODUP:
         if self.RecordSize() > 0 && self.PointerSize > 0 &&
             self.BlockSize >= (2*self.PointerSize)+self.RecordSize()+self.KeySize+BLOCKHEADER {
             return true
