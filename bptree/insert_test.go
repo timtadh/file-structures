@@ -396,12 +396,12 @@ func TestDuplicate(t *testing.T) {
         order = self.internal.KeysPerBlock()
         cleanbptree(self)
     }
-    n := order*(order+2)
+    n := (order+2)
     fmt.Printf("testing block size %v, b+ tree order %v, with %v inserts\n", size, order, n)
     inserted := make(map[int] bool)
     self := makebptree(size, t)
     for i := 0; i < n; i++ {
-        m := order*2
+        m := order
         j := rand.Intn(m)
         inserted[j] = true
         self.Insert(ByteSlice32(uint32(j)), record)

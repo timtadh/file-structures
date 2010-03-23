@@ -67,6 +67,7 @@ func (self BpTree) balance_blocks(s int, full, empty *KeyBlock) {
 
 func (self *BpTree) split(a *KeyBlock, rec *tmprec, nextb *KeyBlock, dirty *dirty.DirtyBlocks) (*KeyBlock, *tmprec, bool) {
 
+    fmt.Println("Splitting", rec.internal())
     fmt.Println("Original:\n", a)
 
     // this closure figures out which kind of block and record we need, either external or internal
@@ -114,10 +115,10 @@ func (self *BpTree) split(a *KeyBlock, rec *tmprec, nextb *KeyBlock, dirty *dirt
                 // we can only make a random choice about which block to insert the new record into
                 // if there are no duplicate keys in the block, and the block fits and even number
                 // of keys
-                if (n-1)%2 == 0 && a.Count(rec.key) == 0 {
-                    f := rand.Float()
-                    if f > .5 { choice = true } else { choice = false }
-                }
+//                 if (n-1)%2 == 0 && a.Count(rec.key) == 0 {
+//                     f := rand.Float()
+//                     if f > .5 { choice = true } else { choice = false }
+//                 }
                 return
             }()
 
@@ -127,6 +128,8 @@ func (self *BpTree) split(a *KeyBlock, rec *tmprec, nextb *KeyBlock, dirty *dirt
     var nextp ByteSlice
     {
         i, _, _, _, ok := a.Find(r.GetKey())
+        i--
+        fmt.Printf("m=%v, s=%v, i=%v, choice=%v\n", m, s, i, choice)
 
         // so what is going on here is if the key is in a certain block we need to make sure
         // we insert our next key in that block. This is the cleanest way to do that for now. even
@@ -174,6 +177,9 @@ func (self *BpTree) split(a *KeyBlock, rec *tmprec, nextb *KeyBlock, dirty *dirt
         }
     }
     self.balance_blocks(s, a, b)    // using s as the balance point
+    fmt.Println("AFTER BALANCE")
+    fmt.Println("Full:\n", a)
+    fmt.Println("Empty:\n", b)
 
     var return_rec *Record = split_rec
     var block *KeyBlock
@@ -227,6 +233,7 @@ func (self *BpTree) split(a *KeyBlock, rec *tmprec, nextb *KeyBlock, dirty *dirt
         a.SetExtraPtr(b.Position())
     }
 
+    fmt.Println("\n\n\nAFTER EVERYTHING")
     fmt.Println("Full:\n", a)
     fmt.Println("Empty:\n", b)
     fmt.Println("Rec:", r)
