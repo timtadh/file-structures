@@ -36,6 +36,29 @@ func (self BpTree) findlastblock(block *KeyBlock, key ByteSlice) *KeyBlock {
     return block
 }
 
+func (self BpTree) mv(a, b *KeyBlock) {
+    for i := a.RecordCount(); i > 0; i-- {
+        if r, _, _, ok := a.Get(0); ok {
+            a.RemoveAtIndex(0)
+            if _, ok := b.Add(r); !ok {
+                log.Exitf("44 could not a record %v to block \n%v\n", r, b)
+            }
+        } else {
+            log.Exitf("44 could not get record %v from block \n%v\n", 0, a)
+        }
+    }
+    for i := a.PointerCount(); i > 0; i-- {
+        if p, ok := a.GetPointer(0); ok {
+            a.RemovePointer(0)
+            if ok := b.InsertPointer(int(b.PointerCount()), p); !ok {
+                log.Exitf("44 could not a insert pointer %v to block \n%v\n", p, b)
+            }
+        } else {
+            log.Exitf("44 could not get pointer %v from block \n%v\n", 0, a)
+        }
+    }
+}
+
 /*
    balance blocks takes two keyblocks full, and empty and balances the records between them. full must be full
    empty must be empty
@@ -332,8 +355,8 @@ func (self *BpTree) insert(block *KeyBlock, rec *tmprec, height int, dirty *dirt
 //         ratio := float(c) / float(block.MaxRecordCount())
         if block.Full() {
             firstr, _, _, _ := block.Get(0)
-            if r.GetKey().Lt(firstr.GetKey()) {
-                if block.Count(firstr.GetKey()) == int(block.MaxRecordCount()) {
+            if block.Count(firstr.GetKey()) == int(block.MaxRecordCount()) {
+                if !r.GetKey().Lt(firstr.GetKey()) {
                     block := self.findlastblock(block, firstr.GetKey())
                     dirty.Insert(block)
                     fmt.Println("Magic Heres Abouts", r, "\n", block)
@@ -344,7 +367,7 @@ func (self *BpTree) insert(block *KeyBlock, rec *tmprec, height int, dirty *dirt
                         newblock.SetExtraPtr(p)
                         block.SetExtraPtr(newblock.Position())
                         if _, ok := newblock.Add(r); !ok {
-                            log.Exit("325 could not add to empty block")
+                            log.Exit("347 could not add to empty block")
                         }
                         if r.GetKey().Eq(firstr.GetKey()) {
                             return nil, nil, false
@@ -357,10 +380,20 @@ func (self *BpTree) insert(block *KeyBlock, rec *tmprec, height int, dirty *dirt
                         block.Add(r)
                         return nil, nil, false
                     }
+                } else {
+                    fmt.Println("more magic", r, firstr)
+                    newblock := self.allocate(self.external)
+                    dirty.Insert(block)
+                    dirty.Insert(newblock)
+                    p, _ := block.GetExtraPtr()
+                    newblock.SetExtraPtr(p)
+                    block.SetExtraPtr(newblock.Position())
+                    self.mv(block, newblock)
+                    if _, ok := block.Add(r); !ok {
+                        log.Exit("366 could not add to empty block")
+                    }
+                    return newblock, rec_to_tmp(self, firstr), true
                 }
-            } else {
-                log.Exit("new magic here")
-                return nil, nil, false
             }
         }
     }
@@ -379,7 +412,6 @@ func (self *BpTree) insert(block *KeyBlock, rec *tmprec, height int, dirty *dirt
         return nil, nil, false
     } else if i == -2 {
         Dotty("error.dot", self)
-                        return nil, nil, false
         dirty.Sync()
         Dotty("error2.dot", self)
         log.Exit("tried to insert a duplicate key into a block which does not allow that.\n", r, "\n", block)
@@ -423,7 +455,7 @@ func (self *BpTree) Insert(key ByteSlice, record []ByteSlice) bool {
         if i, ok := root.Add(first.internal()); ok {
             root.InsertPointer(i, self.info.Root())
         } else {
-            fmt.Println("Could not insert into empty block PANIC")
+            fmt.Println("431 Could not insert into empty block PANIC")
             os.Exit(2)
             return false
         }
@@ -432,7 +464,7 @@ func (self *BpTree) Insert(key ByteSlice, record []ByteSlice) bool {
         if i, ok := root.Add(r.internal()); ok {
             root.InsertPointer(i, b.Position())
         } else {
-            fmt.Println("Could not insert into empty block PANIC")
+            fmt.Println("440 Could not insert into empty block PANIC\n", r, "\n", root, oldroot)
             os.Exit(2)
             return false
         }

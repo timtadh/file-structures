@@ -20,7 +20,7 @@ btree: build
 test:
 	-rm -rf dot png *.dot *.png
 	-rm test.btree test.bptree
-	gobuild -run -t -match="TestDuplicate" -ignore=$(ignore)
+	gobuild -run -t -ignore=$(ignore)
 	-rm _testmain *.6
 	-rm -rf dot png
 	mkdir dot

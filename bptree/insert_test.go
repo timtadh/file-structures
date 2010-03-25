@@ -440,19 +440,19 @@ func TestDupSplitO5(t *testing.T) {
 func TestDuplicate(t *testing.T) {
     fmt.Println("----------- Test Duplicate -----------")
     for k := 0; k < 30; k++ {
-        size := uint32(ORDER_4_4)
+        size := uint32(ORDER_5_5)
         var order int
         {
             self := makebptree(size, t)
             order = self.internal.KeysPerBlock()
             cleanbptree(self)
         }
-        n := order*(order+2)
+        n := order*order*(order+2)
         fmt.Printf("testing block size %v, b+ tree order %v, with %v inserts\n", size, order, n)
         inserted := make(map[int] bool)
         self := makebptree(size, t)
         for i := 0; i < n; i++ {
-            m := order
+            m := n>>3
             j := rand.Intn(m)
             inserted[j] = true
             self.Insert(ByteSlice32(uint32(j)), record)
