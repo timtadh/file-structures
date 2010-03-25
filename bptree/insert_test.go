@@ -402,6 +402,17 @@ func TestDupSplitO4(t *testing.T) {
         for _,i := range test {
             self.Insert(ByteSlice32(i), record)
         }
+
+        prev := ByteSlice32(0)
+        results, ack := self.Find(ByteSlice32(0), ByteSlice32(6))
+        for result := range results {
+            if prev.Gt(result.GetKey()) {
+                t.Errorf("465 prev, %v, greater than current, %v.\n", prev, result.GetKey())
+            }
+            prev = result.GetKey()
+            ack <- true
+        }
+
         if i < 10 {
             Dotty(fmt.Sprintf("bptree_0%v.dot", i), self)
         } else {
@@ -458,9 +469,15 @@ func TestDuplicate(t *testing.T) {
             self.Insert(ByteSlice32(uint32(j)), record)
         }
 
-
-    //     self.Insert(ByteSlice32(uint32(skip+2)), record)
-    //     self.Insert(ByteSlice32(uint32(skip+1)), record)
+        prev := ByteSlice32(0)
+        results, ack := self.Find(ByteSlice32(0), ByteSlice32(uint32(n)))
+        for result := range results {
+            if prev.Gt(result.GetKey()) {
+                t.Errorf("465 prev, %v, greater than current, %v.\n", prev, result.GetKey())
+            }
+            prev = result.GetKey()
+            ack <- true
+        }
 
         if k < 10 {
             Dotty(fmt.Sprintf("bptreerand_0%v.dot", k), self)

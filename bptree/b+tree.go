@@ -99,21 +99,28 @@ func (self *BpTree) Find(left ByteSlice, right ByteSlice) (<-chan *Record, chan<
                 var pos ByteSlice
                 {
                     // we find where in the block this key would be inserted
-                    i, _, p, _, _ := block.Find(key)
+                    i, _, _, _, _ := block.Find(key)
 
                     if i == 0 {
                         // even if this key doesn't equal the key we are looking for it will be at
                         // least greater than the key we are looking for.
-                        pos = p
+                        if p, ok := block.GetPointer(0); ok {
+                            pos = p
+                        } else {
+                            log.Exitf("111 Error could not get pointer %v from block %v", i, block)
+                        }
                     } else {
                         // else this spot is one to many so we get the previous spot
                         i--
-                        if _, p, _, ok := block.Get(i); ok {
+                        if p, ok := block.GetPointer(i); ok {
                             pos = p
                         } else {
-                            log.Exitf("235 Error could not get record %v from block %v", i, block)
+                            log.Exitf("118 Error could not get record %v from block %v", i, block)
                         }
                     }
+                }
+                if pos == nil {
+                    log.Exitf("119 Error could got null pos in find key=%v\n%v\n", key, block)
                 }
                 return find(key, self.getblock(pos), height-1)
             }
