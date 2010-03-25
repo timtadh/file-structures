@@ -18,18 +18,23 @@ btree: build
 	./btree/test
 
 test:
-	-rm test.btree
 	-rm -rf dot png *.dot *.png
-	gobuild -run -t -ignore=$(ignore)
+	-rm test.btree test.bptree
+	gobuild -run -t -match="TestDuplicate" -ignore=$(ignore)
 	-rm _testmain *.6
 	-rm -rf dot png
 	mkdir dot
 	-mv *.dot dot/
 
-pictest: test
+pic:
+	-mkdir dot
+	-mv *.dot dot/
 	-rm -rf png
 	mkdir png
 	-for file in dot/*.dot; do echo $$file | cut -d "/" -f 2 - | xargs -I"%s" dot -Tpng $$file -o png/%s.png; done
+
+pictest: test pic
+	echo "pictest"
 
 .PHONY : clean
 clean :

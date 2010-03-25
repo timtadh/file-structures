@@ -88,7 +88,7 @@ func (self *BpTree) split(a *KeyBlock, rec *tmprec, nextb *KeyBlock, dirty *dirt
     // s is the point which the blocks should be balanced against. (ie the balance point)
     //
     // choice is the block to insert into, true is a, false is b
-    m, s, choice := func() (m int, s int, choice bool) {
+    m, s, right := func() (m int, s int, right bool) {
                 getk := func(i int) ByteSlice {
                     r, _, _, _ := a.Get(i)
                     return r.GetKey()
@@ -105,11 +105,11 @@ func (self *BpTree) split(a *KeyBlock, rec *tmprec, nextb *KeyBlock, dirty *dirt
                 if lr <= rr && l != 0{
                     m = l
                     s = l - 1 // since it is the left one we *must* subtract one from the balance point
-                    choice = false
+                    right = false
                 } else {
                     m = r
                     s = r
-                    choice = true
+                    right = true
                 }
 
                 // we can only make a random choice about which block to insert the new record into
@@ -128,20 +128,20 @@ func (self *BpTree) split(a *KeyBlock, rec *tmprec, nextb *KeyBlock, dirty *dirt
     var nextp ByteSlice
     {
         i, _, _, _, ok := a.Find(r.GetKey())
-        fmt.Printf("m=%v, s=%v, i=%v, choice=%v\n", m, s, i, choice)
+        fmt.Printf("m=%v, s=%v, i=%v, choice=%v\n", m, s, i, right)
 
         // so what is going on here is if the key is in a certain block we need to make sure
         // we insert our next key in that block. This is the cleanest way to do that for now. even
         // though it is hideously ugly.
         if ok && m > i {
 //             fmt.Println("choosing a", i, m, ok)
-            choice = true
-        } else {
+            right = true
+        } else if ok && m < i {
 //             fmt.Println("choosing b", i, m, ok)
-            choice = false
-        }
+            right = false
+        } else if ok {
 
-        if m > i {
+        } else if m > i {
             // the mid point is after the spot where we would insert the key so we take the record
             // just before the mid point as our new record would shift the mid point over by 1
             split_rec, nextp, _, _ = a.Get(m - 1)
@@ -153,9 +153,25 @@ func (self *BpTree) split(a *KeyBlock, rec *tmprec, nextb *KeyBlock, dirty *dirt
             split_rec, nextp, _, _ = a.Get(m)
             a.RemoveAtIndex(m)
             a.RemovePointer(m)
+        } else {
+
         }
 
-        if i == m {
+//         if m > i {
+//             // the mid point is after the spot where we would insert the key so we take the record
+//             // just before the mid point as our new record would shift the mid point over by 1
+//             split_rec, nextp, _, _ = a.Get(m - 1)
+//             a.RemoveAtIndex(m - 1)
+//             a.RemovePointer(m - 1)
+//         } else if m < i {
+//             // the mid point is before the new record so we can take the record at the mid point as
+//             // the split record.
+//             split_rec, nextp, _, _ = a.Get(m)
+//             a.RemoveAtIndex(m)
+//             a.RemovePointer(m)
+//         }
+
+        if i == m || ok && m > i || ok && m < i {
             // the mid point is where the new record would go so in this case the new record will be
             // the split record for this split, and the nextb (which is associate with our new key)
             // become the nextp pointer
@@ -184,16 +200,13 @@ func (self *BpTree) split(a *KeyBlock, rec *tmprec, nextb *KeyBlock, dirty *dirt
     var block *KeyBlock
 
     // choose which block to insert the record into
-    if choice {
+    if _,_,_,_,ok := a.Find(split_rec.GetKey()); ok {
+        block = a
+    } else if _,_,_,_,ok := b.Find(split_rec.GetKey()); ok {
+        block = b
+    } else if a.RecordCount() < b.RecordCount() {
 //         fmt.Println("chose a")
         block = a
-        if rec, _, _, ok := b.Get(0); !ok {
-            log.Exit("Could not get the first record from block b PANIC")
-        } else {
-            // we change the record returned because the first record in block b will now not
-            // be the record we split on which is ok we just need to return the correct record.
-            return_rec = rec
-        }
     } else {
 //         fmt.Println("chose b")
         block = b
@@ -201,7 +214,7 @@ func (self *BpTree) split(a *KeyBlock, rec *tmprec, nextb *KeyBlock, dirty *dirt
 
     // add the record to the block
     if i, ok := block.Add(split_rec); !ok {
-        fmt.Println(m, s, choice)
+        fmt.Println(m, s, right)
         fmt.Println("Full:\n", a)
         fmt.Println("Empty:\n", b)
         fmt.Println("Rec:", r)
@@ -222,6 +235,14 @@ func (self *BpTree) split(a *KeyBlock, rec *tmprec, nextb *KeyBlock, dirty *dirt
             log.Exit("splitting an internal block split requires a next block to point at")
         } // else
         //    we have a block that doesn't support a pointer and we don't have pointer
+    }
+
+    if rec, _, _, ok := b.Get(0); !ok {
+        log.Exit("Could not get the first record from block b PANIC")
+    } else {
+        // we change the record returned because the first record in block b will now not
+        // be the record we split on which is ok we just need to return the correct record.
+        return_rec = rec
     }
 
     // if we have an external node (leaf) then we need to hook up the pointers between the leaf
@@ -311,30 +332,35 @@ func (self *BpTree) insert(block *KeyBlock, rec *tmprec, height int, dirty *dirt
 //         ratio := float(c) / float(block.MaxRecordCount())
         if block.Full() {
             firstr, _, _, _ := block.Get(0)
-            if block.Count(firstr.GetKey()) == int(block.MaxRecordCount()) {
-                block := self.findlastblock(block, firstr.GetKey())
-                dirty.Insert(block)
-                fmt.Println("Magic Heres Abouts", r, "\n", block)
-                if block.Full() || !r.GetKey().Eq(firstr.GetKey()) {
-                    newblock := self.allocate(self.external)
-                    dirty.Insert(newblock)
-                    p, _ := block.GetExtraPtr()
-                    newblock.SetExtraPtr(p)
-                    block.SetExtraPtr(newblock.Position())
-                    if _, ok := newblock.Add(r); !ok {
-                        log.Exit("325 could not add to empty block")
-                    }
-                    if r.GetKey().Eq(firstr.GetKey()) {
-                        return nil, nil, false
+            if r.GetKey().Lt(firstr.GetKey()) {
+                if block.Count(firstr.GetKey()) == int(block.MaxRecordCount()) {
+                    block := self.findlastblock(block, firstr.GetKey())
+                    dirty.Insert(block)
+                    fmt.Println("Magic Heres Abouts", r, "\n", block)
+                    if block.Full() || !r.GetKey().Eq(firstr.GetKey()) {
+                        newblock := self.allocate(self.external)
+                        dirty.Insert(newblock)
+                        p, _ := block.GetExtraPtr()
+                        newblock.SetExtraPtr(p)
+                        block.SetExtraPtr(newblock.Position())
+                        if _, ok := newblock.Add(r); !ok {
+                            log.Exit("325 could not add to empty block")
+                        }
+                        if r.GetKey().Eq(firstr.GetKey()) {
+                            return nil, nil, false
+                        } else {
+    //                         return newblock, rec_to_tmp(self, self.internal.NewRecord(firstr.GetKey().Inc())), true
+                            return newblock, rec_to_tmp(self, r), true
+                        }
                     } else {
-//                         return newblock, rec_to_tmp(self, self.internal.NewRecord(firstr.GetKey().Inc())), true
-                        return newblock, rec_to_tmp(self, r), true
+                        fmt.Println("adding r")
+                        block.Add(r)
+                        return nil, nil, false
                     }
-                } else {
-                    fmt.Println("adding r")
-                    block.Add(r)
-                    return nil, nil, false
                 }
+            } else {
+                log.Exit("new magic here")
+                return nil, nil, false
             }
         }
     }
@@ -353,6 +379,7 @@ func (self *BpTree) insert(block *KeyBlock, rec *tmprec, height int, dirty *dirt
         return nil, nil, false
     } else if i == -2 {
         Dotty("error.dot", self)
+                        return nil, nil, false
         dirty.Sync()
         Dotty("error2.dot", self)
         log.Exit("tried to insert a duplicate key into a block which does not allow that.\n", r, "\n", block)

@@ -350,30 +350,62 @@ func TestDupSplitO3(t *testing.T) {
 
 func TestDupSplitO4(t *testing.T) {
     tests := [][5]uint32{
-                      [5]uint32{1, 1, 2, 3, 1},
-                      [5]uint32{1, 1, 2, 3, 2},
-                      [5]uint32{1, 1, 2, 3, 3},
-                      [5]uint32{1, 1, 1, 3, 3},
-                      [5]uint32{1, 1, 1, 3, 1},
-                      [5]uint32{1, 2, 2, 3, 1},
-                      [5]uint32{1, 2, 2, 3, 2},
-                      [5]uint32{1, 2, 2, 3, 3},
-                      [5]uint32{2, 2, 2, 3, 2},
-                      [5]uint32{2, 2, 2, 3, 3},
-                      [5]uint32{1, 2, 2, 2, 1},
-                      [5]uint32{1, 2, 2, 2, 2},
-                      [5]uint32{1, 2, 3, 3, 1},
-                      [5]uint32{1, 2, 3, 3, 2},
-                      [5]uint32{1, 2, 3, 3, 3},
-                      [5]uint32{1, 3, 3, 3, 1},
-                      [5]uint32{1, 3, 3, 3, 3},
-                      [5]uint32{1, 1, 3, 3, 1},
+                      [5]uint32{1, 2, 3, 4, 0}, // 0
+                      [5]uint32{2, 3, 4, 5, 1}, // 1
+                      [5]uint32{1, 3, 4, 5, 2}, // 2
+                      [5]uint32{1, 2, 4, 5, 3}, // 3
+                      [5]uint32{1, 2, 3, 5, 4}, // 4
+                      [5]uint32{1, 2, 3, 4, 5}, // 5
+                      [5]uint32{1, 1, 2, 3, 0}, // 6
+                      [5]uint32{1, 1, 2, 3, 1}, // 6
+                      [5]uint32{1, 1, 2, 3, 2}, // 7
+                      [5]uint32{1, 1, 2, 3, 3}, // 8
+                      [5]uint32{1, 1, 2, 3, 4}, // 8
+                      [5]uint32{1, 1, 1, 2, 0}, // 9
+                      [5]uint32{1, 1, 1, 2, 1}, // 10
+                      [5]uint32{1, 1, 1, 2, 2}, // 9
+                      [5]uint32{1, 1, 1, 2, 3}, // 9
+                      [5]uint32{1, 1, 1, 3, 2}, // 9
+                      [5]uint32{1, 1, 1, 3, 4}, // 9
+                      [5]uint32{1, 2, 2, 3, 0}, // 11
+                      [5]uint32{1, 2, 2, 3, 1}, // 11
+                      [5]uint32{1, 2, 2, 3, 2}, // 12
+                      [5]uint32{1, 2, 2, 3, 3}, // 13
+                      [5]uint32{1, 2, 2, 3, 4}, // 13
+                      [5]uint32{2, 2, 2, 3, 1}, // 14
+                      [5]uint32{2, 2, 2, 3, 2}, // 14
+                      [5]uint32{2, 2, 2, 3, 3}, // 15
+                      [5]uint32{2, 2, 2, 3, 4}, // 15
+                      [5]uint32{1, 2, 2, 2, 0}, // 16
+                      [5]uint32{1, 2, 2, 2, 1}, // 16
+                      [5]uint32{1, 2, 2, 2, 2}, // 17
+                      [5]uint32{1, 2, 2, 2, 3}, // 17
+                      [5]uint32{1, 2, 3, 3, 0}, // 18
+                      [5]uint32{1, 2, 3, 3, 1}, // 18
+                      [5]uint32{1, 2, 3, 3, 2}, // 19
+                      [5]uint32{1, 2, 3, 3, 3}, // 20
+                      [5]uint32{1, 2, 3, 3, 4}, // 20
+                      [5]uint32{1, 3, 3, 3, 0}, // 21
+                      [5]uint32{1, 3, 3, 3, 1}, // 21
+                      [5]uint32{1, 3, 3, 3, 2}, // 21
+                      [5]uint32{1, 3, 3, 3, 3}, // 22
+                      [5]uint32{1, 3, 3, 3, 4}, // 22
+                      [5]uint32{1, 1, 3, 3, 0}, // 23
+                      [5]uint32{1, 1, 3, 3, 1}, // 23
+                      [5]uint32{1, 1, 3, 3, 2}, // 23
                       [5]uint32{1, 1, 3, 3, 3},
+                      [5]uint32{1, 1, 3, 3, 4}, // 23
     }
-    for _,test := range tests {
+    for i,test := range tests {
+        fmt.Println("-------------->", i, test)
         self := makebptree(ORDER_4_4, t)
         for _,i := range test {
             self.Insert(ByteSlice32(i), record)
+        }
+        if i < 10 {
+            Dotty(fmt.Sprintf("bptree_0%v.dot", i), self)
+        } else {
+            Dotty(fmt.Sprintf("bptree_%v.dot", i), self)
         }
         cleanbptree(self)
         fmt.Println("\n\n-----------------------------------------------------------------------\n\n\n\n")
@@ -407,29 +439,35 @@ func TestDupSplitO5(t *testing.T) {
 */
 func TestDuplicate(t *testing.T) {
     fmt.Println("----------- Test Duplicate -----------")
-    size := uint32(ORDER_4_4)
-    var order int
-    {
+    for k := 0; k < 30; k++ {
+        size := uint32(ORDER_4_4)
+        var order int
+        {
+            self := makebptree(size, t)
+            order = self.internal.KeysPerBlock()
+            cleanbptree(self)
+        }
+        n := order*(order+2)
+        fmt.Printf("testing block size %v, b+ tree order %v, with %v inserts\n", size, order, n)
+        inserted := make(map[int] bool)
         self := makebptree(size, t)
-        order = self.internal.KeysPerBlock()
+        for i := 0; i < n; i++ {
+            m := order
+            j := rand.Intn(m)
+            inserted[j] = true
+            self.Insert(ByteSlice32(uint32(j)), record)
+        }
+
+
+    //     self.Insert(ByteSlice32(uint32(skip+2)), record)
+    //     self.Insert(ByteSlice32(uint32(skip+1)), record)
+
+        if k < 10 {
+            Dotty(fmt.Sprintf("bptreerand_0%v.dot", k), self)
+        } else {
+            Dotty(fmt.Sprintf("bptreerand_%v.dot", k), self)
+        }
         cleanbptree(self)
     }
-    n := order*(order+2)
-    fmt.Printf("testing block size %v, b+ tree order %v, with %v inserts\n", size, order, n)
-    inserted := make(map[int] bool)
-    self := makebptree(size, t)
-    for i := 0; i < n; i++ {
-        m := order
-        j := rand.Intn(m)
-        inserted[j] = true
-        self.Insert(ByteSlice32(uint32(j)), record)
-    }
-
-
-//     self.Insert(ByteSlice32(uint32(skip+2)), record)
-//     self.Insert(ByteSlice32(uint32(skip+1)), record)
-
-    Dotty("bptree.dot", self)
-    cleanbptree(self)
 //     t.Fatal(i)
 }
