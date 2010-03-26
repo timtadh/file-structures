@@ -397,18 +397,29 @@ func TestDupSplitO4(t *testing.T) {
                       [5]uint32{1, 1, 3, 3, 4}, // 23
     }
     for i,test := range tests {
-        fmt.Println("-------------->", i, test)
+//         fmt.Println("-------------->", i, test)
         self := makebptree(ORDER_4_4, t)
         for _,i := range test {
             self.Insert(ByteSlice32(i), record)
         }
+
+        prev := ByteSlice32(0)
+        results, ack := self.Find(ByteSlice32(0), ByteSlice32(6))
+        for result := range results {
+            if prev.Gt(result.GetKey()) {
+                t.Errorf("465 prev, %v, greater than current, %v.\n", prev, result.GetKey())
+            }
+            prev = result.GetKey()
+            ack <- true
+        }
+
         if i < 10 {
             Dotty(fmt.Sprintf("bptree_0%v.dot", i), self)
         } else {
             Dotty(fmt.Sprintf("bptree_%v.dot", i), self)
         }
         cleanbptree(self)
-        fmt.Println("\n\n-----------------------------------------------------------------------\n\n\n\n")
+//         fmt.Println("\n\n-----------------------------------------------------------------------\n\n\n\n")
     }
 }
 
@@ -437,10 +448,10 @@ func TestDupSplitO5(t *testing.T) {
     }
 }
 */
-func TestDuplicate(t *testing.T) {
-    fmt.Println("----------- Test Duplicate -----------")
-    for k := 0; k < 30; k++ {
-        size := uint32(ORDER_5_5)
+func TestRandomDuplicate(t *testing.T) {
+    fmt.Println("----------- Test Random Duplicate -----------")
+    for i, size := range sizes {
+        if i == 0 { continue }
         var order int
         {
             self := makebptree(size, t)
@@ -448,26 +459,38 @@ func TestDuplicate(t *testing.T) {
             cleanbptree(self)
         }
         n := order*order*(order+2)
+        top := 30
+        if i == 4 { top = 1 }
         fmt.Printf("testing block size %v, b+ tree order %v, with %v inserts\n", size, order, n)
-        inserted := make(map[int] bool)
-        self := makebptree(size, t)
-        for i := 0; i < n; i++ {
-            m := n>>3
-            j := rand.Intn(m)
-            inserted[j] = true
-            self.Insert(ByteSlice32(uint32(j)), record)
+        for k := 0; k < top; k++ {
+            inserted := make(map[int] bool)
+            self := makebptree(size, t)
+            for i := 0; i < n; i++ {
+                m := n>>1
+                j := rand.Intn(m)
+                inserted[j] = true
+                self.Insert(ByteSlice32(uint32(j)), record)
+            }
+
+            prev := ByteSlice32(0)
+            results, ack := self.Find(ByteSlice32(0), ByteSlice32(uint32(n)))
+            for result := range results {
+                if prev.Gt(result.GetKey()) {
+                    t.Errorf("465 prev, %v, greater than current, %v.\n", prev, result.GetKey())
+                }
+                prev = result.GetKey()
+                ack <- true
+            }
+
+            if i != 4 {
+                if k < 10 {
+                    Dotty(fmt.Sprintf("bptreerand_%v_0%v.dot", i, k), self)
+                } else {
+                    Dotty(fmt.Sprintf("bptreerand_%v_%v.dot", i, k), self)
+                }
+            }
+            cleanbptree(self)
         }
-
-
-    //     self.Insert(ByteSlice32(uint32(skip+2)), record)
-    //     self.Insert(ByteSlice32(uint32(skip+1)), record)
-
-        if k < 10 {
-            Dotty(fmt.Sprintf("bptreerand_0%v.dot", k), self)
-        } else {
-            Dotty(fmt.Sprintf("bptreerand_%v.dot", k), self)
-        }
-        cleanbptree(self)
     }
 //     t.Fatal(i)
 }
