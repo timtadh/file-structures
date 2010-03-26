@@ -20,6 +20,7 @@ func (self *BlockFile) Open() bool {
             self.Close()
             return false
         }
+	return self.initialize()
     }
     return self.opened
 }
