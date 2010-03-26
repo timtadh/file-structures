@@ -119,6 +119,13 @@ func (self ByteSlice) Inc() ByteSlice {
     return bytes
 }
 
+func (self ByteSlice) Concat(b ByteSlice) ByteSlice {
+    bytes := make(ByteSlice, len(self)+len(b))
+    copy(bytes, self)
+    copy(bytes[len(self):], b)
+    return bytes
+}
+
 func (b ByteSlice) String() string {
     if b == nil {
         return "<nil>"
