@@ -107,7 +107,7 @@ func (self *BpTree) Find(left ByteSlice, right ByteSlice) (<-chan *Record, chan<
                         if p, ok := block.GetPointer(0); ok {
                             pos = p
                         } else {
-                            log.Exitf("111 Error could not get pointer %v from block %v", i, block)
+                            log.Exitf("110 Error could not get pointer %v from block %v", i, block)
                         }
                     } else {
                         // else this spot is one to many so we get the previous spot
@@ -120,7 +120,7 @@ func (self *BpTree) Find(left ByteSlice, right ByteSlice) (<-chan *Record, chan<
                     }
                 }
                 if pos == nil {
-                    log.Exitf("119 Error could got null pos in find key=%v\n%v\n", key, block)
+                    log.Exitf("123 Error could got null pos in find key=%v\n%v\n", key, block)
                 }
                 return find(key, self.getblock(pos), height-1)
             }
