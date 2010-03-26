@@ -51,10 +51,12 @@ func (self *TreeInfo) Serialize() {
         bytes[i] = b
         i++
     }
-    self.file.WriteBlock(0, bytes)
+    position := self.file.FirstAllocatedBlock()
+    self.file.WriteBlock(position, bytes)
 }
 func (self *TreeInfo) deserialize() {
-    bytes, ok := self.file.ReadBlock(0, BLOCKSIZE)
+    position := self.file.FirstAllocatedBlock()
+    bytes, ok := self.file.ReadBlock(position, BLOCKSIZE)
     if ok {
         self.height = int(ByteSlice(bytes[0:4]).Int32())
         self.root = ByteSlice(bytes[4:12])
