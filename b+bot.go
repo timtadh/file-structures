@@ -33,4 +33,3 @@ func main() {
 
 // insert(key Byteslice, record []Byteslice)
 // find(leftkey, right key) returns channel with all matching keys+records (Record structs)
-// 
