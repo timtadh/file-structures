@@ -385,9 +385,9 @@ func (self *BpTree) insert(block *KeyBlock, rec *tmprec, height int, dirty *dirt
         }
         return nil, nil, false
     } else if i == -2 {
-        Dotty("error.dot", self)
+        // Dotty("error.dot", self)
         dirty.Sync()
-        Dotty("error2.dot", self)
+        // Dotty("error2.dot", self)
         log.Exit("tried to insert a duplicate key into a block which does not allow that.\n", r, "\n", block)
     }
     // Block is full split the block
