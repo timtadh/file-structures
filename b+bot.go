@@ -5,27 +5,42 @@ package main;
 import "os"
 import "bufio"
 import "fmt"
-// import "json"
+import "json"
 import "log"
+
+type Metadata struct {
+    Filename string
+    Keysize uint32
+    Fieldsizes []uint32
+}
 
 func main() {
     // Read the string
     inputReader := bufio.NewReader(os.Stdin)
     
+    var info = Metadata{"", uint32(0), nil}
+    infoJson, err := inputReader.ReadString('\n')
+    if err != nil {
+        log.Exit(err)
+    } else {
+        json.Unmarshal(infoJson, &info)
+    }
+    fmt.Println(info.Filename)
+    
     alive := true;
     
     for alive {
-        testString, err1 := inputReader.ReadString('\n')
-        if err1 != nil {
-            log.Exit(err1)
+        testString, err := inputReader.ReadString('\n')
+        if err != nil {
+            log.Exit(err)
         }
         if testString == "q\n" {
             alive = false
         } else {
-            fmt.Print(testString)
+            fmt.Println("ok")
         }
     }
-    fmt.Print("exited")
+    fmt.Println("exited")
 }
 
 // Determine which file and schema is being opened
@@ -33,4 +48,3 @@ func main() {
 
 // insert(key Byteslice, record []Byteslice)
 // find(leftkey, right key) returns channel with all matching keys+records (Record structs)
-// 
