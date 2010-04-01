@@ -1,7 +1,7 @@
 package main;
 
-// import "bptree"
 import . "block/byteslice"
+import "bptree"
 import "os"
 import "bufio"
 import "fmt"
@@ -34,7 +34,11 @@ func main() {
     } else {
         json.Unmarshal(infoJson, &info)
     }
-    fmt.Println(info.Filename)
+    
+    bptree, bperr := bptree.NewBpTree(info.Filename, info.Keysize, info.Fieldsizes)
+    if bperr {
+        log.Exit("Failed B+ tree creation")
+    }
     
     alive := true;
     
@@ -47,7 +51,17 @@ func main() {
             alive = false
         } else {
             json.Unmarshal(cmdJson, &cmd)
-            fmt.Println(cmd.Fields)
+            if cmd.Op == "insert" {
+                result := bptree.Insert(cmd.LeftKey, cmd.Fields)
+                fmt.Println(result)
+            } else if cmd.Op == "find" {
+                records, ack := bptree.Find(cmd.LeftKey, cmd.RightKey)
+                for record := range records {
+                    fmt.Println(record)
+                    ack<-true;                              // ack<-true must be the last line of the loop.
+                }
+                fmt.Println("end")
+            }
         }
     }
     fmt.Println("exited")
