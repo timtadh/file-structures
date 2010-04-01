@@ -16,9 +16,9 @@ type Metadata struct {
 
 type Command struct {
     Op string
-    key ByteSlice
-    rightKey ByteSlice
-    record []ByteSlice
+    LeftKey ByteSlice
+    RightKey ByteSlice
+    Fields []ByteSlice
 }
 
 func main() {
@@ -26,6 +26,8 @@ func main() {
     inputReader := bufio.NewReader(os.Stdin)
     
     var info = Metadata{"", uint32(0), nil}
+    var cmd = Command{"", nil, nil, nil}
+    
     infoJson, err := inputReader.ReadString('\n')
     if err != nil {
         log.Exit(err)
@@ -37,14 +39,15 @@ func main() {
     alive := true;
     
     for alive {
-        testString, err := inputReader.ReadString('\n')
+        cmdJson, err := inputReader.ReadString('\n')
         if err != nil {
             log.Exit(err)
         }
-        if testString == "q\n" {
+        if cmdJson == "q\n" {
             alive = false
         } else {
-            fmt.Println(Command.Op)
+            json.Unmarshal(cmdJson, &cmd)
+            fmt.Println(cmd.Fields)
         }
     }
     fmt.Println("exited")
