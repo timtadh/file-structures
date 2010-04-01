@@ -36,8 +36,10 @@ func main() {
     }
     
     bptree, bperr := bptree.NewBpTree(info.Filename, info.Keysize, info.Fieldsizes)
-    if bperr {
+    if !bperr {
         log.Exit("Failed B+ tree creation")
+    } else {
+        fmt.Println("ok")
     }
     
     alive := true;
@@ -57,7 +59,10 @@ func main() {
             } else if cmd.Op == "find" {
                 records, ack := bptree.Find(cmd.LeftKey, cmd.RightKey)
                 for record := range records {
-                    fmt.Println(record)
+                    json.Marshal(os.Stdout, map[string]interface{}{
+                        "key": record.GetKey(), 
+                        "value": record.AllFields()})
+                    fmt.Println()
                     ack<-true;                              // ack<-true must be the last line of the loop.
                 }
                 fmt.Println("end")

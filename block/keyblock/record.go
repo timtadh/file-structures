@@ -29,6 +29,17 @@ func (r *Record) Set(i uint32, val ByteSlice) { r.data[i] = val }
 func (r *Record) SetKey(k ByteSlice)       { r.key = k }
 func (r *Record) GetKey() ByteSlice        { return r.key }
 
+func (r *Record) AllFields() [][]byte {
+    dataCopy := make([][]byte, len(r.data))
+    for i:=0; i<len(r.data); i++ {
+        dataCopy[i] = make([]byte, len(r.data[i]))
+        for j:=0; j<len(r.data[i]); j++ {
+            dataCopy[i][j] = r.data[i][j]
+        }
+    }
+    return dataCopy
+}
+
 func (self *Record) String() string {
     if self == nil {
         return "<nil>"
