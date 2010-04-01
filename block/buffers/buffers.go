@@ -7,6 +7,7 @@ import "block/heap"
 type Buffer interface {
     Update(p int64, block []byte)
     Read(p int64, length uint32) ([]byte, bool)
+    Remove(p int64)
 }
 
 // -------------------------------------------------------------------------------
@@ -41,10 +42,19 @@ func NewLRU(size int) *LRU {
     return lru
 }
 
+func (self *LRU) Remove(p int64) {
+    self.Update(p, nil)
+}
+
 func (self *LRU) Update(p int64, block []byte) {
     if e, has := self.buffer[p]; has {
-        e.Value.(*lru_item).bytes = block
-        self.stack.MoveToFront(e)
+        if block == nil {
+            self.buffer[p] = nil, false
+            self.stack.Remove(e)
+        } else {
+            e.Value.(*lru_item).bytes = block
+            self.stack.MoveToFront(e)
+        }
     } else {
         for self.Size < self.stack.Len() {
             e = self.stack.Back()
@@ -118,6 +128,16 @@ func (self *lfu_heap) Pop() interface{} {
     return item
 }
 
+func (self *lfu_heap) Remove(p int64) {
+    for i := self.Len() - 1;
+        i >= 0; i-- {
+        if self.slice[i].p == p {
+            heap.Remove(self, i)
+            break
+        }
+    }
+}
+
 func (self *lfu_heap) Update(p int64) {
     i := self.Len() - 1
     for ; i >= 0; i-- {
@@ -136,10 +156,19 @@ func NewLFU(size int) *LFU {
     return self
 }
 
+func (self *LFU) Remove(p int64) {
+    self.Update(p, nil)
+}
+
 func (self *LFU) Update(p int64, block []byte) {
     if _, has := self.buffer[p]; has {
-        self.queue.Update(p)
-        self.buffer[p] = block
+        if block == nil {
+            self.buffer[p] = nil, false
+            self.queue.Remove(p)
+        } else {
+            self.queue.Update(p)
+            self.buffer[p] = block
+        }
     } else {
         for len(self.queue.slice) >= cap(self.queue.slice) {
             i := heap.Pop(self.queue).(lfu_item)
@@ -162,3 +191,9 @@ func (self *LFU) Read(p int64, length uint32) ([]byte, bool) {
     //     fmt.Println("---------------------> Cache Miss")
     return nil, false
 }
+
+type NoBuffer struct {}
+
+func (self *NoBuffer) Update(p int64, block []byte) {}
+func (self *NoBuffer) Read(p int64, length uint32) ([]byte, bool) { return nil, false }
+func (self *NoBuffer) Remove(p int64) {}
