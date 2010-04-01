@@ -1,7 +1,7 @@
 package main;
 
 // import "bptree"
-// import "block/byteslice"
+import . "block/byteslice"
 import "os"
 import "bufio"
 import "fmt"
@@ -12,6 +12,13 @@ type Metadata struct {
     Filename string
     Keysize uint32
     Fieldsizes []uint32
+}
+
+type Command struct {
+    Op string
+    key ByteSlice
+    rightKey ByteSlice
+    record []ByteSlice
 }
 
 func main() {
@@ -37,7 +44,7 @@ func main() {
         if testString == "q\n" {
             alive = false
         } else {
-            fmt.Println("ok")
+            fmt.Println(Command.Op)
         }
     }
     fmt.Println("exited")
