@@ -4,7 +4,7 @@ import "os"
 import "fmt"
 // import "syscall"
 
-// const OPENFLAG = os.O_RDWR | os.O_CREAT | syscall.O_DIRECT
+// var OPENFLAG = os.O_RDWR | os.O_CREAT | syscall.O_DIRECT
 var OPENFLAG = os.O_RDWR | os.O_CREAT
 
 func (self *BlockFile) Open() bool {
