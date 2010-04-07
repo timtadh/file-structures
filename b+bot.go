@@ -1,31 +1,75 @@
 package main;
 
-// import "bptree"
-// import "block/byteslice"
+import . "block/byteslice"
+import "bptree"
 import "os"
 import "bufio"
 import "fmt"
-// import "json"
+import "json"
 import "log"
+
+type Metadata struct {
+    Filename string
+    Keysize uint32
+    Fieldsizes []uint32
+}
+
+type Command struct {
+    Op string
+    LeftKey ByteSlice
+    RightKey ByteSlice
+    Fields []ByteSlice
+}
 
 func main() {
     // Read the string
     inputReader := bufio.NewReader(os.Stdin)
     
+    var info = Metadata{"", uint32(0), nil}
+    var cmd = Command{"", nil, nil, nil}
+    
+    infoJson, err := inputReader.ReadString('\n')
+    if err != nil {
+        log.Exit(err)
+    } else {
+        json.Unmarshal(infoJson, &info)
+    }
+    
+    bptree, bperr := bptree.NewBpTree(info.Filename, info.Keysize, info.Fieldsizes)
+    if !bperr {
+        log.Exit("Failed B+ tree creation")
+    } else {
+        fmt.Println("ok")
+    }
+    
     alive := true;
     
     for alive {
-        testString, err1 := inputReader.ReadString('\n')
-        if err1 != nil {
-            log.Exit(err1)
+        cmdJson, err := inputReader.ReadString('\n')
+        if err != nil {
+            log.Exit(err)
         }
-        if testString == "q\n" {
+        if cmdJson == "q\n" {
             alive = false
         } else {
-            fmt.Print(testString)
+            json.Unmarshal(cmdJson, &cmd)
+            if cmd.Op == "insert" {
+                result := bptree.Insert(cmd.LeftKey, cmd.Fields)
+                fmt.Println(result)
+            } else if cmd.Op == "find" {
+                records, ack := bptree.Find(cmd.LeftKey, cmd.RightKey)
+                for record := range records {
+                    json.Marshal(os.Stdout, map[string]interface{}{
+                        "key": record.GetKey(), 
+                        "value": record.AllFields()})
+                    fmt.Println()
+                    ack<-true;                              // ack<-true must be the last line of the loop.
+                }
+                fmt.Println("end")
+            }
         }
     }
-    fmt.Print("exited")
+    fmt.Println("exited")
 }
 
 // Determine which file and schema is being opened
