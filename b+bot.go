@@ -63,7 +63,7 @@ func main() {
                         "key": record.GetKey(), 
                         "value": record.AllFields()})
                     fmt.Println()
-                    ack<-true;                              // ack<-true must be the last line of the loop.
+                    ack<-true
                 }
                 fmt.Println("end")
             }
