@@ -19,6 +19,7 @@ type Command struct {
     LeftKey ByteSlice
     RightKey ByteSlice
     Fields []ByteSlice
+    FileName string
 }
 
 func main() {
@@ -26,7 +27,7 @@ func main() {
     inputReader := bufio.NewReader(os.Stdin)
     
     var info = Metadata{"", uint32(0), nil}
-    var cmd = Command{"", nil, nil, nil}
+    var cmd = Command{"", nil, nil, nil, ""}
     
     infoJson, err := inputReader.ReadString('\n')
     if err != nil {
@@ -35,7 +36,7 @@ func main() {
         json.Unmarshal(infoJson, &info)
     }
     
-    bptree, bperr := bptree.NewBpTree(info.Filename, info.Keysize, info.Fieldsizes)
+    bpt, bperr := bptree.NewBpTree(info.Filename, info.Keysize, info.Fieldsizes)
     if !bperr {
         log.Exit("Failed B+ tree creation")
     } else {
@@ -54,10 +55,10 @@ func main() {
         } else {
             json.Unmarshal(cmdJson, &cmd)
             if cmd.Op == "insert" {
-                result := bptree.Insert(cmd.LeftKey, cmd.Fields)
+                result := bpt.Insert(cmd.LeftKey, cmd.Fields)
                 fmt.Println(result)
             } else if cmd.Op == "find" {
-                records, ack := bptree.Find(cmd.LeftKey, cmd.RightKey)
+                records, ack := bpt.Find(cmd.LeftKey, cmd.RightKey)
                 for record := range records {
                     json.Marshal(os.Stdout, map[string]interface{}{
                         "key": record.GetKey(), 
@@ -66,6 +67,8 @@ func main() {
                     ack<-true
                 }
                 fmt.Println("end")
+            } else if cmd.Op == "visualize" {
+                bptree.Dotty(cmd.FileName, bpt)
             }
         }
     }
