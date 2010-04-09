@@ -48,7 +48,8 @@ func main() {
     for alive {
         cmdJson, err := inputReader.ReadString('\n')
         if err != nil {
-            log.Exit(err)
+            alive = false
+            break
         }
         if cmdJson == "q\n" {
             alive = false
