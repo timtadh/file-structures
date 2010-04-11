@@ -70,6 +70,11 @@ func main() {
                 fmt.Println("end")
             } else if cmd.Op == "visualize" {
                 bptree.Dotty(cmd.FileName, bpt)
+            } else if cmd.Op == "prettyprint" {
+                s := fmt.Sprintln(bpt)
+                f, _ := os.Open("bptree.txt", os.O_WRONLY, 0666)
+                f.Write([]byte(s))
+                f.Close()
             }
         }
     }
