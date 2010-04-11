@@ -25,26 +25,26 @@ type Command struct {
 func main() {
     // Read the string
     inputReader := bufio.NewReader(os.Stdin)
-    
+
     var info = Metadata{"", uint32(0), nil}
     var cmd = Command{"", nil, nil, nil, ""}
-    
+
     infoJson, err := inputReader.ReadString('\n')
     if err != nil {
         log.Exit(err)
     } else {
         json.Unmarshal(infoJson, &info)
     }
-    
+
     bpt, bperr := bptree.NewBpTree(info.Filename, info.Keysize, info.Fieldsizes)
     if !bperr {
         log.Exit("Failed B+ tree creation")
     } else {
         fmt.Println("ok")
     }
-    
+
     alive := true;
-    
+
     for alive {
         cmdJson, err := inputReader.ReadString('\n')
         if err != nil {
@@ -62,7 +62,7 @@ func main() {
                 records, ack := bpt.Find(cmd.LeftKey, cmd.RightKey)
                 for record := range records {
                     json.Marshal(os.Stdout, map[string]interface{}{
-                        "key": record.GetKey(), 
+                        "key": record.GetKey(),
                         "value": record.AllFields()})
                     fmt.Println()
                     ack<-true
@@ -72,7 +72,7 @@ func main() {
                 bptree.Dotty(cmd.FileName, bpt)
             } else if cmd.Op == "prettyprint" {
                 s := fmt.Sprintln(bpt)
-                f, _ := os.Open(cmd.FileName, os.O_WRONLY, 0666)
+                f, _ := os.Open(cmd.FileName, os.O_RDWR|os.O_CREAT, 0666)
                 f.Write([]byte(s))
                 f.Close()
             }
