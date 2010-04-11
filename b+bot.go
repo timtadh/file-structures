@@ -72,7 +72,7 @@ func main() {
                 bptree.Dotty(cmd.FileName, bpt)
             } else if cmd.Op == "prettyprint" {
                 s := fmt.Sprintln(bpt)
-                f, _ := os.Open("bptree.txt", os.O_WRONLY, 0666)
+                f, _ := os.Open(cmd.FileName, os.O_WRONLY, 0666)
                 f.Write([]byte(s))
                 f.Close()
             }
