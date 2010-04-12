@@ -1,7 +1,7 @@
 package buffers
 
 import list "container/list"
-import "fmt"
+// import "fmt"
 import "block/heap"
 
 type Buffer interface {
@@ -74,11 +74,11 @@ func (self *LRU) Read(p int64, length uint32) ([]byte, bool) {
                 return nil, false
             }
             self.stack.MoveToFront(e)
-            fmt.Println("---------------------> Cache Hit")
+//             fmt.Println("---------------------> Cache Hit")
             return i.bytes, true
         }
     }
-    fmt.Println("---------------------> Cache Miss")
+//     fmt.Println("---------------------> Cache Miss")
     return nil, false
 }
 // -------------------------------------------------------------------------------
