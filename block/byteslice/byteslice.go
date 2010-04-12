@@ -4,6 +4,16 @@ import "fmt"
 
 type ByteSlice []byte
 
+func ByteSlice8(i uint8) ByteSlice {
+    b := make(ByteSlice, 1)
+    b[0] = i
+    return b
+}
+
+func (b ByteSlice) Int8() uint8 {
+    return b[0]
+}
+
 func ByteSlice16(i uint16) ByteSlice {
     b := make(ByteSlice, 2)
     s := len(b) - 1
