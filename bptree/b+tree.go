@@ -23,7 +23,7 @@ type BpTree struct {
 func NewBpTree(filename string, keysize uint32, fields []uint32) (*BpTree, bool) {
     self := new(BpTree)
     // 4 MB buffer with a block size of 4096 bytes
-    if bf, ok := NewBlockFile(filename, NewLFU(1000)); !ok {
+    if bf, ok := NewBlockFile(filename, NewLFU(15360)); !ok {
         fmt.Println("could not create block file")
         return nil, false
     } else {
