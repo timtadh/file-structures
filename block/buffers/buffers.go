@@ -131,8 +131,7 @@ func (self *lfu_heap) Pop() interface{} {
 }
 
 func (self *lfu_heap) Remove(p int64) {
-    for i := self.Len() - 1;
-        i >= 0; i-- {
+    for i := self.Len() - 1; i >= 0; i-- {
         if self.slice[i].p == p {
             heap.Remove(self, i)
             break
