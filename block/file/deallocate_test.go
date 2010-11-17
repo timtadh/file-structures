@@ -34,7 +34,7 @@ func callerLineNumber() int {
 
 func compare(t *testing.T, file *BlockFile, expectedTypes ... int) {
     actual := file.Summarize()
-    expected := buildExpected(expectedTypes)
+    expected := buildExpected(([]int(expectedTypes))...)
     if !actual.Equals(expected) {
         t.Logf("Expected %s at line %d, got %s", expected.String(), callerLineNumber(), actual.String())
         t.Fail()

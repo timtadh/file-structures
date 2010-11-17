@@ -82,7 +82,7 @@ func (self *BlockFile) RealSize() (uint64, bool) {
         fmt.Println(err)
         return 0, false
     }
-    return dir.Size, true
+    return uint64(dir.Size), true
 }
 
 func (self *BlockFile) resize(size int64) bool {

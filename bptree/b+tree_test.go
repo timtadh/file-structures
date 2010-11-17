@@ -11,7 +11,7 @@ import . "block/buffers"
 import . "block/byteslice"
 import "block/dirty"
 
-var rec [][]byte = &([3][]byte{&[1]byte{1}, &[1]byte{1}, &[2]byte{1, 2}})
+var rec []ByteSlice = []ByteSlice{[]byte{1}, []byte{1}, []byte{1, 2}}
 var BLOCKSIZE uint32 = treeinfo.BLOCKSIZE
 
 func newBpTree(blocksize uint32, filename string, keysize uint32, fields []uint32) (*BpTree, bool) {
@@ -65,7 +65,7 @@ func newBpTree(blocksize uint32, filename string, keysize uint32, fields []uint3
 }
 
 func makebptree(size uint32, t *testing.T) *BpTree {
-    self, ok := newBpTree(size, "test.bptree", 4, &([3]uint32{2, 2, 4}))
+    self, ok := newBpTree(size, "test.bptree", 4, ([]uint32{2, 2, 4}))
     if !ok {
         t.Fatal("could not create B+ Tree")
     }

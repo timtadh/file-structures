@@ -28,7 +28,7 @@ func rec_to_tmp(bptree *BpTree, rec *Record) *tmprec {
     self.exdim = bptree.external
     self.indim = bptree.internal
     self.key = rec.GetKey()
-    self.record = make([][]byte, rec.Fields())
+    self.record = make([]ByteSlice, rec.Fields())
     for i := 0; i < int(rec.Fields()); i++ {
         self.record[i] = rec.Get(uint32(i))
     }

@@ -19,7 +19,7 @@ func init() {
     }
 }
 
-var record []ByteSlice = []ByteSlice(&[3][]byte{&[2]byte{1, 2}, &[2]byte{3, 4}, &[4]byte{5, 6, 7, 8}})
+var record []ByteSlice = []ByteSlice{[]byte{1, 2}, []byte{3, 4}, []byte{5, 6, 7, 8}}
 
 const ORDER_2_2 = 37
 const ORDER_3_3 = 50

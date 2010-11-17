@@ -103,14 +103,16 @@ func Dotty(filename string, tree *BpTree) {
         p, _ = block.GetExtraPtr()
     }
     s += subgraph
-    for e := range external.Iter() {
-        if node, ok := e.(string); ok {
+
+    for e := external.Front(); e != nil; e = e.Next() {
+        if node, ok := e.Value.(string); ok {
             s += fmt.Sprintln(node)
         }
     }
     s += "    " + footer
-    for e := range edges.Iter() {
-        if edge, ok := e.(string); ok {
+    
+    for e := edges.Front(); e != nil; e = e.Next() {
+        if edge, ok := e.Value.(string); ok {
             s += fmt.Sprintln(edge)
         }
     }

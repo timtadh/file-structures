@@ -25,7 +25,7 @@ func TestCount(t *testing.T) {
 }
 
 func TestFindAll(t *testing.T) {
-    dim,_ := NewBlockDimensions(RECORDS, 128, 8, 0, &([3]uint32{4}))
+    dim,_ := NewBlockDimensions(RECORDS, 128, 8, 0, ([]uint32{4}))
     self := newKeyBlock(nil, nil, dim)
     for i := 0; i < 6; i++ {
         rec := dim.NewRecord(ByteSlice64(1))

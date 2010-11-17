@@ -62,8 +62,8 @@ func Dotty(filename string, tree *BTree) {
         return name
     }
     traverse(tree.getblock(tree.info.Root()))
-    for e := range edges.Iter() {
-        if edge, ok := e.(string); ok {
+    for e := edges.Front(); e != nil; e = e.Next() {
+        if edge, ok := e.Value.(string); ok {
             fmt.Fprintln(file, edge)
         }
     }

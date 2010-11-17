@@ -8,14 +8,15 @@ import "block/file"
 import "treeinfo"
 import . "block/keyblock"
 import . "block/buffers"
+import . "block/byteslice"
 
-var rec [][]byte = &([3][]byte{&[1]byte{1}, &[1]byte{1}, &[2]byte{1, 2}})
+var rec []ByteSlice = []ByteSlice{[]byte{1}, []byte{1}, []byte{1, 2}}
 var BLOCKSIZE uint32 = 65
 
 func testingNewBTree(blocksize uint32) (*BTree, bool) {
     filename := "test.btree"
     keysize := uint32(4)
-    fields := &([3]uint32{1, 1, 2})
+    fields := ([]uint32{1, 1, 2})
     self := new(BTree)
     // 4 MB buffer with a block size of 4096 bytes
     if bf, ok := file.NewBlockFile(filename, NewLFU(1000)); !ok {
@@ -104,8 +105,8 @@ func TestValidateKey(t *testing.T) {
     self := makebtree(BLOCKSIZE)
     defer cleanbtree(self)
 
-    goodkey := &[4]byte{1, 2, 3, 4}
-    badkey := &[3]byte{1, 2, 3}
+    goodkey := []byte{1, 2, 3, 4}
+    badkey := []byte{1, 2, 3}
 
     if !self.ValidateKey(goodkey) {
         t.Error("valid key validated as bad")
@@ -121,11 +122,11 @@ func TestValidateRecord(t *testing.T) {
     defer cleanbtree(self)
 
     goodrec := rec
-    bacrec1 := &([3][]byte{&[2]byte{1, 2}, &[1]byte{1}, &[2]byte{1, 2}})
-    bacrec2 := &([3][]byte{&[2]byte{1, 2}, &[1]byte{1}, &[2]byte{1, 2}})
-    bacrec3 := &([2][]byte{&[1]byte{1}, &[2]byte{1, 2}})
-    bacrec4 := &([3][]byte{&[1]byte{1}, &[1]byte{1}, &[1]byte{1}})
-    bacrec5 := &([3][]byte{&[1]byte{}, &[1]byte{}, &[1]byte{}})
+    bacrec1 := []ByteSlice{[]byte{1, 2}, []byte{1}, []byte{1, 2}}
+    bacrec2 := []ByteSlice{[]byte{1, 2}, []byte{1}, []byte{1, 2}}
+    bacrec3 := []ByteSlice{[]byte{1}, []byte{1, 2}}
+    bacrec4 := []ByteSlice{[]byte{1}, []byte{1}, []byte{1}}
+    bacrec5 := []ByteSlice{[]byte{}, []byte{}, []byte{}}
 
     if !self.ValidateRecord(goodrec) {
         t.Error("valid key validated as bad")
