@@ -1,7 +1,7 @@
 package treeinfo
 
-import . "block/file"
-import . "block/byteslice"
+import . "file-structures/block/file"
+import . "file-structures/block/byteslice"
 
 const BLOCKSIZE = 4096
 // const BLOCKSIZE = 64

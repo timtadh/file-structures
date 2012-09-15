@@ -2,14 +2,13 @@ package bptree
 
 import "fmt"
 // import "os"
-import "log"
 import "runtime"
 import "container/list"
-import "treeinfo"
-import . "block/file"
-import . "block/keyblock"
-import . "block/buffers"
-import . "block/byteslice"
+import "file-structures/treeinfo"
+import . "file-structures/block/file"
+import . "file-structures/block/keyblock"
+import . "file-structures/block/buffers"
+import . "file-structures/block/byteslice"
 
 
 type BpTree struct {
@@ -88,7 +87,6 @@ func (self *BpTree) Find(left ByteSlice, right ByteSlice) (<-chan *Record, chan<
         // parameters are invalid or will yield the empty set
         if left == nil || right == nil || (!left.Eq(right) && right.Lt(left)) {
             close(yield)
-            close(ack)
             return
         }
 
@@ -107,7 +105,9 @@ func (self *BpTree) Find(left ByteSlice, right ByteSlice) (<-chan *Record, chan<
                         if p, ok := block.GetPointer(0); ok {
                             pos = p
                         } else {
-                            log.Exitf("110 Error could not get pointer %v from block %v", i, block)
+                            msg := fmt.Sprintf(
+                                "110 Error could not get pointer %v from block %v", i, block)
+                            panic(msg)
                         }
                     } else {
                         // else this spot is one to many so we get the previous spot
@@ -115,12 +115,16 @@ func (self *BpTree) Find(left ByteSlice, right ByteSlice) (<-chan *Record, chan<
                         if p, ok := block.GetPointer(i); ok {
                             pos = p
                         } else {
-                            log.Exitf("118 Error could not get record %v from block %v", i, block)
+                            msg := fmt.Sprintf(
+                                "118 Error could not get record %v from block %v", i, block)
+                            panic(msg)
                         }
                     }
                 }
                 if pos == nil {
-                    log.Exitf("123 Error could got null pos in find key=%v\n%v\n", key, block)
+                    msg := fmt.Sprintf(
+                        "123 Error could got null pos in find key=%v\n%v\n", key, block)
+                    panic(msg)
                 }
                 return find(key, self.getblock(pos), height-1)
             }
@@ -158,7 +162,6 @@ func (self *BpTree) Find(left ByteSlice, right ByteSlice) (<-chan *Record, chan<
             start = 0
         }
         close(yield)
-        close(ack)
         return;
     }(records, ack);
 
@@ -184,3 +187,4 @@ func (self *BpTree) String() string {
     s += "}"
     return s
 }
+

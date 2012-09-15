@@ -4,12 +4,12 @@ import "testing"
 import "os"
 import "fmt"
 import "runtime"
-import "treeinfo"
-import . "block/file"
-import . "block/keyblock"
-import . "block/buffers"
-import . "block/byteslice"
-import "block/dirty"
+import "file-structures/treeinfo"
+import . "file-structures/block/file"
+import . "file-structures/block/keyblock"
+import . "file-structures/block/buffers"
+import . "file-structures/block/byteslice"
+import "file-structures/block/dirty"
 
 var rec []ByteSlice = []ByteSlice{[]byte{1}, []byte{1}, []byte{1, 2}}
 var BLOCKSIZE uint32 = treeinfo.BLOCKSIZE

@@ -1,8 +1,8 @@
 package bptree
 
 import "fmt"
-import . "block/keyblock"
-import . "block/byteslice"
+import . "file-structures/block/keyblock"
+import . "file-structures/block/byteslice"
 
 type tmprec struct {
     exdim  *BlockDimensions

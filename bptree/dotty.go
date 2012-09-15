@@ -2,9 +2,8 @@ package bptree
 
 import "fmt"
 import "os"
-import "log"
-import "block/keyblock"
-import . "block/byteslice"
+import "file-structures/block/keyblock"
+import . "file-structures/block/byteslice"
 import "container/list"
 
 var header string = "digraph btree {\n"
@@ -14,7 +13,7 @@ var subgraph string = "\n    subgraph graph0 {\n        graph[rank=same];\n"
 
 func Dotty(filename string, tree *BpTree) {
     s := ""
-    file, _ := os.Open(filename, os.O_WRONLY|os.O_CREAT|os.O_TRUNC, 0666)
+    file, _ := os.Create(filename)
     s += header
 
     label := func(vals []string, size int) string {
@@ -42,12 +41,16 @@ func Dotty(filename string, tree *BpTree) {
         for ; i < int(block.RecordCount()); i++ {
             rec, _, _, ok := block.Get(i)
             if !ok {
-                log.Exitf("could not get rec, %v, from block with %v records\n", i, block.RecordCount())
+                msg := fmt.Sprintf(
+                    "could not get rec, %v, from block with %v records\n", i, block.RecordCount())
+                panic(msg)
             }
             if p, ok := block.GetPointer(i); ok {
                 nblock := tree.getblock(p)
                 if nblock == nil {
-                    log.Exitf("nil block returned by self.getblock(p)", i, block.RecordCount())
+                    msg := fmt.Sprint(
+                        "nil block returned by self.getblock(p)", i, block.RecordCount())
+                    panic(msg)
                 }
                 c++
                 edges.PushBack(fmt.Sprintf("    %v->%v", name, traverse(nblock, height - 1)))
@@ -57,7 +60,9 @@ func Dotty(filename string, tree *BpTree) {
         if p, ok := block.GetPointer(i); ok {
             nblock := tree.getblock(p)
             if nblock == nil {
-                log.Exitf("nil block returned by self.getblock(p)", i, block.RecordCount())
+                msg := fmt.Sprint(
+                    "nil block returned by self.getblock(p)", i, block.RecordCount())
+                panic(msg)
             }
             c++
             edges.PushBack(fmt.Sprintf("    %v->%v", name, traverse(nblock, height - 1)))

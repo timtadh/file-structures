@@ -1,25 +1,20 @@
 package bptree
 
-// import "fmt"
-// import "os"
-import "log"
+import "fmt"
 import "runtime"
-// import "container/list"
-// import . "block/file"
-import . "block/keyblock"
-// import . "block/buffers"
-import . "block/byteslice"
+import . "file-structures/block/keyblock"
+import . "file-structures/block/byteslice"
 
 // Allocates a new key block. This isn't quite as convient as the method
 // for BTrees as we have to tell it if we are allocating an internal or an
 // external block.
 func (self *BpTree) allocate(dim *BlockDimensions) *KeyBlock {
     if dim != self.external && dim != self.internal {
-        log.Exit("Cannot allocate a block that has dimensions that are niether the dimensions of internal or external nodes.")
+        panic("Cannot allocate a block that has dimensions that are niether the dimensions of internal or external nodes.")
     }
     block, ok := NewKeyBlock(self.bf, dim)
     if !ok {
-        log.Exit("Could not allocate block PANIC")
+        panic("Could not allocate block PANIC")
     }
     return block
 }
@@ -32,22 +27,30 @@ func (self *BpTree) getblock(pos ByteSlice) *KeyBlock {
     if bytes, read := self.bf.ReadBlock(int64(pos.Int64()), self.blocksize); read {
         if bytes[0] == self.external.Mode {
             if block, ok := Deserialize(self.bf, self.external, bytes, pos); !ok {
-                log.Exit("Unable to deserialize block at position: ", pos)
+                msg := fmt.Sprint(
+                    "Unable to deserialize block at position: ", pos)
+                panic(msg)
             } else {
                 return block
             }
         } else if bytes[0] == self.internal.Mode {
             if block, ok := Deserialize(self.bf, self.internal, bytes, pos); !ok {
-                log.Exit("Unable to deserialize block at position: ", pos)
+                msg := fmt.Sprint(
+                    "Unable to deserialize block at position: ", pos)
+                panic(msg)
             } else {
                 return block
             }
         } else {
             a,b,c,d := runtime.Caller(1)
-            log.Exitf("Block at position %v has an invalid mode\n%v\n%v\n%v\n%v\n", pos, a, b, c, d)
+            msg := fmt.Sprintf(
+                "Block at position %v has an invalid mode\n%v\n%v\n%v\n%v\n", pos, a, b, c, d)
+            panic(msg)
         }
     }
-    log.Exit("Error reading block at postion: ", pos)
+    msg := fmt.Sprint(
+        "Error reading block at postion: ", pos)
+    panic(msg)
     return nil
 }
 

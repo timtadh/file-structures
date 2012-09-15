@@ -2,15 +2,14 @@ package bptree
 
 import "fmt"
 import "os"
-import "rand"
+import "math/rand"
 import "math"
-import "log"
-import . "block/byteslice"
-import . "block/keyblock"
-import "block/dirty"
+import . "file-structures/block/byteslice"
+import . "file-structures/block/keyblock"
+import "file-structures/block/dirty"
 
 func init() {
-    if urandom, err := os.Open("/dev/urandom", os.O_RDONLY, 0666); err != nil {
+    if urandom, err := os.Open("/dev/urandom"); err != nil {
         return
     } else {
         seed := make([]byte, 8)
@@ -25,20 +24,28 @@ func (self BpTree) mv(a, b *KeyBlock) {
         if r, _, _, ok := a.Get(0); ok {
             a.RemoveAtIndex(0)
             if _, ok := b.Add(r); !ok {
-                log.Exitf("44 could not a record %v to block \n%v\n", r, b)
+                msg := fmt.Sprintf(
+                    "44 could not a record %v to block \n%v\n", r, b)
+                panic(msg)
             }
         } else {
-            log.Exitf("44 could not get record %v from block \n%v\n", 0, a)
+            msg := fmt.Sprintf(
+                "44 could not get record %v from block \n%v\n", 0, a)
+            panic(msg)
         }
     }
     for i := a.PointerCount(); i > 0; i-- {
         if p, ok := a.GetPointer(0); ok {
             a.RemovePointer(0)
             if ok := b.InsertPointer(int(b.PointerCount()), p); !ok {
-                log.Exitf("44 could not a insert pointer %v to block \n%v\n", p, b)
+                msg := fmt.Sprintf(
+                    "44 could not a insert pointer %v to block \n%v\n", p, b)
+                panic(msg)
             }
         } else {
-            log.Exitf("44 could not get pointer %v from block \n%v\n", 0, a)
+            msg := fmt.Sprintf(
+                "44 could not get pointer %v from block \n%v\n", 0, a)
+            panic(msg)
         }
     }
 }
@@ -106,8 +113,8 @@ func (self *BpTree) split(a *KeyBlock, rec *tmprec, nextb *KeyBlock, dirty *dirt
                 r := l                       // r = right the right side of the run of dup keys
                 for ; r < n-1 && getk(r).Eq(key); r++ { }
                 r--
-                lr := math.Fabs(float64(l)/float64(n)) // left ratio (ie. how close is left to mid)
-                rr := math.Fabs(float64(r)/float64(n)) // right ration (ie. how close is right to mid)
+                lr := math.Abs(float64(l)/float64(n)) // left ratio (ie. how close is left to mid)
+                rr := math.Abs(float64(r)/float64(n)) // right ration (ie. how close is right to mid)
                 // we return which ever has a ratio closer to zero
                 if lr <= rr && l != 0{
                     m = l
@@ -161,7 +168,7 @@ func (self *BpTree) split(a *KeyBlock, rec *tmprec, nextb *KeyBlock, dirty *dirt
         } else {
             // otherwise we now need to insert our new record into the block before it is balanced
             if i, ok := a.Add(r); !ok {
-                log.Exit("Inserting record into block failed PANIC")
+                panic("Inserting record into block failed PANIC")
             } else {
                 // after it is inserted we need to associate the next block with its key (which is
                 // the key we just inserted).
@@ -200,26 +207,26 @@ func (self *BpTree) split(a *KeyBlock, rec *tmprec, nextb *KeyBlock, dirty *dirt
         fmt.Println("Empty:\n", b)
         fmt.Println("Rec:", r)
         fmt.Println("return rec:", return_rec)
-        log.Exit("Could not add the split_rec to the selected block PANIC")
+        panic("Could not add the split_rec to the selected block PANIC")
     } else {
         // we now insert the pointer if we have one
         if block.Mode()&POINTERS == POINTERS && nextp != nil {
             // we have a block that supports a pointer and a pointer
             if !block.InsertPointer(i, nextp) {
-                log.Exit("166 pointer insert failed! PANIC")
+                panic("166 pointer insert failed! PANIC")
             }
         } else if block.Mode()&POINTERS == 0 && nextp != nil {
             // we don't have a block that supports a pointer but we do have a pointer
-            log.Exit("tried to set a pointer on a block with no pointers")
+            panic("tried to set a pointer on a block with no pointers")
         } else if block.Mode()&POINTERS == POINTERS && nextp == nil {
             // we have a block that supports a pointer but don't have a pointer
-            log.Exit("splitting an internal block split requires a next block to point at")
+            panic("splitting an internal block split requires a next block to point at")
         } // else
         //    we have a block that doesn't support a pointer and we don't have pointer
     }
 
     if rec, _, _, ok := b.Get(0); !ok {
-        log.Exit("Could not get the first record from block b PANIC")
+        panic("Could not get the first record from block b PANIC")
     } else {
         // we change the record returned because the first record in block b will now not
         // be the record we split on which is ok we just need to return the correct record.
@@ -291,13 +298,17 @@ func (self *BpTree) insert(block *KeyBlock, rec *tmprec, height int, dirty *dirt
                     r.SetKey(rec.key)
                     pos = p
                 } else {
-                    log.Exitf("227 Error could not get record %v from block %v", i, block)
+                    msg := fmt.Sprintf(
+                        "227 Error could not get record %v from block %v", i, block)
+                    panic(msg)
                 }
             } else if ok {
                 if _, p, _, ok := block.Get(i); ok {
                     pos = p
                 } else {
-                    log.Exitf("235 Error could not get record %v from block %v", i, block)
+                    msg := fmt.Sprintf(
+                        "235 Error could not get record %v from block %v", i, block)
+                    panic(msg)
                 }
             } else {
                 // else this spot is one to many so we get the previous spot
@@ -305,14 +316,16 @@ func (self *BpTree) insert(block *KeyBlock, rec *tmprec, height int, dirty *dirt
                 if _, p, _, ok := block.Get(i); ok {
                     pos = p
                 } else {
-                    log.Exitf("235 Error could not get record %v from block %v", i, block)
+                    msg := fmt.Sprintf(
+                        "235 Error could not get record %v from block %v", i, block)
+                    panic(msg)
                 }
             }
         }
 
         // if pos is nil we have a serious problem
         if pos == nil {
-            log.Exit("242 Nil Pointer")
+            panic("242 Nil Pointer")
         }
 
         // after we have found the position we get the block
@@ -342,7 +355,7 @@ func (self *BpTree) insert(block *KeyBlock, rec *tmprec, height int, dirty *dirt
                         newblock.SetExtraPtr(p)
                         block.SetExtraPtr(newblock.Position())
                         if _, ok := newblock.Add(r); !ok {
-                            log.Exit("347 could not add to empty block")
+                            panic("347 could not add to empty block")
                         }
                         if r.GetKey().Eq(firstr.GetKey()) {
                             return nil, nil, false
@@ -364,7 +377,7 @@ func (self *BpTree) insert(block *KeyBlock, rec *tmprec, height int, dirty *dirt
                     block.SetExtraPtr(newblock.Position())
                     self.mv(block, newblock)
                     if _, ok := block.Add(r); !ok {
-                        log.Exit("366 could not add to empty block")
+                        panic("366 could not add to empty block")
                     }
                     return newblock, rec_to_tmp(self, firstr), true
                 }
@@ -378,17 +391,19 @@ func (self *BpTree) insert(block *KeyBlock, rec *tmprec, height int, dirty *dirt
         // return to parent saying it has nothing to do
         if block.Mode()&POINTERS == POINTERS && nextb != nil {
             if ok := block.InsertPointer(i, nextb.Position()); !ok {
-                log.Exit("pointer insert failed")
+                panic("pointer insert failed")
             }
         } else if block.Mode()&POINTERS == 0 && nextb != nil {
-            log.Exit("tried to set a pointer on a block with no pointers")
+            panic("tried to set a pointer on a block with no pointers")
         }
         return nil, nil, false
     } else if i == -2 {
         // Dotty("error.dot", self)
         dirty.Sync()
         // Dotty("error2.dot", self)
-        log.Exit("tried to insert a duplicate key into a block which does not allow that.\n", r, "\n", block)
+        msg := fmt.Sprint(
+            "tried to insert a duplicate key into a block which does not allow that.\n", r, "\n", block)
+        panic(msg)
     }
     // Block is full split the block
     return self.split(block, rec, nextb, dirty)
