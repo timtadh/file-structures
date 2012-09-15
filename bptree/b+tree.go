@@ -1,7 +1,7 @@
 package bptree
 
 import "fmt"
-// import "os"
+import "os"
 import "runtime"
 import "container/list"
 import "file-structures/treeinfo"
@@ -23,28 +23,28 @@ func NewBpTree(filename string, keysize uint32, fields []uint32) (*BpTree, bool)
     self := new(BpTree)
     // 4 MB buffer with a block size of 4096 bytes
     if bf, ok := NewBlockFile(filename, NewLFU(15360)); !ok {
-        fmt.Println("could not create block file")
+        fmt.Fprintln(os.Stderr, "could not create block file")
         return nil, false
     } else {
         self.bf = bf
     }
     self.blocksize = treeinfo.BLOCKSIZE
     if inter, ok := NewBlockDimensions(POINTERS|EQUAPTRS|NODUP, self.blocksize, keysize, 8, nil); !ok {
-        fmt.Println("Block Dimensions invalid")
+        fmt.Fprintln(os.Stderr, "Block Dimensions invalid")
         return nil, false
     } else {
         self.internal = inter
     }
 
     if leaf, ok := NewBlockDimensions(RECORDS|EXTRAPTR, self.blocksize, keysize, 8, fields); !ok {
-        fmt.Println("Block Dimensions invalid")
+        fmt.Fprintln(os.Stderr, "Block Dimensions invalid")
         return nil, false
     } else {
         self.external = leaf
     }
 
     if !self.bf.Open() {
-        fmt.Println("Couldn't open file")
+        fmt.Fprintln(os.Stderr, "Couldn't open file")
         return nil, false
     }
     if s, open := self.bf.Size(); open && s == 0 {

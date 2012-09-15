@@ -1,13 +1,9 @@
 package btree
 
-
 import "fmt"
 import "os"
-// import "container/list"
-// import . "block/file"
-import . "block/keyblock"
-// import . "block/buffers"
-import . "block/byteslice"
+import . "file-structures/block/keyblock"
+import . "file-structures/block/byteslice"
 
 func (self *BTree) allocate() *KeyBlock {
     b, ok := NewKeyBlock(self.bf, self.node)

@@ -4,11 +4,11 @@ import "fmt"
 // import "os"
 import "runtime"
 import "container/list"
-import "treeinfo"
-import . "block/file"
-import . "block/keyblock"
-import . "block/buffers"
-import . "block/byteslice"
+import "file-structures/treeinfo"
+import . "file-structures/block/file"
+import . "file-structures/block/keyblock"
+import . "file-structures/block/buffers"
+import . "file-structures/block/byteslice"
 
 
 // const BLOCKSIZE = 45

@@ -2,14 +2,14 @@ package btree
 
 import "testing"
 import "fmt"
-import . "block/keyblock"
-import . "block/byteslice"
-import "block/dirty"
-import "rand"
+import . "file-structures/block/keyblock"
+import . "file-structures/block/byteslice"
+import "file-structures/block/dirty"
+import "math/rand"
 import "os"
 
 func init() {
-    if urandom, err := os.Open("/dev/urandom", os.O_RDONLY, 0666); err != nil {
+    if urandom, err := os.Create("/dev/urandom"); err != nil {
         return
     } else {
         seed := make([]byte, 8)

@@ -1,11 +1,8 @@
 package main
 
 import "fmt"
-import . "btree"
-// import . "block/file"
-// import . "block/keyblock"
-// import . "block/buffers"
-import . "block/byteslice"
+import . "file-structures/btree"
+import . "file-structures/block/byteslice"
 
 func main() {
 

@@ -4,10 +4,10 @@ import "fmt"
 import "os"
 // import "container/list"
 // import . "block/file"
-import . "block/keyblock"
+import . "file-structures/block/keyblock"
 // import . "block/buffers"
-import . "block/byteslice"
-import "block/dirty"
+import . "file-structures/block/byteslice"
+import "file-structures/block/dirty"
 
 /*
    balance blocks takes two keyblocks full, and empty and balances the records between them. full must be full

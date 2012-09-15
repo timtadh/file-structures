@@ -4,11 +4,11 @@ import "testing"
 import "fmt"
 import "os"
 import "runtime"
-import "block/file"
-import "treeinfo"
-import . "block/keyblock"
-import . "block/buffers"
-import . "block/byteslice"
+import "file-structures/block/file"
+import "file-structures/treeinfo"
+import . "file-structures/block/keyblock"
+import . "file-structures/block/buffers"
+import . "file-structures/block/byteslice"
 
 var rec []ByteSlice = []ByteSlice{[]byte{1}, []byte{1}, []byte{1, 2}}
 var BLOCKSIZE uint32 = 65
@@ -25,7 +25,7 @@ func testingNewBTree(blocksize uint32) (*BTree, bool) {
     } else {
         self.bf = bf
     }
-    file.OPENFLAG = os.O_RDWR | os.O_CREAT
+    file.OPENFLAG = os.O_RDWR | os.O_CREATE
     if dim, ok := NewBlockDimensions(RECORDS|POINTERS, blocksize, keysize, 8, fields); !ok {
         fmt.Println("Block Dimensions invalid")
         return nil, false

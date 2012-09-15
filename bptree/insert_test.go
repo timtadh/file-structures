@@ -114,7 +114,7 @@ func test_split(j, n int, self *BpTree, dirty *dirty.DirtyBlocks, t *testing.T) 
             t.Fatal("could not get the first record from b, ie b is empty!")
         }
         {
-            t.Log(a, b)
+            // t.Log(a, b)
             i := 0
             for ; i < int(a.RecordCount()); i++ {
                 r, p, _, ok := a.Get(i)
@@ -127,7 +127,7 @@ func test_split(j, n int, self *BpTree, dirty *dirty.DirtyBlocks, t *testing.T) 
                 if !p.Eq(ByteSlice64(uint64(i))) && !(i == j && p.Eq(nextb.Position())) {
                     t.Errorf("115 Pointer, %v, does not equal %v", p, ByteSlice64(uint64(i)))
                 }
-                t.Log(r.GetKey(), p)
+                // t.Log(r.GetKey(), p)
             }
 
             if int(split.key.Int32()) != i {
@@ -146,7 +146,7 @@ func test_split(j, n int, self *BpTree, dirty *dirty.DirtyBlocks, t *testing.T) 
                     t.Log(i, j, nextb.Position())
                     t.Errorf("115 Pointer, %v, does not equal %v", p, ByteSlice64(uint64(i)))
                 }
-                t.Log(r.GetKey(), p)
+                // t.Log(r.GetKey(), p)
                 i++
             }
         }
@@ -284,7 +284,7 @@ func TestInsert(t *testing.T) {
         n := (i)*(i)
         fmt.Printf("testing block size %v, b+ tree order %v, with %v tests\n", size, i, n)
         for i := 0; i < n; i++ {
-            t.Log(i)
+            // t.Log(i)
             self := makebptree(size, t)
             make_complete(self, i, t)
             if ok := self.Insert(ByteSlice32(uint32(i)), record); !ok {

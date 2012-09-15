@@ -1,7 +1,7 @@
 package btree
 
 import "testing"
-import . "block/byteslice"
+import . "file-structures/block/byteslice"
 
 func TestFind(t *testing.T) {
     //     fmt.Println("\n------  TestFind  ------")

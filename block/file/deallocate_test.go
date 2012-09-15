@@ -12,6 +12,7 @@ const testBlockSize = uint32(64)
 
 func createFile(open bool, t *testing.T) *BlockFile {
     os.Remove(testFile)
+    OPENFLAG = os.O_RDWR | os.O_CREATE
     bf, ok := NewBlockFile(testFile, NewLRU(1000))
     if ok && open {
         ok = ok && bf.Open()

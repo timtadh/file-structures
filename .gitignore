@@ -3,7 +3,6 @@ test
 test_btree
 test_keyblock
 _testmain
-b+bot
 *.6
 *.swp
 *.swo

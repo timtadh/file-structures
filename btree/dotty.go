@@ -2,8 +2,7 @@ package btree
 
 import "fmt"
 import "os"
-import "log"
-import "block/keyblock"
+import "file-structures/block/keyblock"
 import "container/list"
 
 var header string = "digraph btree {\n"
@@ -11,7 +10,7 @@ var footer string = "}\n"
 
 func Dotty(filename string, tree *BTree) {
 
-    file, _ := os.Open(filename, os.O_RDWR|os.O_CREAT, 0666)
+    file, _ := os.Create(filename)
     fmt.Fprintln(file, header)
 
     label := func(vals []string, size int) string {
@@ -38,12 +37,16 @@ func Dotty(filename string, tree *BTree) {
         for ; i < int(block.RecordCount()); i++ {
             rec, _, _, ok := block.Get(i)
             if !ok {
-                log.Exitf("could not get rec, %v, from block with %v records\n", i, block.RecordCount())
+                msg := fmt.Sprintf(
+                    "could not get rec, %v, from block with %v records\n", i, block.RecordCount())
+                panic(msg)
             }
             if p, ok := block.GetPointer(i); ok {
                 nblock := tree.getblock(p)
                 if nblock == nil {
-                    log.Exitf("nil block returned by self.getblock(p)", i, block.RecordCount())
+                    msg := fmt.Sprint(
+                        "nil block returned by self.getblock(p)", i, block.RecordCount())
+                    panic(msg)
                 }
                 c++
                 edges.PushBack(fmt.Sprintf("%v->%v", name, traverse(nblock)))
@@ -53,7 +56,9 @@ func Dotty(filename string, tree *BTree) {
         if p, ok := block.GetPointer(i); ok {
             nblock := tree.getblock(p)
             if nblock == nil {
-                log.Exitf("nil block returned by self.getblock(p)", i, block.RecordCount())
+                msg := fmt.Sprint(
+                    "nil block returned by self.getblock(p)", i, block.RecordCount())
+                panic(msg)
             }
             c++
             edges.PushBack(fmt.Sprintf("%v->%v", name, traverse(nblock)))

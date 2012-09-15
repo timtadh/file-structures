@@ -1,12 +1,11 @@
 package main;
 
-import . "block/byteslice"
-import "bptree"
+import . "file-structures/block/byteslice"
+import "file-structures/bptree"
 import "os"
 import "bufio"
 import "fmt"
-import "json"
-import "log"
+import "encoding/json"
 
 type Metadata struct {
     Filename string
@@ -29,16 +28,16 @@ func main() {
     var info = Metadata{"", uint32(0), nil}
     var cmd = Command{"", nil, nil, nil, ""}
 
-    infoJson, err := inputReader.ReadString('\n')
+    infoJson, err := inputReader.ReadBytes('\n')
     if err != nil {
-        log.Exit(err)
+        panic(err)
     } else {
         json.Unmarshal(infoJson, &info)
     }
 
     bpt, bperr := bptree.NewBpTree(info.Filename, info.Keysize, info.Fieldsizes)
     if !bperr {
-        log.Exit("Failed B+ tree creation")
+        panic("Failed B+ tree creation")
     } else {
         fmt.Println("ok")
     }
@@ -46,12 +45,12 @@ func main() {
     alive := true;
 
     for alive {
-        cmdJson, err := inputReader.ReadString('\n')
+        cmdJson, err := inputReader.ReadBytes('\n')
         if err != nil {
             alive = false
             break
         }
-        if cmdJson == "q\n" {
+        if cmdJson[0] == 'q' && cmdJson[1] == '\n' {
             alive = false
         } else {
             json.Unmarshal(cmdJson, &cmd)
@@ -61,9 +60,13 @@ func main() {
             } else if cmd.Op == "find" {
                 records, ack := bpt.Find(cmd.LeftKey, cmd.RightKey)
                 for record := range records {
-                    json.Marshal(os.Stdout, map[string]interface{}{
-                        "key": record.GetKey(),
-                        "value": record.AllFields()})
+                    if bytes, err := json.Marshal(map[string]interface{}{
+                      "key": record.GetKey(),
+                      "value": record.AllFields()}); err != nil {
+                        panic(err)
+                    } else {
+                      os.Stdout.Write(bytes)
+                    }
                     fmt.Println()
                     ack<-true
                 }
@@ -72,7 +75,7 @@ func main() {
                 bptree.Dotty(cmd.FileName, bpt)
             } else if cmd.Op == "prettyprint" {
                 s := fmt.Sprintln(bpt)
-                f, _ := os.Open(cmd.FileName, os.O_RDWR|os.O_CREAT, 0666)
+                f, _ := os.Create(cmd.FileName)
                 f.Write([]byte(s))
                 f.Close()
             }
@@ -86,3 +89,4 @@ func main() {
 
 // insert(key Byteslice, record []Byteslice)
 // find(leftkey, right key) returns channel with all matching keys+records (Record structs)
+
