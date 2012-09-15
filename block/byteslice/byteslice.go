@@ -142,3 +142,4 @@ func (b ByteSlice) String() string {
     }
     return fmt.Sprintf("0x%x", b.Int64())
 }
+

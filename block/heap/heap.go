@@ -6,6 +6,7 @@
 // This package provides heap operations for any type that implements
 // heap.Interface.
 //
+
 package heap
 
 import "sort"
@@ -22,7 +23,6 @@ type Interface interface {
     Pop() interface{}
 }
 
-
 // A heaper must be initialized before any of the heap operations
 // can be used. Init is idempotent with respect to the heap invariants
 // and may be called whenever the heap invariants may have been invalidated.
@@ -36,7 +36,6 @@ func Init(h Interface) {
     }
 }
 
-
 // Push pushes the element x onto the heap. The complexity is
 // O(log(n)) where n = h.Len().
 //
@@ -44,7 +43,6 @@ func Push(h Interface, x interface{}) {
     h.Push(x)
     Up(h, h.Len()-1)
 }
-
 
 // Pop removes the minimum element (according to Less) from the heap
 // and returns it. The complexity is O(log(n)) where n = h.Len().
@@ -71,7 +69,6 @@ func Remove(h Interface, i int) interface{} {
     return h.Pop()
 }
 
-
 func Up(h Interface, j int) {
     for {
         i := (j - 1) / 2 // parent
@@ -82,7 +79,6 @@ func Up(h Interface, j int) {
         j = i
     }
 }
-
 
 func Down(h Interface, i, n int) {
     for {
@@ -101,3 +97,4 @@ func Down(h Interface, i, n int) {
         i = j
     }
 }
+
