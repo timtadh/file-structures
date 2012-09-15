@@ -1,5 +1,6 @@
 package keyblock
 
+import "os"
 import "fmt"
 import . "file-structures/block/file"
 import . "file-structures/block/byteslice"
@@ -266,6 +267,8 @@ func (self *KeyBlock) RemovePointer(i int) bool {
 
 func (self *KeyBlock) SerializeToFile() bool {
     if bytes, ok := self.Serialize(); ok {
+        fmt.Fprintf(os.Stderr, "pos = %v, len(bytes) = %v\n",
+            self.Position().Int64(), len(bytes))
         return self.bf.WriteBlock(int64(self.Position().Int64()), bytes)
     }
     return false

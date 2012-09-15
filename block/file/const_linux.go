@@ -17,7 +17,6 @@ func (self *BlockFile) Open() bool {
     } else {
         self.file = f
         self.opened = true
-        return self.initialize()
     }
     return self.opened
 }

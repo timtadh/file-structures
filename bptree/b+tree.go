@@ -53,12 +53,12 @@ func NewBpTree(filename string, keysize uint32, fields []uint32) (*BpTree, bool)
         b, ok := NewKeyBlock(self.bf, self.external)
         if !ok {
             self.bf.Close()
-            fmt.Println("Could not create the root block")
+            fmt.Fprintln(os.Stderr, "Could not create the root block")
             return nil, false
         }
         if !b.SerializeToFile() {
             self.bf.Close()
-            fmt.Println("Could not serialize root block to file")
+            fmt.Fprintln(os.Stderr, "Could not serialize root block to file")
             return nil, false
         }
         self.info = treeinfo.New(self.bf, 1, b.Position())

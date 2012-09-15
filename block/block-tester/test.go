@@ -9,7 +9,7 @@ import . "file-structures/block/byteslice"
 func main() {
     fmt.Println("hi")
     positions := make([][]byte, 4)
-    dim, _ := NewBlockDimensions(RECORDS|POINTERS, 4096, 8, 8, &([]uint32{1, 1, 2}))
+    dim, _ := NewBlockDimensions(RECORDS|POINTERS, 4096, 8, 8, ([]uint32{1, 1, 2}))
     t, _ := NewBlockFile("hello.btree", NewLFU(3))
     fmt.Println(t)
     fmt.Println(t.Open())
