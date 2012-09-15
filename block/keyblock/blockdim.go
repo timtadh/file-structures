@@ -1,7 +1,7 @@
 package keyblock
 
 import "fmt"
-import . "block/byteslice"
+import . "file-structures/block/byteslice"
 
 const (
     RECORDS = 1 << iota

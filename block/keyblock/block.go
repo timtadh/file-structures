@@ -1,9 +1,8 @@
 package keyblock
 
 import "fmt"
-import . "block/file"
-import . "block/byteslice"
-import "log"
+import . "file-structures/block/file"
+import . "file-structures/block/byteslice"
 
 const BLOCKHEADER = 5
 
@@ -85,7 +84,7 @@ func (b *KeyBlock) Add(r *Record) (int, bool) {
     i, ok := b.find(r.key)
     if b.dim.Mode&NODUP == NODUP && ok {
         return -2, false
-        log.Exit("tried to insert a duplicate key into a block which does not allow that.\n", b)
+        panic("tried to insert a duplicate key into a block which does not allow that.")
     }
     //     fmt.Printf("i=%v, k=%v\n", i, r.GetKey())
     //     if !ok {
@@ -160,7 +159,6 @@ func (self *KeyBlock) FindAll(k ByteSlice) (<-chan *Record, chan<- bool) {
     go func(yield chan<- *Record, ack <-chan bool) {
         i, ok := self.find(k)
         if !ok {
-            close(ack)
             close(yield)
             return
         }

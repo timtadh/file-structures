@@ -2,7 +2,7 @@ package buffers
 
 import list "container/list"
 // import "fmt"
-import "block/heap"
+import "file-structures/block/heap"
 
 type Buffer interface {
     Update(p int64, block []byte)
@@ -49,7 +49,7 @@ func (self *LRU) Remove(p int64) {
 func (self *LRU) Update(p int64, block []byte) {
     if e, has := self.buffer[p]; has {
         if block == nil {
-            self.buffer[p] = nil, false
+            delete(self.buffer, p)
             self.stack.Remove(e)
         } else {
             e.Value.(*lru_item).bytes = block
@@ -59,7 +59,7 @@ func (self *LRU) Update(p int64, block []byte) {
         for self.Size < self.stack.Len() {
             e = self.stack.Back()
             i := e.Value.(*lru_item)
-            self.buffer[i.p] = nil, false
+            delete(self.buffer, i.p)
             self.stack.Remove(e)
         }
         e = self.stack.PushFront(new_lruitem(p, block))
@@ -164,7 +164,7 @@ func (self *LFU) Remove(p int64) {
 func (self *LFU) Update(p int64, block []byte) {
     if _, has := self.buffer[p]; has {
         if block == nil {
-            self.buffer[p] = nil, false
+            delete(self.buffer, p)
             self.queue.Remove(p)
         } else {
             self.queue.Update(p)
@@ -173,7 +173,7 @@ func (self *LFU) Update(p int64, block []byte) {
     } else {
         for len(self.queue.slice) >= cap(self.queue.slice) {
             i := heap.Pop(self.queue).(lfu_item)
-            self.buffer[i.p] = nil, false
+            delete(self.buffer, i.p)
         }
         heap.Push(self.queue, &lfu_item{p, 1})
         self.buffer[p] = block

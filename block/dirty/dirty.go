@@ -1,6 +1,6 @@
 package dirty
 
-import "block/keyblock"
+import "file-structures/block/keyblock"
 
 type DirtyBlocks struct {
     slice []*keyblock.KeyBlock

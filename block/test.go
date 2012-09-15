@@ -1,10 +1,10 @@
 package main
 
 import "fmt"
-import . "block/file"
-import . "block/keyblock"
-import . "block/buffers"
-import . "block/byteslice"
+import . "file-structures/block/file"
+import . "file-structures/block/keyblock"
+import . "file-structures/block/buffers"
+import . "file-structures/block/byteslice"
 
 func main() {
     fmt.Println("hi")

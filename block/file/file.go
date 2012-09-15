@@ -2,8 +2,8 @@ package file
 
 import "os"
 import "fmt"
-import . "block/buffers"
-import . "block/byteslice"
+import . "file-structures/block/buffers"
+import . "file-structures/block/byteslice"
 
 const (
     INFTY64 int64 = 0x0FFFFFFFFFFFFFFF
@@ -82,7 +82,7 @@ func (self *BlockFile) RealSize() (uint64, bool) {
         fmt.Println(err)
         return 0, false
     }
-    return uint64(dir.Size), true
+    return uint64(dir.Size()), true
 }
 
 func (self *BlockFile) resize(size int64) bool {

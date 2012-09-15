@@ -31,3 +31,4 @@ func testBufferRemove(t *testing.T, toTest Buffer, name string) {
         t.Fail()
     }
 }
+

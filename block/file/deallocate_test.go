@@ -4,7 +4,7 @@ import(
     "os"
     "testing"
     "runtime"
-    . "block/buffers"
+    . "file-structures/block/buffers"
 )
 
 const testFile = "test.file"

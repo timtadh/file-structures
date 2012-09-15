@@ -1,7 +1,7 @@
 package keyblock
 
 import "testing"
-import . "block/byteslice"
+import . "file-structures/block/byteslice"
 
 func TestAdd(t *testing.T) {
     dim,_ := NewBlockDimensions(POINTERS|EQUAPTRS, 128, 8, 8, nil)
