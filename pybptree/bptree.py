@@ -72,7 +72,7 @@ class Float(Numtype):
 
 class Tuple(Spec):
 
-    def __init__(self, specs):
+    def __init__(self, *specs):
         super(Tuple, self).__init__(sum(spec.size for spec in specs), tuple)
         self.specs = specs
 
