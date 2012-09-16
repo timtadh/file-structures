@@ -70,6 +70,28 @@ class Float(Numtype):
     def __init__(self):
         super(Float, self).__init__(8, float)
 
+class Tuple(Spec):
+
+    def __init__(self, specs):
+        super(Tuple, self).__init__(sum(spec.size for spec in specs), tuple)
+        self.specs = specs
+
+    def bitpack(self, value):
+        assert len(value) == len(self.specs)
+        return ''.join(
+            spec.bitpack(v)
+            for v, spec in zip(value, self.specs)
+        )
+
+    def bitunpack(self, bitvalue):
+        offset = 0
+        values = list()
+        for spec in self.specs:
+            values.append(spec.bitunpack(bitvalue[offset:offset+spec.size]))
+            offset += spec.size
+        return tuple(values)
+
+
 class GoBpTree(object):
 
     def __init__(self, path, keyspec, fields):
