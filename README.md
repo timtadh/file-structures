@@ -22,4 +22,8 @@ yet but it does work with go install.
     ## install
     go install file-structures/bptree ## the actual b+tree
 
+You can then install the python RPC bindings with:
+
+    cd file-structures
+    python setup.py install
 
