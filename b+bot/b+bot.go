@@ -43,7 +43,7 @@ func init() {
 
 func main() {
 
-    if false {
+    if true {
         if f, err := os.Create("b+bot.profile"); err != nil {
             panic(err)
         } else {

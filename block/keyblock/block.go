@@ -290,15 +290,9 @@ func (self *KeyBlock) Serialize() ([]byte, bool) {
     for i := 0; i < len(self.records); i++ {
         rec := self.records[i]
         if rec != nil {
-            for _, v := range rec.key {
+            for _, v := range rec.Bytes() {
                 bytes[c] = v
                 c++
-            }
-            for _, field := range rec.data {
-                for _, v := range field {
-                    bytes[c] = v
-                    c++
-                }
             }
         } else {
             for j := 0; j < int(self.RecordSize()+self.KeySize()); j++ {
