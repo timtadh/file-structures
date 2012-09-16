@@ -6,16 +6,16 @@ import . "file-structures/block/buffers"
 import . "file-structures/block/byteslice"
 
 type BlockFile struct {
-    filename string
+    path string
     //     dim      *blockDimensions
     opened bool
     buf    Buffer
     file   *os.File
 }
 
-func NewBlockFile(filename string, buf Buffer) (*BlockFile, bool) {
+func NewBlockFile(path string, buf Buffer) (*BlockFile, bool) {
     self := new(BlockFile)
-    self.filename = filename
+    self.path = path
     //     self.dim = &dim
     self.buf = buf
     self.opened = false
@@ -32,13 +32,13 @@ func (self *BlockFile) Close() bool {
     return self.opened
 }
 
-func (self *BlockFile) Filename() string { return self.filename }
+func (self *BlockFile) Path() string { return self.path }
 
 func (self *BlockFile) Size() (uint64, bool) {
     if !self.opened {
         return 0, false
     }
-    dir, err := os.Stat(self.filename)
+    dir, err := os.Stat(self.path)
     if err != nil {
         fmt.Println(err)
         return 0, false

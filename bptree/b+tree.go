@@ -10,6 +10,7 @@ import . "file-structures/block/keyblock"
 import . "file-structures/block/buffers"
 import . "file-structures/block/byteslice"
 
+const BUFFERSIZE = 536870912 // 512 megabytes
 
 type BpTree struct {
     blocksize uint32
@@ -19,10 +20,14 @@ type BpTree struct {
     info      *treeinfo.TreeInfo
 }
 
-func NewBpTree(filename string, keysize uint32, fields []uint32) (*BpTree, bool) {
+func NewBpTree(path string, keysize uint32, fields []uint32) (*BpTree, bool) {
+    return NewBpTreeBufsize(path, keysize, fields, BUFFERSIZE)
+}
+
+func NewBpTreeBufsize(path string, keysize uint32, fields []uint32, bufsize int) (*BpTree, bool) {
     self := new(BpTree)
     // 4 MB buffer with a block size of 4096 bytes
-    if bf, ok := NewBlockFile(filename, NewLFU(15360)); !ok {
+    if bf, ok := NewBlockFile(path, NewLRU(bufsize)); !ok {
         fmt.Fprintln(os.Stderr, "could not create block file")
         return nil, false
     } else {
@@ -78,12 +83,11 @@ Usage:
         ack<-true;                              // ack<-true must be the last line of the loop.
     }
 */
-func (self *BpTree) Find(left ByteSlice, right ByteSlice) (<-chan *Record, chan<- bool) {
-    records := make(chan *Record)
-    ack := make(chan bool)
+func (self *BpTree) Find(left ByteSlice, right ByteSlice) (<-chan *Record) {
+    records := make(chan *Record, 200)
 
     // Go Routine which finds and returns the records
-    go func(yield chan<- *Record, ack <-chan bool) {
+    go func(yield chan<- *Record) {
         // parameters are invalid or will yield the empty set
         if left == nil || right == nil || (!left.Eq(right) && right.Lt(left)) {
             close(yield)
@@ -145,7 +149,6 @@ func (self *BpTree) Find(left ByteSlice, right ByteSlice) (<-chan *Record, chan<
                     rec.GetKey().Eq(right) ||
                     (rec.GetKey().Gt(left) && rec.GetKey().Lt(right)) {
                         yield<-rec
-                        <-ack
                 } else {
                     return false
                 }
@@ -163,9 +166,9 @@ func (self *BpTree) Find(left ByteSlice, right ByteSlice) (<-chan *Record, chan<
         }
         close(yield)
         return;
-    }(records, ack);
+    }(records);
 
-    return records, ack
+    return records
 }
 
 func (self *BpTree) String() string {

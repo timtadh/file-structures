@@ -14,10 +14,10 @@ import "file-structures/block/dirty"
 var rec []ByteSlice = []ByteSlice{[]byte{1}, []byte{1}, []byte{1, 2}}
 var BLOCKSIZE uint32 = treeinfo.BLOCKSIZE
 
-func newBpTree(blocksize uint32, filename string, keysize uint32, fields []uint32) (*BpTree, bool) {
+func newBpTree(blocksize uint32, path string, keysize uint32, fields []uint32) (*BpTree, bool) {
     self := new(BpTree)
     // 4 MB buffer with a block size of 4096 bytes
-    if bf, ok := NewBlockFile(filename, NewLFU(1000)); !ok {
+    if bf, ok := NewBlockFile(path, NewLFU(1000)); !ok {
         fmt.Println("could not create block file")
         return nil, false
     } else {
@@ -73,7 +73,7 @@ func makebptree(size uint32, t *testing.T) *BpTree {
     return self
 }
 
-func cleanbptree(self *BpTree) { os.Remove(self.bf.Filename()) }
+func cleanbptree(self *BpTree) { os.Remove(self.bf.Path()) }
 
 func TestCreate(t *testing.T) {
     t.Log("------- TestCreate -------")

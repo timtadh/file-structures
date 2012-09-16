@@ -3,7 +3,8 @@ package treeinfo
 import . "file-structures/block/file"
 import . "file-structures/block/byteslice"
 
-const BLOCKSIZE = 4096
+// const BLOCKSIZE = 4096
+const BLOCKSIZE = 1048576
 
 type TreeInfo struct {
     file   *BlockFile

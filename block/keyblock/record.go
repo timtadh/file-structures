@@ -40,6 +40,22 @@ func (r *Record) AllFields() [][]byte {
     return dataCopy
 }
 
+func (r *Record) Bytes() []byte {
+    bytes := make([]byte, r.KeySize() + r.Size())
+    k := 0
+    for i := 0; i < len(r.key); i++ {
+        bytes[k] = r.key[i]
+        k++
+    }
+    for i := 0; i < len(r.data); i++ {
+        for j := 0; j < len(r.data[i]); j++ {
+            bytes[k] = r.data[i][j]
+            k += 1
+        }
+    }
+    return bytes
+}
+
 func (self *Record) String() string {
     if self == nil {
         return "<nil>"

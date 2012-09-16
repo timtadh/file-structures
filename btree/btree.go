@@ -22,10 +22,10 @@ type BTree struct {
     info *treeinfo.TreeInfo
 }
 
-func NewBTree(filename string, keysize uint32, fields []uint32) (*BTree, bool) {
+func NewBTree(path string, keysize uint32, fields []uint32) (*BTree, bool) {
     self := new(BTree)
     // 4 MB buffer with a block size of 4096 bytes
-    if bf, ok := NewBlockFile(filename, NewLFU(1000)); !ok {
+    if bf, ok := NewBlockFile(path, NewLFU(1000)); !ok {
         fmt.Println("could not create block file")
         return nil, false
     } else {
@@ -89,7 +89,7 @@ func (self *BTree) Find(key ByteSlice) (*Record, bool) {
     return r, true
 }
 
-func (self *BTree) Filename() string { return self.bf.Filename() }
+func (self *BTree) Path() string { return self.bf.Path() }
 
 func (self *BTree) String() string {
     s := "BTree:\n{\n"

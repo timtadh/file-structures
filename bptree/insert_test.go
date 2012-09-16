@@ -322,14 +322,13 @@ func TestRandomBuild(t *testing.T) {
                 self.Insert(ByteSlice32(uint32(j)), record)
             }
             validate(self, n, t)
-            records, ack := self.Find(ByteSlice32(uint32(0)), ByteSlice32(uint32(n)))
+            records := self.Find(ByteSlice32(uint32(0)), ByteSlice32(uint32(n)))
             i := 0
             for rec := range records {
                 if !rec.GetKey().Eq(ByteSlice32(uint32(i))) {
                     t.Errorf("329 Expected %v go %v", i, rec.GetKey().Int64())
                 }
                 i++
-                ack <- true
             }
             cleanbptree(self)
         }
@@ -404,13 +403,12 @@ func TestDupSplitO4(t *testing.T) {
         }
 
         prev := ByteSlice32(0)
-        results, ack := self.Find(ByteSlice32(0), ByteSlice32(6))
+        results := self.Find(ByteSlice32(0), ByteSlice32(6))
         for result := range results {
             if prev.Gt(result.GetKey()) {
                 t.Errorf("465 prev, %v, greater than current, %v.\n", prev, result.GetKey())
             }
             prev = result.GetKey()
-            ack <- true
         }
 
         if i < 10 {
@@ -473,13 +471,12 @@ func TestRandomDuplicate(t *testing.T) {
             }
 
             prev := ByteSlice32(0)
-            results, ack := self.Find(ByteSlice32(0), ByteSlice32(uint32(n)))
+            results := self.Find(ByteSlice32(0), ByteSlice32(uint32(n)))
             for result := range results {
                 if prev.Gt(result.GetKey()) {
                     t.Errorf("465 prev, %v, greater than current, %v.\n", prev, result.GetKey())
                 }
                 prev = result.GetKey()
-                ack <- true
             }
 
             if i != 4 {

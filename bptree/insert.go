@@ -415,7 +415,7 @@ func (self *BpTree) Insert(key ByteSlice, record []ByteSlice) bool {
     // package the temp rec
     rec, valid := pkg_rec(self, key, record)
     if !valid {
-        fmt.Println("key or record not valid")
+        fmt.Fprintln(os.Stderr, "key or record not valid")
         return false
     }
 

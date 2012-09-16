@@ -1,30 +1,90 @@
-import subprocess, os
-try:
-    import simplejson as json
-except ImportError:
-    import json
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+#Original Author: Steve Johnson <steve.johnson.public@gmail.com>
+#Current Author: Tim Henderson
+#Email: tim.tadh@gmail.com
+#For licensing see the LICENSE file in the top level directory.
+
+import sys
+import os
+import signal
+import subprocess
+import json
+import struct
 
 bpbot_path = "b+bot"
+INSERT = struct.pack("<c", chr(0))
+FIND = struct.pack("<c", chr(1))
+QUIT = struct.pack("<c", chr(2))
 
-def unpack_bytes(val, size):
-    expanded = []
-    for item in xrange(size):
-        expanded.append((val >> ((size-item-1)<<3)) & 0xFF)
-    return expanded
+class Spec(object):
 
-def pack_bytes(bytes, size):
-    collapsed_val = 0
-    #print bytes
-    for byte, position in zip(bytes, xrange(size)):
-        collapsed_val |= ord(byte) << ((size-position-1)<<3)
-    return collapsed_val
+    def __init__(self, size, pytype):
+        self.size = size
+        self.pytype = pytype
+
+    def bitpack(self, value):
+        raise RuntimeError, NotImplemented
+
+    def bitunpack(self, bitvalue):
+        raise RuntimeError, NotImplemented
+
+class Numtype(Spec):
+
+    def bitpack(self, value):
+        return self._struct.pack(value)
+
+    def bitunpack(self, bitvalue):
+        return self._struct.unpack(bitvalue)[0]
+
+class String(Spec):
+
+    def __init__(self, size):
+        super(String, self).__init__(size, str)
+        self._struct = struct.Struct('<%ds' % self.size)
+
+    def bitpack(self, value):
+        return self._struct.pack(value)
+
+    def bitunpack(self, bitvalue):
+        return self._struct.unpack(bitvalue)[0].strip('\0')
+
+class Int(Numtype):
+
+    _struct = struct.Struct('<i')
+
+    def __init__(self):
+        super(Int, self).__init__(4, int)
+
+class Long(Numtype):
+
+    _struct = struct.Struct('<q')
+
+    def __init__(self):
+        super(Long, self).__init__(8, int)
+
+class Float(Numtype):
+
+    _struct = struct.Struct('<d')
+
+    def __init__(self):
+        super(Float, self).__init__(8, float)
 
 class GoBpTree(object):
-    def __init__(self, filename, key_size, field_sizes):
-        super(GoBpTree, self).__init__()
-        self.filename = filename
-        self.key_size = key_size
-        self.field_sizes = field_sizes
+
+    def __init__(self, path, keyspec, fields):
+        '''Initialize a new GoBpTree. If the B+Tree file doesn't exist a new
+        file is created. Otherwise, the record specification is assumed to be
+        valid.
+
+        :param path: the path to the backing file
+        :param key_spec: a object subclassing `Spec` which provides bit-packing
+                         and size information
+        :param fields: a list of Spec objects
+        '''
+        self.path = path
+        self.keyspec = keyspec
+        self.fields = fields
 
         self._proc = subprocess.Popen(
             [bpbot_path],
@@ -33,18 +93,24 @@ class GoBpTree(object):
         )
         self.write_json({
             "op": "init",
-            "filename": filename,
-            "keysize": key_size,
-            "fieldsizes": field_sizes
-            })
+            "path": self.path,
+            "keysize": self.keyspec.size,
+            "fieldsizes": [f.size for f in self.fields]
+        })
 
         self.status = self._proc.stdout.readline()[:-1]
         if self.status != "ok":
             raise Exception("Failed B+ tree creation")
+        self.closed = False
+
+    def __del__(self):
+        self.close()
+        os.kill(self._proc.pid, signal.SIGTERM)
 
     def write_json(self, data):
         # print data
         j = json.dumps(data)
+        #print >>sys.stderr, j
         self._proc.stdin.write("%s\n" % j)
 
     def assert_status(self, status, fail_message):
@@ -54,60 +120,68 @@ class GoBpTree(object):
     def has_key(self, key):
         return len(self.find(key, key)) > 0
 
-    def unpackkey(self, key):
-        return unpack_bytes(key, self.key_size)
-
     def insert(self, key, *fields):
         # print "insert %d:" % key, fields
-        expanded_key = self.unpackkey(key)
-        if len(fields) != len(self.field_sizes):
-            raise Exception("Wrong number of fields (need %d)" % len(self.field_sizes))
-        expanded_fields = [unpack_bytes(value, size) for size, value in zip(self.field_sizes, fields)]
-        self.write_json({
-            "op": "insert",
-            "leftKey": expanded_key,
-            "fields": expanded_fields
-            })
-
+        if len(fields) != len(self.fields):
+            raise Exception("Wrong number of fields (need %d)" % len(self.fields))
+        bitkey = self.keyspec.bitpack(key)
+        bitfields = [
+            fs.bitpack(value)
+            for fs, value in zip(self.fields, fields)
+        ]
+        self._proc.stdin.write(INSERT)
+        self._proc.stdin.write(bitkey)
+        self._proc.stdin.write(''.join(bitfields))
+        #self.write_json({
+        #    "op": "insert",
+        #    "leftKey": bitkey,
+        #    "fields": bitfields
+        #})
         self.status = self._proc.stdout.readline()[:-1]
         self.assert_status("true", "Insert failed")
 
     def find(self, left_key, right_key=None):
         if right_key is None:
             right_key = left_key
-        expanded_left = self.unpackkey(left_key)
+        bitleft = self.keyspec.bitpack(left_key)
         if left_key != right_key:
-            expanded_right = self.unpackkey(right_key)
+            bitright = self.keyspec.bitpack(right_key)
         else:
-            expanded_right = expanded_left
-        # print "find %d, %d" % (left_key, right_key)
-        self.write_json({
-            "op": "find",
-            "leftKey": expanded_left,
-            "rightKey": expanded_right
-            })
-        self.status = ""
-        results = []
-        while self.status != "end":
-            self.status = self._proc.stdout.readline()[:-1]
-            if self.status == "end":
+            bitright = bitleft
+        self._proc.stdin.write(FIND)
+        self._proc.stdin.write(bitleft)
+        self._proc.stdin.write(bitright)
+        records = list()
+        CONTBYTE = 0
+        STOPBYTE = 1
+        while True:
+            sigbyte = ord(self._proc.stdout.read(1))
+            if sigbyte == STOPBYTE:
                 break
-            #print "  ", self.status
-            data = json.loads(self.status)
-            data[u'value'] = [
-                pack_bytes(field.decode('base64'), size) 
-                for field, size in zip(data[u'value'], self.field_sizes)]
-            data[u'key'] = pack_bytes(data[u'key'].decode('base64'), self.key_size)
-            #print "    ", data[u'key']
-            results.append(data)
-        return results
+            elif sigbyte != CONTBYTE:
+                print >>sys.stderr, "bad signal byte", ord(sigbyte)
+                break
+            bitkey = self._proc.stdout.read(self.keyspec.size)
+            key = self.keyspec.bitunpack(bitkey)
+            fields = [
+                fs.bitunpack(self._proc.stdout.read(fs.size))
+                for fs in self.fields]
+            records.append((key, fields))
+        return records
 
     def visualize(self, path):
         self.write_json({"op":"visualize", "fileName":path+".dot"})
         self.write_json({"op":"prettyprint", "fileName":path+".txt"})
 
     def close(self):
-        self._proc.stdin.write("q\n")
-        self.status = self._proc.stdout.readline()[:-1]
-        self.assert_status("exited", "Exit failed")
+        if not self.closed:
+            self.closed = True
+            self._proc.stdin.write(QUIT)
+            self.status = self._proc.stdout.readline()[:-1]
+            print self.status
+            try:
+                self.assert_status("exited", "Exit failed")
+            except:
+                print self._proc.stdout.read()
+                raise
 

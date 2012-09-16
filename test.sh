@@ -7,7 +7,7 @@ for dir in `find . -type d -regextype egrep -regex "^./[a-zA-Z].*"`
 do
   echo ${dir:2}
   go install file-structures/${dir:2}
-  go test -v file-structures/${dir:2}
+  go test file-structures/${dir:2}
 done
 
 mkdir dot

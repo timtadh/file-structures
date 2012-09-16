@@ -8,6 +8,7 @@ type Buffer interface {
     Update(p int64, block []byte)
     Read(p int64, length uint32) ([]byte, bool)
     Remove(p int64)
+    Size() int
 }
 
 // -------------------------------------------------------------------------------
@@ -19,7 +20,7 @@ type Buffer interface {
 type LRU struct {
     buffer map[int64]*list.Element
     stack  *list.List
-    Size   int
+    size   int
 }
 
 type lru_item struct {
@@ -38,9 +39,11 @@ func NewLRU(size int) *LRU {
     lru := new(LRU)
     lru.buffer = make(map[int64]*list.Element)
     lru.stack = list.New()
-    lru.Size = size - 1
+    lru.size = size - 1
     return lru
 }
+
+func (self *LRU) Size() int { return self.size }
 
 func (self *LRU) Remove(p int64) {
     self.Update(p, nil)
@@ -56,7 +59,7 @@ func (self *LRU) Update(p int64, block []byte) {
             self.stack.MoveToFront(e)
         }
     } else {
-        for self.Size < self.stack.Len() {
+        for self.size < self.stack.Len() {
             e = self.stack.Back()
             i := e.Value.(*lru_item)
             delete(self.buffer, i.p)
@@ -88,6 +91,7 @@ func (self *LRU) Read(p int64, length uint32) ([]byte, bool) {
 type LFU struct {
     buffer map[int64][]byte
     queue  *lfu_heap
+    size   int
 }
 
 type lfu_heap struct {
@@ -101,7 +105,7 @@ type lfu_item struct {
 
 func new_heap(size int) *lfu_heap {
     self := new(lfu_heap)
-    self.slice = make([]lfu_item, size)[0:0]
+    self.slice = make([]lfu_item, 0, size/2)
     //     fmt.Println(cap(self.slice))
     //     fmt.Println(len(self.slice))
     heap.Init(self)
@@ -120,8 +124,7 @@ func (self *lfu_heap) Swap(i, j int) {
 
 func (self *lfu_heap) Push(x interface{}) {
     item := x.(*lfu_item)
-    self.slice = self.slice[0 : len(self.slice)+1]
-    self.slice[len(self.slice)-1] = *item
+    self.slice = append(self.slice, *item)
 }
 
 func (self *lfu_heap) Pop() interface{} {
@@ -154,8 +157,11 @@ func NewLFU(size int) *LFU {
     self := new(LFU)
     self.buffer = make(map[int64][]byte)
     self.queue = new_heap(size)
+    self.size = size
     return self
 }
+
+func (self *LFU) Size() int { return self.size }
 
 func (self *LFU) Remove(p int64) {
     self.Update(p, nil)
@@ -171,7 +177,7 @@ func (self *LFU) Update(p int64, block []byte) {
             self.buffer[p] = block
         }
     } else {
-        for len(self.queue.slice) >= cap(self.queue.slice) {
+        for len(self.queue.slice) >= self.Size() {
             i := heap.Pop(self.queue).(lfu_item)
             delete(self.buffer, i.p)
         }
@@ -198,3 +204,5 @@ type NoBuffer struct {}
 func (self *NoBuffer) Update(p int64, block []byte) {}
 func (self *NoBuffer) Read(p int64, length uint32) ([]byte, bool) { return nil, false }
 func (self *NoBuffer) Remove(p int64) {}
+func (self *NoBuffer) Size() int { return 0 }
+

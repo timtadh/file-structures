@@ -14,12 +14,12 @@ var rec []ByteSlice = []ByteSlice{[]byte{1}, []byte{1}, []byte{1, 2}}
 var BLOCKSIZE uint32 = 65
 
 func testingNewBTree(blocksize uint32) (*BTree, bool) {
-    filename := "test.btree"
+    path := "test.btree"
     keysize := uint32(4)
     fields := ([]uint32{1, 1, 2})
     self := new(BTree)
     // 4 MB buffer with a block size of 4096 bytes
-    if bf, ok := file.NewBlockFile(filename, NewLFU(1000)); !ok {
+    if bf, ok := file.NewBlockFile(path, NewLFU(1000)); !ok {
         fmt.Println("could not create block file")
         return nil, false
     } else {
@@ -63,7 +63,7 @@ func makebtree(blocksize uint32) *BTree {
     return btree
 }
 
-func cleanbtree(btree *BTree) { os.Remove(btree.Filename()) }
+func cleanbtree(btree *BTree) { os.Remove(btree.Path()) }
 
 // this is commented out because i intend to play with the blocksize, to do so i need to ensure
 // the test will not fail because of a miss aligned read or write so i disable O_DIRECT on linux

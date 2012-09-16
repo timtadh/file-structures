@@ -1,5 +1,6 @@
 package bptree
 
+// import "os"
 import "fmt"
 import "runtime"
 import . "file-structures/block/keyblock"
@@ -55,16 +56,20 @@ func (self *BpTree) getblock(pos ByteSlice) *KeyBlock {
 }
 
 func (self *BpTree) ValidateKey(key ByteSlice) bool {
+    // fmt.Fprintf(os.Stderr, "%v == %v\n", len(key), int(self.external.KeySize))
     return len(key) == int(self.external.KeySize)
 }
 
 func (self *BpTree) ValidateRecord(record []ByteSlice) bool {
+    // fmt.Fprintf(os.Stderr, "%v == %v\n", len(record), len(self.external.RecordFields))
     if len(record) != len(self.external.RecordFields) {
         return false
     }
     r := true
     for i, field := range record {
+        // fmt.Fprintf(os.Stderr, "%v == %v\n", len(field), int(self.external.RecordFields[i]))
         r = r && (int(self.external.RecordFields[i]) == len(field))
     }
     return r
 }
+

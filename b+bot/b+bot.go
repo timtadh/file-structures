@@ -6,79 +6,144 @@ import "os"
 import "bufio"
 import "fmt"
 import "encoding/json"
+import "encoding/binary"
+import "runtime"
+import "runtime/pprof"
 
 type Metadata struct {
-    Filename string
+    Path string
     Keysize uint32
     Fieldsizes []uint32
 }
 
+/*
 type Command struct {
     Op string
-    LeftKey ByteSlice
-    RightKey ByteSlice
-    Fields []ByteSlice
+    LeftKey []byte
+    RightKey []byte
+    Fields [][]byte
     FileName string
+}
+*/
+
+const (
+    insert = iota
+    find
+    quit
+)
+
+const (
+    cont = iota
+    stop
+)
+
+func init() {
+    runtime.GOMAXPROCS(1);
 }
 
 func main() {
+
+    if f, err := os.Create("b+bot.profile"); err != nil {
+        panic(err)
+    } else {
+        pprof.StartCPUProfile(f)
+        defer pprof.StopCPUProfile()
+    }
+
     // Read the string
-    inputReader := bufio.NewReader(os.Stdin)
+    input := bufio.NewReader(os.Stdin)
+    output := os.Stdout
 
     var info = Metadata{"", uint32(0), nil}
-    var cmd = Command{"", nil, nil, nil, ""}
+    // var cmd = Command{"", nil, nil, nil, ""}
 
-    infoJson, err := inputReader.ReadBytes('\n')
+    infoJson, err := input.ReadBytes('\n')
     if err != nil {
         panic(err)
     } else {
         json.Unmarshal(infoJson, &info)
     }
 
-    bpt, bperr := bptree.NewBpTree(info.Filename, info.Keysize, info.Fieldsizes)
+    bpt, bperr := bptree.NewBpTree(info.Path, info.Keysize, info.Fieldsizes)
     if !bperr {
         panic("Failed B+ tree creation")
     } else {
         fmt.Println("ok")
     }
 
-    alive := true;
+    to_byte_slice := func (bytes []byte) []ByteSlice {
+        B := make([]ByteSlice, 0, len(info.Fieldsizes))
+        offset := 0
+        for i := 0; i < len(info.Fieldsizes); i++ {
+            size := int(info.Fieldsizes[i])
+            bs := make([]byte, 0, size)
+            for j := offset; j < offset+size; j++ {
+                bs = append(bs, bytes[j])
+            }
+            B = append(B, ByteSlice(bs))
+            offset += size
+        }
+        return B
+    }
 
-    for alive {
-        cmdJson, err := inputReader.ReadBytes('\n')
-        if err != nil {
-            alive = false
+    var total_field_bytes int
+    for i := range info.Fieldsizes {
+        total_field_bytes += int(info.Fieldsizes[i])
+    }
+
+    serveloop:
+    for {
+        var cmd_type byte
+        if err := binary.Read(input, binary.LittleEndian, &cmd_type); err != nil {
             break
         }
-        if cmdJson[0] == 'q' && cmdJson[1] == '\n' {
-            alive = false
-        } else {
-            json.Unmarshal(cmdJson, &cmd)
-            if cmd.Op == "insert" {
-                result := bpt.Insert(cmd.LeftKey, cmd.Fields)
-                fmt.Println(result)
-            } else if cmd.Op == "find" {
-                records, ack := bpt.Find(cmd.LeftKey, cmd.RightKey)
-                for record := range records {
-                    if bytes, err := json.Marshal(map[string]interface{}{
-                      "key": record.GetKey(),
-                      "value": record.AllFields()}); err != nil {
-                        panic(err)
-                    } else {
-                      os.Stdout.Write(bytes)
-                    }
-                    fmt.Println()
-                    ack<-true
-                }
-                fmt.Println("end")
-            } else if cmd.Op == "visualize" {
-                bptree.Dotty(cmd.FileName, bpt)
-            } else if cmd.Op == "prettyprint" {
-                s := fmt.Sprintln(bpt)
-                f, _ := os.Create(cmd.FileName)
-                f.Write([]byte(s))
-                f.Close()
+        if cmd_type == quit {
+            break
+        } else if cmd_type == insert {
+            key := make([]byte, info.Keysize)
+            fields := make([]byte, total_field_bytes)
+            if err := binary.Read(input, binary.LittleEndian, &key); err != nil {
+                break
             }
+            if err := binary.Read(input, binary.LittleEndian, &fields); err != nil {
+                break
+            }
+            /*
+            fmt.Fprintf(os.Stderr, "Key = '%v'\n", key)
+            fmt.Fprintf(os.Stderr, "Fields = '%v'\n", fields)
+            bfields := to_byte_slice(fields)
+            for i := range bfields {
+                fmt.Fprintf(os.Stderr, "bytesliced field (%v) = '%v'\n", i, bfields[i])
+            }
+            */
+            result := bpt.Insert(key[:], to_byte_slice(fields))
+            fmt.Println(result)
+        } else if cmd_type == find {
+            leftkey := make([]byte, info.Keysize)
+            rightkey := make([]byte, info.Keysize)
+            if err := binary.Read(input, binary.LittleEndian, &leftkey); err != nil {
+                break
+            }
+            if err := binary.Read(input, binary.LittleEndian, &rightkey); err != nil {
+                break
+            }
+            records := bpt.Find(leftkey, rightkey)
+            for record := range records {
+                if err := binary.Write(output, binary.LittleEndian, byte(cont)); err != nil {
+                    fmt.Fprintln(os.Stderr, err)
+                    break serveloop
+                }
+                if _, err := output.Write(record.Bytes()); err != nil {
+                    fmt.Fprintln(os.Stderr, err)
+                    break serveloop
+                }
+            }
+            if err := binary.Write(output, binary.LittleEndian, byte(stop)); err != nil {
+                fmt.Fprintln(os.Stderr, err)
+                break serveloop
+            }
+        } else {
+            fmt.Fprintf(os.Stderr, "Bad command type %v\n", cmd_type)
         }
     }
     fmt.Println("exited")
