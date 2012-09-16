@@ -38,16 +38,18 @@ const (
 )
 
 func init() {
-    runtime.GOMAXPROCS(1);
+    runtime.GOMAXPROCS(2);
 }
 
 func main() {
 
-    if f, err := os.Create("b+bot.profile"); err != nil {
-        panic(err)
-    } else {
-        pprof.StartCPUProfile(f)
-        defer pprof.StopCPUProfile()
+    if false {
+        if f, err := os.Create("b+bot.profile"); err != nil {
+            panic(err)
+        } else {
+            pprof.StartCPUProfile(f)
+            defer pprof.StopCPUProfile()
+        }
     }
 
     // Read the string
