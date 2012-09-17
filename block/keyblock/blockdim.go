@@ -17,14 +17,25 @@ type BlockDimensions struct {
     KeySize      uint32
     PointerSize  uint32
     RecordFields []uint32
+    record_size uint32
+}
+
+func calcRecordSize(fields []uint32) uint32 {
+    sum := uint32(0)
+    for _, v := range fields {
+        sum += v
+    }
+    return sum
 }
 
 func NewBlockDimensions(Mode uint8, BlockSize, KeySize, PointerSize uint32, RecordFields []uint32) (*BlockDimensions, bool) {
-    dim := BlockDimensions{Mode, BlockSize, KeySize, PointerSize, RecordFields}
+    dim := &BlockDimensions{
+      Mode, BlockSize, KeySize, PointerSize, RecordFields,
+      calcRecordSize(RecordFields)}
     if !dim.Valid() {
         return nil, false
     }
-    return &dim, true
+    return dim, true
 }
 
 func (self *BlockDimensions) NewRecord(key ByteSlice) *Record {
@@ -47,11 +58,7 @@ func (self *BlockDimensions) KeysPerBlock() int {
 }
 
 func (self *BlockDimensions) RecordSize() uint32 {
-    sum := uint32(0)
-    for _, v := range self.RecordFields {
-        sum += v
-    }
-    return sum
+    return self.record_size
 }
 
 func (self *BlockDimensions) Valid() bool {

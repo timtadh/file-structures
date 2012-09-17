@@ -5,62 +5,87 @@ import . "file-structures/block/byteslice"
 
 type Record struct {
     dim  *BlockDimensions
-    key  ByteSlice
-    data [][]byte
+    record ByteSlice
 }
 type RecordsSlice []*Record
 
-// TODO: sanity check fields verses size
 func newRecord(key ByteSlice, dim *BlockDimensions) *Record {
     self := new(Record)
-    self.key = key
     self.dim = dim
-    self.data = make([][]byte, len(self.dim.RecordFields))
-    for i := 0; i < len(self.data); i++ {
-        self.data[i] = make([]byte, self.dim.RecordFields[i])
-    }
+    self.record = make([]byte, self.Size())
+    self.SetKey(key)
     return self
 }
-func (r *Record) Size() uint32             { return r.dim.RecordSize() }
-func (r *Record) KeySize() uint32          { return r.dim.KeySize }
-func (r *Record) Fields() uint32           { return uint32(len(r.data)) }
-func (r *Record) Get(i uint32) ByteSlice      { return r.data[i] }
-func (r *Record) Set(i uint32, val ByteSlice) { r.data[i] = val }
-func (r *Record) SetKey(k ByteSlice)       { r.key = k }
-func (r *Record) GetKey() ByteSlice        { return r.key }
+
+func (r *Record) Size() uint32 {
+    return r.dim.KeySize + r.dim.RecordSize()
+}
+
+func (r *Record) KeySize() uint32 {
+    return r.dim.KeySize
+}
+
+func (r *Record) Fields() uint32 {
+    return uint32(len(r.dim.RecordFields))
+}
+
+func (r *Record) getFieldOffset(i uint32) uint32 {
+    offset := r.KeySize()
+    for j := uint32(0); j < i; j++ {
+        offset += r.dim.RecordFields[j]
+    }
+    return offset
+}
+
+func (r *Record) Get(i uint32) ByteSlice {
+    offset := r.getFieldOffset(i)
+    ret := make([]byte, r.dim.RecordFields[i])
+    copy(ret, r.record[offset:offset+r.dim.RecordFields[i]])
+    return ret
+}
+
+func (r *Record) Set(i uint32, val ByteSlice) {
+    offset := r.getFieldOffset(i)
+    for j, v := range val {
+        r.record[offset+uint32(j)] = v
+    }
+}
+
+func (r *Record) SetKey(key ByteSlice) {
+    copy(r.record[0:r.KeySize()], key)
+}
+
+func (r *Record) GetKey() ByteSlice {
+    key := make([]byte, r.KeySize())
+    copy(key, r.record[0:r.KeySize()])
+    return key
+}
 
 func (r *Record) AllFields() [][]byte {
-    dataCopy := make([][]byte, len(r.data))
-    for i:=0; i<len(r.data); i++ {
-        dataCopy[i] = make([]byte, len(r.data[i]))
-        for j:=0; j<len(r.data[i]); j++ {
-            dataCopy[i][j] = r.data[i][j]
-        }
+    dataCopy := make([][]byte, r.Fields())
+    for i := range dataCopy {
+        dataCopy[i] = r.Get(uint32(i))
     }
     return dataCopy
 }
 
 func (r *Record) Bytes() []byte {
-    bytes := make([]byte, r.KeySize() + r.Size())
-    k := 0
-    for i := 0; i < len(r.key); i++ {
-        bytes[k] = r.key[i]
-        k++
+    return r.record
+}
+
+func (r *Record) SetBytes(bytes []byte) bool {
+    if uint32(len(bytes)) != r.Size() {
+        return false
     }
-    for i := 0; i < len(r.data); i++ {
-        for j := 0; j < len(r.data[i]); j++ {
-            bytes[k] = r.data[i][j]
-            k += 1
-        }
-    }
-    return bytes
+    r.record = bytes
+    return true
 }
 
 func (self *Record) String() string {
     if self == nil {
         return "<nil>"
     }
-    return fmt.Sprintf("{%v, data=%v}", self.key.Int64(), self.data)
+    return fmt.Sprintf("{%v, data=%v}", self.GetKey(), self.AllFields())
 }
 
 func (recs RecordsSlice) String() string {
@@ -74,3 +99,4 @@ func (recs RecordsSlice) String() string {
     s += "}"
     return s
 }
+

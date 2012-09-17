@@ -81,11 +81,11 @@ func (a ByteSlice) Eq(b ByteSlice) bool {
     if len(a) != len(b) {
         return false
     }
-    r := true
-    for i, _ := range a {
-        r = r && (a[i] == b[i])
+    r := byte(0)
+    for i := range a {
+        r = r | (a[i] ^ b[i])
     }
-    return r
+    return r == byte(0)
 }
 
 func (a ByteSlice) Lt(b ByteSlice) bool { return b.Gt(a) }

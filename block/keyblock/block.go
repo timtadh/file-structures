@@ -1,6 +1,5 @@
 package keyblock
 
-// import "os"
 import "fmt"
 import . "file-structures/block/file"
 import . "file-structures/block/byteslice"
@@ -53,7 +52,7 @@ func (self *KeyBlock) Size() uint32           { return self.dim.BlockSize }
 func (self *KeyBlock) RecordSize() uint32     { return self.dim.RecordSize() }
 func (self *KeyBlock) KeySize() uint32        { return self.dim.KeySize }
 func (self *KeyBlock) PointerSize() uint32    { return self.dim.PointerSize }
-func (self *KeyBlock) MaxRecordCount() uint16 { return uint16(len(self.records)) }
+func (self *KeyBlock) MaxRecordCount() uint16 { return uint16(cap(self.records)) }
 func (self *KeyBlock) Full() bool             { return len(self.records) == int(self.rec_count) }
 func (self *KeyBlock) RecordCount() uint16    { return self.rec_count }
 func (self *KeyBlock) PointerCount() uint16   { return self.ptr_count }
@@ -82,7 +81,7 @@ func (b *KeyBlock) Add(r *Record) (int, bool) {
     }
     //     fmt.Println()
     //     fmt.Println(r)
-    i, ok := b.find(r.key)
+    i, ok := b.find(r.GetKey())
     if b.dim.Mode&NODUP == NODUP && ok {
         return -2, false
         panic("tried to insert a duplicate key into a block which does not allow that.")
@@ -267,8 +266,6 @@ func (self *KeyBlock) RemovePointer(i int) bool {
 
 func (self *KeyBlock) SerializeToFile() bool {
     if bytes, ok := self.Serialize(); ok {
-        // fmt.Fprintf(os.Stderr, "pos = %v, len(bytes) = %v\n",
-        //    self.Position().Int64(), len(bytes))
         return self.bf.WriteBlock(int64(self.Position().Int64()), bytes)
     }
     return false
@@ -276,57 +273,34 @@ func (self *KeyBlock) SerializeToFile() bool {
 
 func (self *KeyBlock) Serialize() ([]byte, bool) {
     bytes := make([]byte, self.Size())
-    c := 0
+    c := uint32(0)
     bytes[c] = self.dim.Mode
     c++
-    for _, v := range ByteSlice16(self.RecordCount()) {
-        bytes[c] = v
-        c++
-    }
-    for _, v := range ByteSlice16(self.PointerCount()) {
-        bytes[c] = v
-        c++
-    }
+    copy(bytes[c:c+2], ByteSlice16(self.RecordCount()))
+    c += 2
+    copy(bytes[c:c+2], ByteSlice16(self.PointerCount()))
+    c += 2
+    rec_size := self.RecordSize() + self.KeySize()
     for i := 0; i < len(self.records); i++ {
         rec := self.records[i]
         if rec != nil {
-            for _, v := range rec.Bytes() {
-                bytes[c] = v
-                c++
-            }
-        } else {
-            for j := 0; j < int(self.RecordSize()+self.KeySize()); j++ {
-                bytes[c] = 0
-                c++
-            }
+            copy(bytes[c:c+rec_size], rec.Bytes())
         }
+        c += rec_size
     }
-    for i := 0; i < len(self.pointers) && self.PointerSize() > 0; i++ {
+    ptr_size := self.PointerSize()
+    for i := 0; i < len(self.pointers) && ptr_size > 0; i++ {
         ptr := self.pointers[i]
         if ptr != nil {
-            for _, v := range ptr {
-                bytes[c] = v
-                c++
-            }
-        } else {
-            for j := 0; j < int(self.PointerSize()); j++ {
-                bytes[c] = 0
-                c++
-            }
+            copy(bytes[c:c+ptr_size], ptr)
         }
+        c += ptr_size
     }
     if self.dim.Mode&EXTRAPTR != 0 {
         if self.extraptr != nil {
-            for _, v := range self.extraptr {
-                bytes[c] = v
-                c++
-            }
-        } else {
-            for j := 0; j < int(self.PointerSize()); j++ {
-                bytes[c] = 0
-                c++
-            }
+            copy(bytes[c:c+ptr_size], self.extraptr)
         }
+        c += ptr_size
     }
     return bytes, true
 }
@@ -360,16 +334,9 @@ func Deserialize(bf *BlockFile, dim *BlockDimensions, bytes []byte, pos ByteSlic
             c += int(b.KeySize() + b.RecordSize())
             continue
         }
-        rec := b.NewRecord(bytes[c : c+int(b.KeySize())])
-        c += int(b.KeySize())
-        if b.dim.RecordSize() > 0 {
-            for _, field := range rec.data {
-                for j, _ := range field {
-                    field[j] = bytes[c]
-                    c++
-                }
-            }
-        }
+        rec := b.NewRecord(make([]byte, dim.KeySize))
+        rec.SetBytes(bytes[c:c+int(rec.Size())])
+        c += int(rec.Size())
         b.records[i] = rec
     }
     for i := 0; i < int(b.ptr_count) && b.PointerSize() > 0; i++ {
@@ -416,7 +383,6 @@ func (b *KeyBlock) find(k ByteSlice) (int, bool) {
     return l, false
 }
 
-
 func (b *KeyBlock) String() string {
     if b == nil {
         return "<nil KeyBlock>"
@@ -430,3 +396,4 @@ func (b *KeyBlock) String() string {
     s += "extra pointer: " + fmt.Sprintln(b.extraptr)
     return s
 }
+
