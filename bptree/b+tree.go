@@ -83,6 +83,71 @@ Usage:
         ack<-true;                              // ack<-true must be the last line of the loop.
     }
 */
+
+func (self *BpTree) Size() uint64 {
+    zerokey := make([]byte, self.internal.KeySize)
+    _, block := self.find(zerokey, self.getblock(self.info.Root()), self.info.Height()-1)
+    count := uint64(0)
+    for true {
+        // the extra pointer is in the block points to the next block
+        count += uint64(block.RecordCount())
+        p, _ := block.GetExtraPtr()
+        if p.Eq(ByteSlice64(0)) { break }
+        block = self.getblock(p)
+    }
+    return count
+}
+
+func (self *BpTree) Contains(key ByteSlice) bool {
+    i, block := self.find(key, self.getblock(self.info.Root()), self.info.Height()-1)
+    rec, _, _, ok := block.Get(i)
+    if !ok {
+        return false
+    }
+    return key.Eq(rec.GetKey())
+}
+
+// recursively finds the first matching record
+func (self *BpTree) find(key ByteSlice, block *KeyBlock, height int) (int, *KeyBlock) {
+    if height > 0 {
+        var pos ByteSlice
+        {
+            // we find where in the block this key would be inserted
+            i, _, _, _, _ := block.Find(key)
+
+            if i == 0 {
+                // even if this key doesn't equal the key we are looking for it will be at
+                // least greater than the key we are looking for.
+                if p, ok := block.GetPointer(0); ok {
+                    pos = p
+                } else {
+                    msg := fmt.Sprintf(
+                        "110 Error could not get pointer %v from block %v", i, block)
+                    panic(msg)
+                }
+            } else {
+                // else this spot is one to many so we get the previous spot
+                i--
+                if p, ok := block.GetPointer(i); ok {
+                    pos = p
+                } else {
+                    msg := fmt.Sprintf(
+                        "118 Error could not get record %v from block %v", i, block)
+                    panic(msg)
+                }
+            }
+        }
+        if pos == nil {
+            msg := fmt.Sprintf(
+                "123 Error could got null pos in find key=%v\n%v\n", key, block)
+            panic(msg)
+        }
+        return self.find(key, self.getblock(pos), height-1)
+    }
+    i, _, _, _, _ := block.Find(key)
+    return i, block
+}
+
 func (self *BpTree) Find(left ByteSlice, right ByteSlice) (<-chan *Record) {
     records := make(chan *Record, 200)
 
@@ -94,48 +159,7 @@ func (self *BpTree) Find(left ByteSlice, right ByteSlice) (<-chan *Record) {
             return
         }
 
-        // recursively finds the first matching record
-        var find func(ByteSlice, *KeyBlock, int) (int, *KeyBlock)
-        find = func(key ByteSlice, block *KeyBlock, height int) (int, *KeyBlock) {
-            if height > 0 {
-                var pos ByteSlice
-                {
-                    // we find where in the block this key would be inserted
-                    i, _, _, _, _ := block.Find(key)
-
-                    if i == 0 {
-                        // even if this key doesn't equal the key we are looking for it will be at
-                        // least greater than the key we are looking for.
-                        if p, ok := block.GetPointer(0); ok {
-                            pos = p
-                        } else {
-                            msg := fmt.Sprintf(
-                                "110 Error could not get pointer %v from block %v", i, block)
-                            panic(msg)
-                        }
-                    } else {
-                        // else this spot is one to many so we get the previous spot
-                        i--
-                        if p, ok := block.GetPointer(i); ok {
-                            pos = p
-                        } else {
-                            msg := fmt.Sprintf(
-                                "118 Error could not get record %v from block %v", i, block)
-                            panic(msg)
-                        }
-                    }
-                }
-                if pos == nil {
-                    msg := fmt.Sprintf(
-                        "123 Error could got null pos in find key=%v\n%v\n", key, block)
-                    panic(msg)
-                }
-                return find(key, self.getblock(pos), height-1)
-            }
-            i, _, _, _, _ := block.Find(key)
-            return i, block
-        }
-        i, block := find(left, self.getblock(self.info.Root()), self.info.Height()-1)
+        i, block := self.find(left, self.getblock(self.info.Root()), self.info.Height()-1)
 
         // for a given block and a starting index returns the matching records in that block
         // if it ends on a matching record it will return true, else it will return false.

@@ -9,6 +9,7 @@ import "encoding/json"
 import "encoding/binary"
 import "runtime"
 import "runtime/pprof"
+import "io/ioutil"
 
 type Metadata struct {
     Path string
@@ -30,6 +31,8 @@ const (
     insert = iota
     find
     quit
+    size
+    contains
 )
 
 const (
@@ -43,8 +46,8 @@ func init() {
 
 func main() {
 
-    if true {
-        if f, err := os.Create("b+bot.profile"); err != nil {
+    if false {
+        if f, err := ioutil.TempFile(".", "b+bot.profile"); err != nil {
             panic(err)
         } else {
             pprof.StartCPUProfile(f)
@@ -120,6 +123,19 @@ func main() {
             */
             result := bpt.Insert(key[:], to_byte_slice(fields))
             fmt.Println(result)
+        } else if cmd_type == size {
+            size := ByteSlice64(bpt.Size())
+            output.Write(size)
+        } else if cmd_type == contains {
+            key := make([]byte, info.Keysize)
+            if err := binary.Read(input, binary.LittleEndian, &key); err != nil {
+                break
+            }
+            if bpt.Contains(key) {
+                output.Write(ByteSlice8(1))
+            } else {
+                output.Write(ByteSlice8(0))
+            }
         } else if cmd_type == find {
             leftkey := make([]byte, info.Keysize)
             rightkey := make([]byte, info.Keysize)

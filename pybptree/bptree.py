@@ -16,6 +16,8 @@ bpbot_path = "b+bot"
 INSERT = struct.pack("<c", chr(0))
 FIND = struct.pack("<c", chr(1))
 QUIT = struct.pack("<c", chr(2))
+SIZE = struct.pack("<c", chr(3))
+CONTAINS = struct.pack("<c", chr(4))
 
 class Spec(object):
 
@@ -41,7 +43,7 @@ class String(Spec):
 
     def __init__(self, size):
         super(String, self).__init__(size, str)
-        self._struct = struct.Struct('<%ds' % self.size)
+        self._struct = struct.Struct('>%ds' % self.size)
 
     def bitpack(self, value):
         return self._struct.pack(value)
@@ -51,21 +53,35 @@ class String(Spec):
 
 class Int(Numtype):
 
-    _struct = struct.Struct('<i')
+    _struct = struct.Struct('>i')
 
     def __init__(self):
         super(Int, self).__init__(4, int)
 
+class UInt(Numtype):
+
+    _struct = struct.Struct('>I')
+
+    def __init__(self):
+        super(UInt, self).__init__(4, int)
+
 class Long(Numtype):
 
-    _struct = struct.Struct('<q')
+    _struct = struct.Struct('>q')
 
     def __init__(self):
         super(Long, self).__init__(8, int)
 
+class ULong(Numtype):
+
+    _struct = struct.Struct('>Q')
+
+    def __init__(self):
+        super(ULong, self).__init__(8, int)
+
 class Float(Numtype):
 
-    _struct = struct.Struct('<d')
+    _struct = struct.Struct('>d')
 
     def __init__(self):
         super(Float, self).__init__(8, float)
@@ -102,7 +118,7 @@ class GoBpTree(object):
         :param path: the path to the backing file
         :param key_spec: a object subclassing `Spec` which provides bit-packing
                          and size information
-        :param fields: a list of Spec objects
+        :param fields: a list of (name, Spec) tuples
         '''
         self.path = path
         self.keyspec = keyspec
@@ -117,7 +133,7 @@ class GoBpTree(object):
             "op": "init",
             "path": self.path,
             "keysize": self.keyspec.size,
-            "fieldsizes": [f.size for f in self.fields]
+            "fieldsizes": [f.size for name, f in self.fields]
         })
 
         self.status = self._proc.stdout.readline()[:-1]
@@ -129,6 +145,19 @@ class GoBpTree(object):
         self.close()
         os.kill(self._proc.pid, signal.SIGTERM)
 
+    def __len__(self):
+        self._proc.stdin.write(SIZE)
+        bitsize = self._proc.stdout.read(8)
+        return struct.unpack(">Q", bitsize)[0]
+
+    def __contains__(self, key):
+        bitkey = self.keyspec.bitpack(key)
+        self._proc.stdin.write(CONTAINS)
+        self._proc.stdin.write(bitkey)
+        bitbyte = self._proc.stdout.read(1)
+        byte = ord(struct.unpack(">c", bitbyte)[0])
+        return bool(byte)
+
     def write_json(self, data):
         # print data
         j = json.dumps(data)
@@ -139,9 +168,6 @@ class GoBpTree(object):
         if self.status != status:
             raise Exception(fail_message)
 
-    def has_key(self, key):
-        return len(self.find(key, key)) > 0
-
     def insert(self, key, *fields):
         # print "insert %d:" % key, fields
         if len(fields) != len(self.fields):
@@ -149,7 +175,7 @@ class GoBpTree(object):
         bitkey = self.keyspec.bitpack(key)
         bitfields = [
             fs.bitpack(value)
-            for fs, value in zip(self.fields, fields)
+            for (name, fs), value in zip(self.fields, fields)
         ]
         self._proc.stdin.write(INSERT)
         self._proc.stdin.write(bitkey)
@@ -185,9 +211,9 @@ class GoBpTree(object):
                 break
             bitkey = self._proc.stdout.read(self.keyspec.size)
             key = self.keyspec.bitunpack(bitkey)
-            fields = [
-                fs.bitunpack(self._proc.stdout.read(fs.size))
-                for fs in self.fields]
+            fields = dict(
+                (name, fs.bitunpack(self._proc.stdout.read(fs.size)))
+                for (name, fs) in self.fields)
             records.append((key, fields))
         return records
 
