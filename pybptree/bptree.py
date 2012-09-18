@@ -226,10 +226,5 @@ class GoBpTree(object):
             self.closed = True
             self._proc.stdin.write(QUIT)
             self.status = self._proc.stdout.readline()[:-1]
-            print self.status
-            try:
-                self.assert_status("exited", "Exit failed")
-            except:
-                print self._proc.stdout.read()
-                raise
+            self.assert_status("exited", "Exit failed")
 
