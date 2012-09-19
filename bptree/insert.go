@@ -463,6 +463,9 @@ func (self *BpTree) Insert(key ByteSlice, record []ByteSlice) bool {
         self.info.SetHeight(self.info.Height() + 1)
     }
     // at the end of of the method sync back the dirty blocks
+    self.info.IncEntries()
+    self.info.Serialize()
     dirty.Sync()
     return true
 }
+

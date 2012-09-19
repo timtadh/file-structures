@@ -84,7 +84,7 @@ Usage:
     }
 */
 
-func (self *BpTree) Size() uint64 {
+func (self *BpTree) compute_size() uint64 {
     zerokey := make([]byte, self.internal.KeySize)
     _, block := self.find(zerokey, self.getblock(self.info.Root()), self.info.Height()-1)
     count := uint64(0)
@@ -96,6 +96,10 @@ func (self *BpTree) Size() uint64 {
         block = self.getblock(p)
     }
     return count
+}
+
+func (self *BpTree) Size() uint64 {
+    return self.info.Entries()
 }
 
 func (self *BpTree) Contains(key ByteSlice) bool {

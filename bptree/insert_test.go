@@ -330,6 +330,10 @@ func TestRandomBuild(t *testing.T) {
                 }
                 i++
             }
+            if self.Size() != self.compute_size() {
+                t.Log(self)
+                t.Fatalf("bptree.Size() != bptree.compute_size() %v got %v", self.Size(), self.compute_size())
+            }
             cleanbptree(self)
         }
     }
@@ -478,7 +482,10 @@ func TestRandomDuplicate(t *testing.T) {
                 }
                 prev = result.GetKey()
             }
-
+            if self.Size() != self.compute_size() {
+                t.Log(self)
+                t.Fatalf("bptree.Size() != bptree.compute_size() %v got %v", self.Size(), self.compute_size())
+            }
             if i != 4 {
                 if k < 10 {
                     Dotty(fmt.Sprintf("bptreerand_%v_0%v.dot", i, k), self)
