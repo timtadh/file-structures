@@ -410,6 +410,8 @@ func (self *BpTree) insert(block *KeyBlock, rec *tmprec, height int, dirty *dirt
 }
 
 func (self *BpTree) Insert(key ByteSlice, record []ByteSlice) bool {
+    self.lock.Lock()
+    defer self.lock.Unlock()
     dirty := dirty.New(self.info.Height() * 4)
 
     // package the temp rec

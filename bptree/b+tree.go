@@ -3,12 +3,16 @@ package bptree
 import "fmt"
 import "os"
 import "runtime"
+import "backdoor"
+import "sync"
 import "container/list"
 import "file-structures/treeinfo"
 import . "file-structures/block/file"
 import . "file-structures/block/keyblock"
 import . "file-structures/block/buffers"
 import . "file-structures/block/byteslice"
+
+func GetGoId() int32 // bptree.c
 
 const BUFFERSIZE = 536870912 // 512 megabytes
 
@@ -18,6 +22,7 @@ type BpTree struct {
     internal  *BlockDimensions
     external  *BlockDimensions
     info      *treeinfo.TreeInfo
+    lock      *sync.Mutex
 }
 
 func NewBpTree(path string, keysize uint32, fields []uint32) (*BpTree, bool) {
@@ -26,6 +31,7 @@ func NewBpTree(path string, keysize uint32, fields []uint32) (*BpTree, bool) {
 
 func NewBpTreeBufsize(path string, keysize uint32, fields []uint32, bufsize int) (*BpTree, bool) {
     self := new(BpTree)
+    self.lock = new(sync.Mutex)
     // 4 MB buffer with a block size of 4096 bytes
     if bf, ok := NewBlockFile(path, NewLRU(bufsize)); !ok {
         fmt.Fprintln(os.Stderr, "could not create block file")
@@ -99,21 +105,53 @@ func (self *BpTree) compute_size() uint64 {
 }
 
 func (self *BpTree) Size() uint64 {
+    self.lock.Lock()
+    defer self.lock.Unlock()
     return self.info.Entries()
 }
 
-func (self *BpTree) Contains(key ByteSlice) bool {
+func (self *BpTree) Get(key ByteSlice) *Record {
+    self.lock.Lock()
+    defer self.lock.Unlock()
     i, block := self.find(key, self.getblock(self.info.Root()), self.info.Height()-1)
     rec, _, _, ok := block.Get(i)
+    last_rec, _, _, _ := block.Get(int(block.RecordCount()-1))
+    for !ok && last_rec.GetKey().Lt(key) {
+        next_blk, has := block.GetExtraPtr()
+        if !has || next_blk.Zero() { return nil }
+        block = self.getblock(next_blk)
+        _, rec, _, _, ok = block.Find(key)
+        last_rec, _, _, _ = block.Get(int(block.RecordCount()-1))
+    }
     if !ok {
+        return nil
+    }
+    if !key.Eq(rec.GetKey()) {
+        return nil
+    }
+    return rec
+}
+
+func (self *BpTree) Contains(key ByteSlice) bool {
+    rec := self.Get(key)
+    if rec == nil {
         return false
     }
-    return key.Eq(rec.GetKey())
+    return true
 }
+
 
 // recursively finds the first matching record
 func (self *BpTree) find(key ByteSlice, block *KeyBlock, height int) (int, *KeyBlock) {
+    // fmt.Printf("tree height %v, %v, %v, %v\n", 
+      //  block.Position(), self.info.Height(), height, backdoor.GoID())
     if height > 0 {
+        if block.Mode() != self.internal.Mode {
+            msg := fmt.Sprintf(
+              "137 expected an internal block got an external %v %v %v \n%v", 
+                  block.Position(), height, backdoor.GoID(), block)
+            panic(msg)
+        }
         var pos ByteSlice
         {
             // we find where in the block this key would be inserted
@@ -157,6 +195,8 @@ func (self *BpTree) Find(left ByteSlice, right ByteSlice) (<-chan *Record) {
 
     // Go Routine which finds and returns the records
     go func(yield chan<- *Record) {
+        self.lock.Lock()
+        defer self.lock.Unlock()
         // parameters are invalid or will yield the empty set
         if left == nil || right == nil || (!left.Eq(right) && right.Lt(left)) {
             close(yield)

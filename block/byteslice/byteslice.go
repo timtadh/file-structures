@@ -77,6 +77,15 @@ func (b ByteSlice) Int64() uint64 {
     return i
 }
 
+func (bytes ByteSlice) Zero() bool {
+    for _, b := range bytes {
+        if b != 0 {
+            return false
+        }
+    }
+    return true
+}
+
 func (a ByteSlice) Eq(b ByteSlice) bool {
     if len(a) != len(b) {
         return false
@@ -142,7 +151,12 @@ func (self ByteSlice) String() string {
     }
     buf := "0x"
     for i := range self {
-        buf += fmt.Sprintf("%x", self[i])
+        byt3 := fmt.Sprintf("%x", self[i])
+        if len(byt3) != 2 {
+            buf += "0" + byt3
+        } else {
+            buf += byt3
+        }
     }
     return buf
 }

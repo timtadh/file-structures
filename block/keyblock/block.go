@@ -271,6 +271,11 @@ func (self *KeyBlock) SerializeToFile() bool {
     return false
 }
 
+func (self *KeyBlock) Bytes() []byte {
+    bytes, _ := self.Serialize()
+    return bytes
+}
+
 func (self *KeyBlock) Serialize() ([]byte, bool) {
     bytes := make([]byte, self.Size())
     c := uint32(0)
