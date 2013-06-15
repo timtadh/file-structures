@@ -4,6 +4,7 @@ import "testing"
 import "os"
 import "fmt"
 import "runtime"
+import "sync"
 import "file-structures/treeinfo"
 import . "file-structures/block/file"
 import . "file-structures/block/keyblock"
@@ -16,6 +17,7 @@ var BLOCKSIZE uint32 = treeinfo.BLOCKSIZE
 
 func newBpTree(blocksize uint32, path string, keysize uint32, fields []uint32) (*BpTree, bool) {
     self := new(BpTree)
+    self.lock = new(sync.Mutex)
     // 4 MB buffer with a block size of 4096 bytes
     if bf, ok := NewBlockFile(path, NewLFU(1000)); !ok {
         fmt.Println("could not create block file")

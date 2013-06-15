@@ -12,8 +12,6 @@ import . "file-structures/block/keyblock"
 import . "file-structures/block/buffers"
 import . "file-structures/block/byteslice"
 
-func GetGoId() int32 // bptree.c
-
 const BUFFERSIZE = 536870912 // 512 megabytes
 
 type BpTree struct {
