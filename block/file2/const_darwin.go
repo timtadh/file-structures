@@ -8,7 +8,7 @@ import "syscall"
 
 const OPENFLAG = os.O_RDWR | os.O_CREAT
 
-func (self *BlockFile) Open() error {
+func (self *BlockFile) open() error {
     // the O_DIRECT flag turns off os buffering of pages allow us to do it manually
     // when using the O_DIRECT block size must be a multiple of 2048
     if f, err := os.Open(self.filename, OPENFLAG, 0666); err != nil {
@@ -25,4 +25,3 @@ func (self *BlockFile) Open() error {
     }
     return nil
 }
-
