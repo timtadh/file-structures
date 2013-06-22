@@ -11,6 +11,7 @@ import (
 )
 
 const PATH = "/tmp/__x"
+const CACHESIZE = 4096*16
 
 func cleanup(path string) {
     os.Remove(path)
@@ -136,3 +137,77 @@ func TestWriteRead(t *testing.T) {
         }
     }
 }
+
+
+func TestGenericWriteRead(t *testing.T) {
+    tester := func(f BlockDevice) {
+        var A, C int64
+        var err error
+        blk := make([]byte, f.BlkSize())
+        for i := range blk {
+            blk[i] = 0xf
+        }
+
+        if A, err = f.Allocate(); err != nil {
+            t.Fatal(err)
+        }
+        if err := f.WriteBlock(A, blk); err != nil {
+            t.Fatal(err)
+        }
+        if rblk, err := f.ReadBlock(A); err != nil {
+            t.Fatal(err)
+        } else if len(rblk) != int(f.BlkSize()) {
+            t.Fatalf("Expected len(rblk) == %d got %d", f.BlkSize(), len(rblk))
+        } else {
+            for i, b := range rblk {
+                if b != 0xf {
+                    t.Fatalf("Expected rblk[%d] == 0xf got %d", i, b)
+                }
+            }
+        }
+
+        if _, err = f.Allocate(); err != nil {
+            t.Fatal(err)
+        }
+
+        if err = f.Free(A); err != nil {
+            t.Fatal(err)
+        }
+        if C, err = f.Allocate(); err != nil {
+            t.Fatal(err)
+        } else if A != C {
+            t.Fatalf("Expected A == C got %d != %d", A, C)
+        }
+
+        if err := f.WriteBlock(A, blk); err != nil {
+            t.Fatal(err)
+        }
+        if rblk, err := f.ReadBlock(A); err != nil {
+            t.Fatal(err)
+        } else if len(rblk) != int(f.BlkSize()) {
+            t.Fatalf("Expected len(rblk) == %d got %d", f.BlkSize(), len(rblk))
+        } else {
+            for i, b := range rblk {
+                if b != 0xf {
+                    t.Fatalf("Expected rblk[%d] == 0xf got %d", i, b)
+                }
+            }
+        }
+    }
+
+
+    bf := NewBlockFile(PATH, &buf.NoBuffer{})
+    defer cleanup(bf.Path())
+    if err := bf.Open(); err != nil {
+        t.Fatal(err)
+    }
+    tester(bf)
+
+    cf, err := NewCacheFile(PATH, CACHESIZE)
+    if err != nil {
+        t.Fatal(err)
+    }
+    defer cf.Close()
+    tester(cf)
+}
+

@@ -6,7 +6,7 @@ import (
     "os"
 )
 
-import . "file-structures/block/buffers"
+import buf "file-structures/block/buffers"
 import . "file-structures/block/byteslice"
 
 type ctrlblk struct {
@@ -47,18 +47,17 @@ func load_ctrlblk(bytes []byte) (cb *ctrlblk, err error) {
 type BlockFile struct {
     path   string
     opened bool
-    buf    Buffer
+    buf    buf.Buffer
     file   *os.File
     ctrl   ctrlblk
 }
 
-func NewBlockFile(path string, buf Buffer) *BlockFile {
+func NewBlockFile(path string, buf buf.Buffer) *BlockFile {
     return &BlockFile{
         path: path,
         buf:  buf,
         ctrl: ctrlblk{
-            blksize:    4096,
-            free_chain: 0,
+            blksize: 4096,
         },
     }
 }
