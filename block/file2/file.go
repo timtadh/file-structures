@@ -1,9 +1,9 @@
 package file2
 
 import (
-  "os"
-  "fmt"
-  "hash/crc32"
+    "fmt"
+    "hash/crc32"
+    "os"
 )
 
 import . "file-structures/block/buffers"
@@ -37,9 +37,9 @@ func load_ctrlblk(bytes []byte) (cb *ctrlblk, err error) {
         return nil, fmt.Errorf("Bad control block checksum %x != %x", new_chksum, chksum)
     }
     cb = &ctrlblk{
-      blksize: ByteSlice(bytes[4:8]).Int32(),
-      free_chain: ByteSlice(bytes[8:16]).Int64(),
-      free_len: ByteSlice(bytes[16:20]).Int32(),
+        blksize:    ByteSlice(bytes[4:8]).Int32(),
+        free_chain: ByteSlice(bytes[8:16]).Int64(),
+        free_len:   ByteSlice(bytes[16:20]).Int32(),
     }
     return cb, nil
 }
@@ -53,8 +53,14 @@ type BlockFile struct {
 }
 
 func NewBlockFile(path string, buf Buffer) *BlockFile {
-    return &BlockFile{path: path, buf: buf, ctrl: ctrlblk{blksize: 4096,
-    free_chain: 0}}
+    return &BlockFile{
+        path: path,
+        buf:  buf,
+        ctrl: ctrlblk{
+            blksize:    4096,
+            free_chain: 0,
+        },
+    }
 }
 
 func (self *BlockFile) Open() error {
