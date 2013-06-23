@@ -13,11 +13,15 @@ type CacheFile struct {
     file   *BlockFile
     cache  *LRU
     keymap map[int64]int64 "memkey -> diskkey"
+    nextkey int64
+    free_keys []int64
 }
 
 func NewCacheFile(path string, size uint64) (cf *CacheFile, err error) {
     cf = &CacheFile{
         file: NewBlockFile(path, &buf.NoBuffer{}),
+        keymap: make(map[int64]int64),
+        free_keys: make([]int64, 0, 100),
     }
     cf.cache = NewLRU(1 + int(size/uint64(cf.file.BlkSize())), cf.pageout)
     if err := cf.file.Open(); err != nil {
@@ -36,23 +40,56 @@ func (self *CacheFile) Close() error {
 func (self *CacheFile) BlkSize() uint32 { return self.file.BlkSize() }
 
 func (self *CacheFile) Free(key int64) error {
-    return fmt.Errorf("Unimplemented")
+    if disk_key, has := self.keymap[key]; has {
+        delete(self.keymap, key)
+        if err := self.file.Free(disk_key); err != nil {
+            return err
+        }
+    } else {
+        self.cache.Remove(key)
+    }
+    self.free_keys = append(self.free_keys, key)
+    return nil
 }
 
 func (self *CacheFile) Allocate() (key int64, err error) {
-    return 0, fmt.Errorf("Unimplemented")
+    if len(self.free_keys) > 0 {
+        key = self.free_keys[len(self.free_keys)-1]
+        self.free_keys = self.free_keys[:len(self.free_keys)-1]
+    } else {
+        key = self.nextkey
+        self.nextkey += 1
+    }
+    return key, nil
 }
 
 func (self *CacheFile) WriteBlock(key int64, block bs.ByteSlice) error {
-    return fmt.Errorf("Unimplemented")
+    return self.cache.Update(key, block)
 }
 
 func (self *CacheFile) pageout(key int64, block bs.ByteSlice) error {
-    return fmt.Errorf("Unimplemented")
+    if pos, err := self.file.Allocate(); err != nil {
+        return nil
+    } else {
+        if err := self.file.WriteBlock(pos, block); err != nil {
+            return err
+        } else {
+            self.keymap[key] = pos
+        }
+    }
+    return nil
 }
 
 func (self *CacheFile) ReadBlock(key int64) (block bs.ByteSlice, err error) {
-    return nil, fmt.Errorf("Unimplemented")
+    if disk_key, has := self.keymap[key]; has {
+        return self.file.ReadBlock(disk_key)
+    } else {
+        if data, has := self.cache.Read(key); has {
+            return data, nil
+        } else {
+            return nil, fmt.Errorf("Key '%x' not found", key)
+        }
+    }
 }
 
 type LRU struct {
@@ -114,20 +151,13 @@ func (self *LRU) Update(p int64, block bs.ByteSlice) error {
     return nil
 }
 
-func (self *LRU) Read(p int64, length uint32) (bs.ByteSlice, bool) {
+func (self *LRU) Read(p int64) (bs.ByteSlice, bool) {
     if e, has := self.buffer[p]; has {
         if i, ok := e.Value.(*lru_item); ok {
-            if len(i.bytes) != int(length) {
-                return nil, false
-            }
             self.stack.MoveToFront(e)
-            // Don't write stuff like this to stdout!
-            // fmt.Println("---------------------> Cache Hit")
             return i.bytes, true
         }
     }
-    // Don't write stuff like this to stdout!
-    // fmt.Println("---------------------> Cache Miss")
     return nil, false
 }
 

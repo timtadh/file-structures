@@ -211,3 +211,53 @@ func TestGenericWriteRead(t *testing.T) {
     tester(cf)
 }
 
+func TestPageOut(t *testing.T) {
+    f, err := NewCacheFile(PATH, 4096*10)
+    if err != nil {
+        t.Fatal(err)
+    }
+    defer f.Close()
+
+    var keys []int64
+    for i := 1; i <= 100; i++ {
+        var P int64
+        if P, err = f.Allocate(); err != nil {
+            t.Fatal(err)
+        }
+        keys = append(keys, P)
+        blk := make([]byte, f.BlkSize())
+        for i := range blk {
+            blk[i] = byte(P)
+        }
+
+        if err := f.WriteBlock(P, blk); err != nil {
+            t.Fatal(err)
+        }
+        if rblk, err := f.ReadBlock(P); err != nil {
+            t.Fatal(err)
+        } else if len(rblk) != int(f.BlkSize()) {
+            t.Fatalf("Expected len(rblk) == %d got %d", f.BlkSize(), len(rblk))
+        } else {
+            for i, b := range rblk {
+                if b != byte(P) {
+                    t.Fatalf("Expected rblk[%d] == 0xf got %d", i, b)
+                }
+            }
+        }
+    }
+
+    for _, P := range keys {
+        if rblk, err := f.ReadBlock(P); err != nil {
+            t.Fatal(err)
+        } else if len(rblk) != int(f.BlkSize()) {
+            t.Fatalf("Expected len(rblk) == %d got %d", f.BlkSize(), len(rblk))
+        } else {
+            for i, b := range rblk {
+                if b != byte(P) {
+                    t.Fatalf("Expected rblk[%d] == 0xf got %d", i, b)
+                }
+            }
+        }
+    }
+}
+
