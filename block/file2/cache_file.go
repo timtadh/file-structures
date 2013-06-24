@@ -109,7 +109,6 @@ func (self *CacheFile) writeCache(key int64, count int, block bs.ByteSlice) {
 func (self *CacheFile) readFile(key int64) (block bs.ByteSlice, count int, err error) {
     count, err = self.disk_keys.GetCount(key)
     if err != nil {
-        fmt.Println("read file error")
         return nil, 0, err
     }
     disk_key, has := self.keymap[key]
@@ -123,7 +122,6 @@ func (self *CacheFile) readFile(key int64) (block bs.ByteSlice, count int, err e
 func (self *CacheFile) readCache(key int64) (block bs.ByteSlice, count int, err error) {
     count, err = self.cache_keys.GetCount(key)
     if err != nil {
-        fmt.Println("read cache error")
         return nil, 0, err
     }
     block, has := self.cache[key]
@@ -189,7 +187,6 @@ func (self *CacheFile) balance() error {
     }
 
     for self.cache_size > 0 && len(self.cache) >= self.cache_size {
-        fmt.Println("1st loop")
         if err := cache_to_disk(); err != nil {
             return err
         }
@@ -203,7 +200,6 @@ func (self *CacheFile) balance() error {
         cache_min := count(self.cache_keys)
         disk_max := count(self.disk_keys)
         for cache_min < disk_max {
-            fmt.Println("swap loop", cache_min, disk_max)
             if err := cache_to_disk(); err != nil {
                 return err
             }
@@ -223,7 +219,6 @@ func (self *CacheFile) WriteBlock(key int64, block bs.ByteSlice) (err error) {
     if disk_has && cache_has {
         return fmt.Errorf("Both disk and cache have key!")
     } else if cache_has {
-        fmt.Println("cache_has write")
         count, err := self.cache_keys.GetCount(key)
         if err != nil {
             return err
@@ -231,7 +226,6 @@ func (self *CacheFile) WriteBlock(key int64, block bs.ByteSlice) (err error) {
         self.writeCache(key, count+1, block)
         return self.balance()
     } else if disk_has {
-        fmt.Println("disk_has write")
         count, err := self.disk_keys.GetCount(key)
         if err != nil {
             return err
@@ -242,10 +236,8 @@ func (self *CacheFile) WriteBlock(key int64, block bs.ByteSlice) (err error) {
         return self.balance()
     } else {
         if len(self.cache)+1 < self.cache_size { // room in the cache
-            fmt.Println("new write cache")
             self.writeCache(key, 1, block)
         } else { // write it to disk to avoid a pageout
-            fmt.Println("new write disk")
             if err := self.writeFile(key, 1, block); err != nil {
                 return err
             }
@@ -259,7 +251,6 @@ func (self *CacheFile) pageout(key int64, block bs.ByteSlice) (err error) {
 }
 
 func (self *CacheFile) ReadBlock(key int64) (block bs.ByteSlice, err error) {
-    fmt.Println("read block")
     var count int
     disk_has := self.disk_keys.HasKey(key)
     cache_has := self.cache_keys.HasKey(key)

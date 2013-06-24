@@ -5,7 +5,6 @@ import "testing"
 import (
     "os"
     "math/rand"
-    "fmt"
 )
 
 import (
@@ -303,16 +302,6 @@ func TestPageOut(t *testing.T) {
                 }
             }
         }
-    }
-
-    fmt.Println("Cache Keys")
-    for _, item := range f.cache_keys.slice {
-        fmt.Println(item.p, item.count)
-    }
-    fmt.Println()
-    fmt.Println("Disk Keys")
-    for _, item := range f.disk_keys.slice {
-        fmt.Println(item.p, item.count)
     }
 }
 
