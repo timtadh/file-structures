@@ -4,11 +4,25 @@ import "testing"
 
 import (
     "os"
+    "math/rand"
+    "fmt"
 )
 
 import (
     buf "../buffers"
+    bs "file-structures/block/byteslice"
 )
+
+func init() {
+    if urandom, err := os.Open("/dev/urandom"); err != nil {
+        return
+    } else {
+        seed := make([]byte, 8)
+        if _, err := urandom.Read(seed); err == nil {
+            rand.Seed(int64(bs.ByteSlice(seed).Int64()))
+        }
+    }
+}
 
 const PATH = "/tmp/__x"
 const CACHESIZE = 4096*16
@@ -212,14 +226,16 @@ func TestGenericWriteRead(t *testing.T) {
 }
 
 func TestPageOut(t *testing.T) {
-    f, err := NewCacheFile(PATH, 4096*10)
+    const ITEMS = 1000
+    const CACHESIZE = 950
+    f, err := NewCacheFile(PATH, 4096*CACHESIZE)
     if err != nil {
         t.Fatal(err)
     }
     defer f.Close()
 
     var keys []int64
-    for i := 1; i <= 100; i++ {
+    for i := 1; i <= ITEMS; i++ {
         var P int64
         if P, err = f.Allocate(); err != nil {
             t.Fatal(err)
@@ -233,6 +249,22 @@ func TestPageOut(t *testing.T) {
         if err := f.WriteBlock(P, blk); err != nil {
             t.Fatal(err)
         }
+
+
+        R := keys[rand.Intn(len(keys)/2+1)]
+        // t.Logf("key = %d", P)
+        if rblk, err := f.ReadBlock(R); err != nil {
+            t.Fatal(err)
+        } else if len(rblk) != int(f.BlkSize()) {
+            t.Fatalf("Expected len(rblk) == %d got %d", f.BlkSize(), len(rblk))
+        } else {
+            for i, b := range rblk {
+                if b != byte(R) {
+                    t.Fatalf("Expected rblk[%d] == 0xf got %d", i, b)
+                }
+            }
+        }
+
         if rblk, err := f.ReadBlock(P); err != nil {
             t.Fatal(err)
         } else if len(rblk) != int(f.BlkSize()) {
@@ -246,7 +278,20 @@ func TestPageOut(t *testing.T) {
         }
     }
 
-    for _, P := range keys {
+    for i := 1; i <= ITEMS*5; i++ {
+        P := keys[rand.Intn(len(keys))]
+        keys = append(keys, P)
+        blk := make([]byte, f.BlkSize())
+        for i := range blk {
+            blk[i] = byte(P)
+        }
+        if err := f.WriteBlock(P, blk); err != nil {
+            t.Fatal(err)
+        }
+    }
+
+    for i := 1; i <= ITEMS*5; i++ {
+        P := keys[rand.Intn(len(keys))]
         if rblk, err := f.ReadBlock(P); err != nil {
             t.Fatal(err)
         } else if len(rblk) != int(f.BlkSize()) {
@@ -258,6 +303,16 @@ func TestPageOut(t *testing.T) {
                 }
             }
         }
+    }
+
+    fmt.Println("Cache Keys")
+    for _, item := range f.cache_keys.slice {
+        fmt.Println(item.p, item.count)
+    }
+    fmt.Println()
+    fmt.Println("Disk Keys")
+    for _, item := range f.disk_keys.slice {
+        fmt.Println(item.p, item.count)
     }
 }
 
