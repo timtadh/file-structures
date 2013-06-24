@@ -1,5 +1,8 @@
-The Slang Compiler
-Copyright (C) 2011 Tim Henderson (tim.tadh@gmail.com), CWRU, Cleveland Ohio
+The file-structures library
+Copyright (C) 2011,2012,2013 Tim Henderson (tim.tadh@gmail.com)
+    Case Western Reserve University Cleveland, Ohio
+Copyright (C) 2011 Steve Johnson (steve@steveasleep.com)
+    San Francisco, California
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
