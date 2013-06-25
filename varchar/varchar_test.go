@@ -40,10 +40,49 @@ func testfile(t *testing.T) file.BlockDevice {
 }
 
 func TestNewVarchar(t *testing.T) {
-    if v := NewVarchar(testfile(t)); v == nil {
+    if v, err := NewVarchar(testfile(t)); err != nil {
+        t.Fatal(err)
+    } else if v == nil {
         t.Fatal("Expected a initialized Varchar got nil")
     } else {
         v.Close()
+    }
+}
+
+func TestAllocateLengthBlocksFree(t *testing.T) {
+    varchar, _ := NewVarchar(testfile(t))
+    defer varchar.Close()
+
+    var key int64
+    var err error
+    if _, _, err = varchar.alloc(1234); err != nil { t.Fatal(err) }
+    if _, _, err = varchar.alloc(231); err != nil { t.Fatal(err) }
+    if _, _, err = varchar.alloc(30131); err != nil { t.Fatal(err) }
+    if _, _, err = varchar.alloc(42); err != nil { t.Fatal(err) }
+    if key, _, err = varchar.alloc(9232); err != nil { t.Fatal(err) }
+    if _, _, err = varchar.alloc(612); err != nil { t.Fatal(err) }
+    if _, _, err = varchar.alloc(612); err != nil { t.Fatal(err) }
+
+    t.Log("Key", key)
+    if blocks, err := varchar.blocks(key); err != nil {
+        t.Fatal(err)
+    } else if len(blocks) != 3 {
+        t.Fatalf("Expected len(blocks) == 3 got %d", len(blocks))
+    } else {
+        length := varchar.length(key, blocks[0])
+        if length != 9232 {
+            t.Fatalf("Expected length == 9232 got %d", length)
+        }
+    }
+
+    if err = varchar.free(key); err != nil {
+        t.Fatal(err)
+    }
+
+    if key2, _, err := varchar.alloc(9000); err != nil {
+        t.Fatal(err)
+    } else if key != key2 {
+        t.Fatalf("Expected key == key2 got %d != %d", key, key2)
     }
 }
 
