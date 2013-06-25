@@ -1,12 +1,10 @@
 package file2
 
 import (
-    // "os"
     "fmt"
     "container/heap"
 )
 
-// import buf "file-structures/block/buffers"
 import bs "file-structures/block/byteslice"
 
 const MIN_HEAP = true
@@ -26,7 +24,7 @@ type CacheFile struct {
 func NewCacheFile(file RemovableBlockDevice, size uint64) (cf *CacheFile, err error) {
     cache_size := 0
     if size > 0 {
-        cache_size = 1 + int(size/uint64(file.BlkSize()))
+        cache_size = 1 + int(size/uint64(file.BlockSize()))
     }
     cf = &CacheFile{
         file: file,
@@ -55,7 +53,7 @@ func (self *CacheFile) SetControlData(data bs.ByteSlice) (err error) {
     return self.file.SetControlData(data)
 }
 
-func (self *CacheFile) BlkSize() uint32 { return self.file.BlkSize() }
+func (self *CacheFile) BlockSize() uint32 { return self.file.BlockSize() }
 
 func (self *CacheFile) Free(key int64) error {
     disk_has := self.disk_keys.HasKey(key)

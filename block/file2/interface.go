@@ -3,7 +3,7 @@ package file2
 import . "file-structures/block/byteslice"
 
 type BlockSizer interface {
-    BlkSize() uint32
+    BlockSize() uint32
 }
 
 type BlockReader interface {
@@ -23,7 +23,6 @@ type BlockReadWriter interface {
 }
 
 type BlockAllocator interface {
-    BlockSizer
     Free(key int64) error
     Allocate() (key int64, err error)
 }
@@ -43,8 +42,7 @@ type RootController interface {
 
 type BlockDevice interface {
     BlockReadWriter
-    Free(key int64) error
-    Allocate() (key int64, err error)
+    BlockAllocator
     Closer
     RootController
 }

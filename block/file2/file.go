@@ -143,7 +143,7 @@ func (self *BlockFile) SetControlData(data ByteSlice) (err error) {
 
 func (self *BlockFile) Path() string { return self.path }
 
-func (self *BlockFile) BlkSize() uint32 { return self.ctrl.blksize }
+func (self *BlockFile) BlockSize() uint32 { return self.ctrl.blksize }
 
 func (self *BlockFile) Size() (uint64, error) {
     if !self.opened {

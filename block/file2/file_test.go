@@ -64,8 +64,8 @@ func TestSize(t *testing.T) {
     }
     if size, err := f.Size(); err != nil {
         t.Fatal(err)
-    } else if size != 2*uint64(f.BlkSize()) {
-        t.Fatalf("Expected size == %d got %d", 2*f.BlkSize(), size)
+    } else if size != 2*uint64(f.BlockSize()) {
+        t.Fatalf("Expected size == %d got %d", 2*f.BlockSize(), size)
     }
 }
 
@@ -88,10 +88,10 @@ func TestWriteRead(t *testing.T) {
     }
     if size, err := f.Size(); err != nil {
         t.Fatal(err)
-    } else if size != 2*uint64(f.BlkSize()) {
-        t.Fatalf("Expected size == %d got %d", 2*f.BlkSize(), size)
+    } else if size != 2*uint64(f.BlockSize()) {
+        t.Fatalf("Expected size == %d got %d", 2*f.BlockSize(), size)
     }
-    blk := make([]byte, f.BlkSize())
+    blk := make([]byte, f.BlockSize())
     for i := range blk {
         blk[i] = 0xf
     }
@@ -106,8 +106,8 @@ func TestWriteRead(t *testing.T) {
     }
     if rblk, err := f.ReadBlock(4096); err != nil {
         t.Fatal(err)
-    } else if len(rblk) != int(f.BlkSize()) {
-        t.Fatalf("Expected len(rblk) == %d got %d", f.BlkSize(), len(rblk))
+    } else if len(rblk) != int(f.BlockSize()) {
+        t.Fatalf("Expected len(rblk) == %d got %d", f.BlockSize(), len(rblk))
     } else {
         for i, b := range rblk {
             if b != 0xf {
@@ -132,8 +132,8 @@ func TestWriteRead(t *testing.T) {
     }
     if size, err := f.Size(); err != nil {
         t.Fatal(err)
-    } else if size != 3*uint64(f.BlkSize()) {
-        t.Fatalf("Expected size == %d got %d", 3*f.BlkSize(), size)
+    } else if size != 3*uint64(f.BlockSize()) {
+        t.Fatalf("Expected size == %d got %d", 3*f.BlockSize(), size)
     }
     if err := f.WriteBlock(4096, blk); err != nil {
         t.Fatal(err)
@@ -146,8 +146,8 @@ func TestWriteRead(t *testing.T) {
     }
     if rblk, err := f.ReadBlock(4096); err != nil {
         t.Fatal(err)
-    } else if len(rblk) != int(f.BlkSize()) {
-        t.Fatalf("Expected len(rblk) == %d got %d", f.BlkSize(), len(rblk))
+    } else if len(rblk) != int(f.BlockSize()) {
+        t.Fatalf("Expected len(rblk) == %d got %d", f.BlockSize(), len(rblk))
     } else {
         for i, b := range rblk {
             if b != 0xf {
@@ -173,7 +173,7 @@ func TestGenericWriteRead(t *testing.T) {
     tester := func(f BlockDevice) {
         var A, C int64
         var err error
-        blk := make([]byte, f.BlkSize())
+        blk := make([]byte, f.BlockSize())
         for i := range blk {
             blk[i] = 0xf
         }
@@ -186,8 +186,8 @@ func TestGenericWriteRead(t *testing.T) {
         }
         if rblk, err := f.ReadBlock(A); err != nil {
             t.Fatal(err)
-        } else if len(rblk) != int(f.BlkSize()) {
-            t.Fatalf("Expected len(rblk) == %d got %d", f.BlkSize(), len(rblk))
+        } else if len(rblk) != int(f.BlockSize()) {
+            t.Fatalf("Expected len(rblk) == %d got %d", f.BlockSize(), len(rblk))
         } else {
             for i, b := range rblk {
                 if b != 0xf {
@@ -214,8 +214,8 @@ func TestGenericWriteRead(t *testing.T) {
         }
         if rblk, err := f.ReadBlock(A); err != nil {
             t.Fatal(err)
-        } else if len(rblk) != int(f.BlkSize()) {
-            t.Fatalf("Expected len(rblk) == %d got %d", f.BlkSize(), len(rblk))
+        } else if len(rblk) != int(f.BlockSize()) {
+            t.Fatalf("Expected len(rblk) == %d got %d", f.BlockSize(), len(rblk))
         } else {
             for i, b := range rblk {
                 if b != 0xf {
@@ -270,7 +270,7 @@ func TestPageOut(t *testing.T) {
             t.Fatal(err)
         }
         keys = append(keys, P)
-        blk := make([]byte, f.BlkSize())
+        blk := make([]byte, f.BlockSize())
         for i := range blk {
             blk[i] = byte(P)
         }
@@ -284,8 +284,8 @@ func TestPageOut(t *testing.T) {
         // t.Logf("key = %d", P)
         if rblk, err := f.ReadBlock(R); err != nil {
             t.Fatal(err)
-        } else if len(rblk) != int(f.BlkSize()) {
-            t.Fatalf("Expected len(rblk) == %d got %d", f.BlkSize(), len(rblk))
+        } else if len(rblk) != int(f.BlockSize()) {
+            t.Fatalf("Expected len(rblk) == %d got %d", f.BlockSize(), len(rblk))
         } else {
             for i, b := range rblk {
                 if b != byte(R) {
@@ -296,8 +296,8 @@ func TestPageOut(t *testing.T) {
 
         if rblk, err := f.ReadBlock(P); err != nil {
             t.Fatal(err)
-        } else if len(rblk) != int(f.BlkSize()) {
-            t.Fatalf("Expected len(rblk) == %d got %d", f.BlkSize(), len(rblk))
+        } else if len(rblk) != int(f.BlockSize()) {
+            t.Fatalf("Expected len(rblk) == %d got %d", f.BlockSize(), len(rblk))
         } else {
             for i, b := range rblk {
                 if b != byte(P) {
@@ -310,7 +310,7 @@ func TestPageOut(t *testing.T) {
     for i := 1; i <= ITEMS*5; i++ {
         P := keys[rand.Intn(len(keys))]
         keys = append(keys, P)
-        blk := make([]byte, f.BlkSize())
+        blk := make([]byte, f.BlockSize())
         for i := range blk {
             blk[i] = byte(P)
         }
@@ -323,8 +323,8 @@ func TestPageOut(t *testing.T) {
         P := keys[rand.Intn(len(keys))]
         if rblk, err := f.ReadBlock(P); err != nil {
             t.Fatal(err)
-        } else if len(rblk) != int(f.BlkSize()) {
-            t.Fatalf("Expected len(rblk) == %d got %d", f.BlkSize(), len(rblk))
+        } else if len(rblk) != int(f.BlockSize()) {
+            t.Fatalf("Expected len(rblk) == %d got %d", f.BlockSize(), len(rblk))
         } else {
             for i, b := range rblk {
                 if b != byte(P) {
