@@ -170,7 +170,7 @@ func TestWriteRead(t *testing.T) {
 
 func TestGenericWriteRead(t *testing.T) {
     tester := func(f BlockDevice) {
-        var A, C int64
+        var A, B, C int64
         var err error
         blk := make([]byte, f.BlockSize())
         for i := range blk {
@@ -179,6 +179,8 @@ func TestGenericWriteRead(t *testing.T) {
 
         if A, err = f.Allocate(); err != nil {
             t.Fatal(err)
+        } else if A != 4096 {
+            t.Fatalf("Expected A == 4096 got %d", A)
         }
         if err := f.WriteBlock(A, blk); err != nil {
             t.Fatal(err)
@@ -195,8 +197,10 @@ func TestGenericWriteRead(t *testing.T) {
             }
         }
 
-        if _, err = f.Allocate(); err != nil {
+        if B, err = f.Allocate(); err != nil {
             t.Fatal(err)
+        } else if B != 8192 {
+            t.Fatalf("Expected B == 8192 got %d", B)
         }
 
         if err = f.Free(A); err != nil {
@@ -222,6 +226,13 @@ func TestGenericWriteRead(t *testing.T) {
                 }
             }
         }
+
+        if err = f.Free(A); err != nil {
+            t.Fatal(err, A)
+        }
+        if err = f.Free(B); err != nil {
+            t.Fatal(err, B)
+        }
     }
 
     bf := NewBlockFile(PATH, &buf.NoBuffer{})
@@ -240,11 +251,6 @@ func TestGenericWriteRead(t *testing.T) {
         t.Fatal(err)
     }
     defer cf.Close()
-    tester(cf)
-    tester(cf)
-    tester(cf)
-    tester(cf)
-    tester(cf)
     tester(cf)
 }
 

@@ -33,6 +33,7 @@ func NewCacheFile(file RemovableBlockDevice, size uint64) (cf *CacheFile, err er
         keymap:     make(map[int64]int64),
         cache_keys: newPriorityQueue(cache_size, MIN_HEAP),
         disk_keys:  newPriorityQueue(cache_size, MAX_HEAP),
+        nextkey:    int64(file.BlockSize()),
         free_keys:  make([]int64, 0, 100),
     }
     return cf, nil
@@ -81,9 +82,9 @@ func (self *CacheFile) Allocate() (key int64, err error) {
         self.free_keys = self.free_keys[:len(self.free_keys)-1]
     } else {
         key = self.nextkey
-        self.nextkey += 1
+        self.nextkey += int64(self.file.BlockSize())
     }
-    return key, nil
+    return key, self.WriteBlock(key, make(bs.ByteSlice, self.file.BlockSize()))
 }
 
 func (self *CacheFile) writeFile(key int64, count int, block bs.ByteSlice) (err error) {
@@ -271,7 +272,7 @@ func (self *CacheFile) ReadBlock(key int64) (block bs.ByteSlice, err error) {
         }
         self.disk_keys.Update(key, count+1)
     } else {
-        return nil, fmt.Errorf("Unknown key!")
+        return nil, fmt.Errorf("Unknown key! %d", key)
     }
     return block, self.balance()
 }
