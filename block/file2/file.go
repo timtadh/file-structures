@@ -13,13 +13,16 @@ type ctrlblk struct {
     blksize    uint32
     free_chain uint64
     free_len   uint32
+    userdata   ByteSlice
 }
 
+const CONTROLSIZE = 20
 func (self *ctrlblk) Bytes() []byte {
-    var bytes [20]byte
+    bytes := make([]byte, self.blksize)
     copy(bytes[4:8], ByteSlice32(self.blksize))
     copy(bytes[8:16], ByteSlice64(self.free_chain))
     copy(bytes[16:20], ByteSlice32(self.free_len))
+    copy(bytes[20:], self.userdata)
     copy(bytes[0:4], ByteSlice32(crc32.ChecksumIEEE(bytes[4:])))
     return bytes[:]
 }
@@ -32,7 +35,7 @@ func (self *ctrlblk) Block() []byte {
 
 func load_ctrlblk(bytes []byte) (cb *ctrlblk, err error) {
     chksum := ByteSlice(bytes[0:4]).Int32()
-    new_chksum := crc32.ChecksumIEEE(bytes[4:20])
+    new_chksum := crc32.ChecksumIEEE(bytes[4:])
     if new_chksum != chksum {
         return nil, fmt.Errorf("Bad control block checksum %x != %x", new_chksum, chksum)
     }
@@ -40,6 +43,7 @@ func load_ctrlblk(bytes []byte) (cb *ctrlblk, err error) {
         blksize:    ByteSlice(bytes[4:8]).Int32(),
         free_chain: ByteSlice(bytes[8:16]).Int64(),
         free_len:   ByteSlice(bytes[16:20]).Int32(),
+        userdata:   ByteSlice(bytes[20:]),
     }
     return cb, nil
 }
@@ -58,6 +62,7 @@ func NewBlockFile(path string, buf buf.Buffer) *BlockFile {
         buf:  buf,
         ctrl: ctrlblk{
             blksize: 4096,
+            userdata: make([]byte, 4096-CONTROLSIZE),
         },
     }
 }
@@ -94,6 +99,13 @@ func (self *BlockFile) Close() error {
     return nil
 }
 
+func (self *BlockFile) Remove() error {
+    if self.opened {
+        return fmt.Errorf("Expected file to be closed")
+    }
+    return os.Remove(self.Path())
+}
+
 func (self *BlockFile) write_ctrlblk() error {
     return self.WriteBlock(0, self.ctrl.Block())
 }
@@ -109,6 +121,24 @@ func (self *BlockFile) read_ctrlblk() error {
         }
     }
     return nil
+}
+
+func (self *BlockFile) ControlData() (data ByteSlice, err error) {
+    if len(self.ctrl.userdata) > int(self.ctrl.blksize - CONTROLSIZE) {
+        return nil, fmt.Errorf("control data was too large")
+    }
+    data = make(ByteSlice, self.ctrl.blksize - CONTROLSIZE)
+    copy(data, self.ctrl.userdata)
+    return data, nil
+}
+
+func (self *BlockFile) SetControlData(data ByteSlice) (err error) {
+    if len(data) > int(self.ctrl.blksize - CONTROLSIZE) {
+        return fmt.Errorf("control data was too large")
+    }
+    self.ctrl.userdata = make(ByteSlice, self.ctrl.blksize - CONTROLSIZE)
+    copy(self.ctrl.userdata, data)
+    return self.write_ctrlblk()
 }
 
 func (self *BlockFile) Path() string { return self.path }

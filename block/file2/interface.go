@@ -32,10 +32,25 @@ type Closer interface {
     Close() error
 }
 
+type Removable interface {
+    Remove() error
+}
+
+type RootController interface {
+    ControlData() (block ByteSlice, err error)
+    SetControlData(block ByteSlice) (err error)
+}
+
 type BlockDevice interface {
     BlockReadWriter
     Free(key int64) error
     Allocate() (key int64, err error)
     Closer
+    RootController
+}
+
+type RemovableBlockDevice interface {
+    BlockDevice
+    Removable
 }
 

@@ -75,6 +75,12 @@ func TestWriteRead(t *testing.T) {
     if err := f.Open(); err != nil {
         t.Fatal(err)
     }
+
+    control_data := []byte("Hi there!")
+    if err := f.SetControlData(control_data); err != nil {
+        t.Fatal(err)
+    }
+
     if p, err := f.Allocate(); err != nil {
         t.Fatal(err)
     } else if p != 4096 {
@@ -149,6 +155,17 @@ func TestWriteRead(t *testing.T) {
             }
         }
     }
+
+    if read_data, err := f.ControlData(); err != nil {
+        t.Fatal(err)
+    } else {
+        for i, b := range control_data {
+            if b != read_data[i] {
+                t.Fatalf("Expected read_data[%d] == %d got %d", i,
+                    b, read_data[i])
+            }
+        }
+    }
 }
 
 
@@ -210,24 +227,37 @@ func TestGenericWriteRead(t *testing.T) {
 
 
     bf := NewBlockFile(PATH, &buf.NoBuffer{})
-    defer cleanup(bf.Path())
     if err := bf.Open(); err != nil {
         t.Fatal(err)
     }
     tester(bf)
+    cleanup(bf.Path())
 
-    cf, err := NewCacheFile(PATH, CACHESIZE)
+    ibf := NewBlockFile(PATH, &buf.NoBuffer{})
+    if err := ibf.Open(); err != nil {
+        t.Fatal(err)
+    }
+    cf, err := NewCacheFile(ibf, CACHESIZE)
     if err != nil {
         t.Fatal(err)
     }
     defer cf.Close()
+    tester(cf)
+    tester(cf)
+    tester(cf)
+    tester(cf)
+    tester(cf)
     tester(cf)
 }
 
 func TestPageOut(t *testing.T) {
     const ITEMS = 1000
     const CACHESIZE = 950
-    f, err := NewCacheFile(PATH, 4096*CACHESIZE)
+    ibf := NewBlockFile(PATH, &buf.NoBuffer{})
+    if err := ibf.Open(); err != nil {
+        t.Fatal(err)
+    }
+    f, err := NewCacheFile(ibf, 4096*CACHESIZE)
     if err != nil {
         t.Fatal(err)
     }

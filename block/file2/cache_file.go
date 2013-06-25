@@ -1,19 +1,19 @@
 package file2
 
 import (
-    "os"
+    // "os"
     "fmt"
     "container/heap"
 )
 
-import buf "file-structures/block/buffers"
+// import buf "file-structures/block/buffers"
 import bs "file-structures/block/byteslice"
 
 const MIN_HEAP = true
 const MAX_HEAP = false
 
 type CacheFile struct {
-    file   *BlockFile
+    file RemovableBlockDevice
     cache map[int64]bs.ByteSlice
     cache_size int
     keymap map[int64]int64 "memkey -> diskkey"
@@ -23,8 +23,7 @@ type CacheFile struct {
     free_keys []int64
 }
 
-func NewCacheFile(path string, size uint64) (cf *CacheFile, err error) {
-    file := NewBlockFile(path, &buf.NoBuffer{})
+func NewCacheFile(file RemovableBlockDevice, size uint64) (cf *CacheFile, err error) {
     cache_size := 0
     if size > 0 {
         cache_size = 1 + int(size/uint64(file.BlkSize()))
@@ -38,9 +37,6 @@ func NewCacheFile(path string, size uint64) (cf *CacheFile, err error) {
         disk_keys: newPriorityQueue(cache_size, MAX_HEAP),
         free_keys: make([]int64, 0, 100),
     }
-    if err := cf.file.Open(); err != nil {
-        return nil, err
-    }
     return cf, nil
 }
 
@@ -48,7 +44,15 @@ func (self *CacheFile) Close() error {
     if err := self.file.Close(); err != nil {
         return err
     }
-    return os.Remove(self.file.Path())
+    return self.file.Remove()
+}
+
+func (self *CacheFile) ControlData() (data bs.ByteSlice, err error) {
+    return self.file.ControlData()
+}
+
+func (self *CacheFile) SetControlData(data bs.ByteSlice) (err error) {
+    return self.file.SetControlData(data)
 }
 
 func (self *CacheFile) BlkSize() uint32 { return self.file.BlkSize() }
