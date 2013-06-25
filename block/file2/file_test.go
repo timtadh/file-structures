@@ -3,8 +3,8 @@ package file2
 import "testing"
 
 import (
-    "os"
     "math/rand"
+    "os"
 )
 
 import (
@@ -24,7 +24,7 @@ func init() {
 }
 
 const PATH = "/tmp/__x"
-const CACHESIZE = 4096*16
+const CACHESIZE = 4096 * 16
 
 func cleanup(path string) {
     os.Remove(path)
@@ -168,7 +168,6 @@ func TestWriteRead(t *testing.T) {
     }
 }
 
-
 func TestGenericWriteRead(t *testing.T) {
     tester := func(f BlockDevice) {
         var A, C int64
@@ -225,7 +224,6 @@ func TestGenericWriteRead(t *testing.T) {
         }
     }
 
-
     bf := NewBlockFile(PATH, &buf.NoBuffer{})
     if err := bf.Open(); err != nil {
         t.Fatal(err)
@@ -278,7 +276,6 @@ func TestPageOut(t *testing.T) {
         if err := f.WriteBlock(P, blk); err != nil {
             t.Fatal(err)
         }
-
 
         R := keys[rand.Intn(len(keys)/2+1)]
         // t.Logf("key = %d", P)
@@ -334,4 +331,3 @@ func TestPageOut(t *testing.T) {
         }
     }
 }
-

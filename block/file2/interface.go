@@ -51,4 +51,3 @@ type RemovableBlockDevice interface {
     BlockDevice
     Removable
 }
-

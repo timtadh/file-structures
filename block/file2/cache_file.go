@@ -1,8 +1,8 @@
 package file2
 
 import (
-    "fmt"
     "container/heap"
+    "fmt"
 )
 
 import bs "file-structures/block/byteslice"
@@ -11,14 +11,14 @@ const MIN_HEAP = true
 const MAX_HEAP = false
 
 type CacheFile struct {
-    file RemovableBlockDevice
-    cache map[int64]bs.ByteSlice
+    file       RemovableBlockDevice
+    cache      map[int64]bs.ByteSlice
     cache_size int
-    keymap map[int64]int64 "memkey -> diskkey"
+    keymap     map[int64]int64 "memkey -> diskkey"
     cache_keys *priorityQueue
-    disk_keys *priorityQueue
-    nextkey int64
-    free_keys []int64
+    disk_keys  *priorityQueue
+    nextkey    int64
+    free_keys  []int64
 }
 
 func NewCacheFile(file RemovableBlockDevice, size uint64) (cf *CacheFile, err error) {
@@ -27,13 +27,13 @@ func NewCacheFile(file RemovableBlockDevice, size uint64) (cf *CacheFile, err er
         cache_size = 1 + int(size/uint64(file.BlockSize()))
     }
     cf = &CacheFile{
-        file: file,
-        cache: make(map[int64]bs.ByteSlice),
+        file:       file,
+        cache:      make(map[int64]bs.ByteSlice),
         cache_size: cache_size,
-        keymap: make(map[int64]int64),
+        keymap:     make(map[int64]int64),
         cache_keys: newPriorityQueue(cache_size, MIN_HEAP),
-        disk_keys: newPriorityQueue(cache_size, MAX_HEAP),
-        free_keys: make([]int64, 0, 100),
+        disk_keys:  newPriorityQueue(cache_size, MAX_HEAP),
+        free_keys:  make([]int64, 0, 100),
     }
     return cf, nil
 }
@@ -279,9 +279,9 @@ func (self *CacheFile) ReadBlock(key int64) (block bs.ByteSlice, err error) {
 // -------------------------------------------------------------------------------
 
 type priorityQueue struct {
-    slice []*priorityQueueItem
+    slice   []*priorityQueueItem
     indices map[int64]int
-    min bool
+    min     bool
 }
 
 type priorityQueueItem struct {
@@ -291,9 +291,9 @@ type priorityQueueItem struct {
 
 func newPriorityQueue(size int, min bool) *priorityQueue {
     self := &priorityQueue{
-        slice: make([]*priorityQueueItem, 0, size),
+        slice:   make([]*priorityQueueItem, 0, size),
         indices: make(map[int64]int),
-        min: min,
+        min:     min,
     }
     heap.Init(self)
     return self
@@ -369,4 +369,3 @@ func (self *priorityQueue) Update(p int64, count int) {
         heap.Push(self, &priorityQueueItem{p: p, count: count})
     }
 }
-

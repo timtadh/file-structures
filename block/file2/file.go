@@ -10,13 +10,14 @@ import buf "file-structures/block/buffers"
 import . "file-structures/block/byteslice"
 
 type ctrlblk struct {
-    blksize    uint32
+    blksize   uint32
     free_head uint64
-    free_len   uint32
-    userdata   ByteSlice
+    free_len  uint32
+    userdata  ByteSlice
 }
 
 const CONTROLSIZE = 20
+
 func (self *ctrlblk) Bytes() []byte {
     bytes := make([]byte, self.blksize)
     copy(bytes[4:8], ByteSlice32(self.blksize))
@@ -40,10 +41,10 @@ func load_ctrlblk(bytes []byte) (cb *ctrlblk, err error) {
         return nil, fmt.Errorf("Bad control block checksum %x != %x", new_chksum, chksum)
     }
     cb = &ctrlblk{
-        blksize:    ByteSlice(bytes[4:8]).Int32(),
+        blksize:   ByteSlice(bytes[4:8]).Int32(),
         free_head: ByteSlice(bytes[8:16]).Int64(),
-        free_len:   ByteSlice(bytes[16:20]).Int32(),
-        userdata:   ByteSlice(bytes[20:]),
+        free_len:  ByteSlice(bytes[16:20]).Int32(),
+        userdata:  ByteSlice(bytes[20:]),
     }
     return cb, nil
 }
@@ -61,7 +62,7 @@ func NewBlockFile(path string, buf buf.Buffer) *BlockFile {
         path: path,
         buf:  buf,
         ctrl: ctrlblk{
-            blksize: 4096,
+            blksize:  4096,
             userdata: make([]byte, 4096-CONTROLSIZE),
         },
     }
@@ -124,19 +125,19 @@ func (self *BlockFile) read_ctrlblk() error {
 }
 
 func (self *BlockFile) ControlData() (data ByteSlice, err error) {
-    if len(self.ctrl.userdata) > int(self.ctrl.blksize - CONTROLSIZE) {
+    if len(self.ctrl.userdata) > int(self.ctrl.blksize-CONTROLSIZE) {
         return nil, fmt.Errorf("control data was too large")
     }
-    data = make(ByteSlice, self.ctrl.blksize - CONTROLSIZE)
+    data = make(ByteSlice, self.ctrl.blksize-CONTROLSIZE)
     copy(data, self.ctrl.userdata)
     return data, nil
 }
 
 func (self *BlockFile) SetControlData(data ByteSlice) (err error) {
-    if len(data) > int(self.ctrl.blksize - CONTROLSIZE) {
+    if len(data) > int(self.ctrl.blksize-CONTROLSIZE) {
         return fmt.Errorf("control data was too large")
     }
-    self.ctrl.userdata = make(ByteSlice, self.ctrl.blksize - CONTROLSIZE)
+    self.ctrl.userdata = make(ByteSlice, self.ctrl.blksize-CONTROLSIZE)
     copy(self.ctrl.userdata, data)
     return self.write_ctrlblk()
 }
