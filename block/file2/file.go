@@ -11,7 +11,7 @@ import . "file-structures/block/byteslice"
 
 type ctrlblk struct {
     blksize    uint32
-    free_chain uint64
+    free_head uint64
     free_len   uint32
     userdata   ByteSlice
 }
@@ -20,7 +20,7 @@ const CONTROLSIZE = 20
 func (self *ctrlblk) Bytes() []byte {
     bytes := make([]byte, self.blksize)
     copy(bytes[4:8], ByteSlice32(self.blksize))
-    copy(bytes[8:16], ByteSlice64(self.free_chain))
+    copy(bytes[8:16], ByteSlice64(self.free_head))
     copy(bytes[16:20], ByteSlice32(self.free_len))
     copy(bytes[20:], self.userdata)
     copy(bytes[0:4], ByteSlice32(crc32.ChecksumIEEE(bytes[4:])))
@@ -41,7 +41,7 @@ func load_ctrlblk(bytes []byte) (cb *ctrlblk, err error) {
     }
     cb = &ctrlblk{
         blksize:    ByteSlice(bytes[4:8]).Int32(),
-        free_chain: ByteSlice(bytes[8:16]).Int64(),
+        free_head: ByteSlice(bytes[8:16]).Int64(),
         free_len:   ByteSlice(bytes[16:20]).Int32(),
         userdata:   ByteSlice(bytes[20:]),
     }
@@ -161,26 +161,26 @@ func (self *BlockFile) resize(size int64) error {
 }
 
 func (self *BlockFile) Free(pos int64) error {
-    head := ByteSlice64(self.ctrl.free_chain)
+    head := ByteSlice64(self.ctrl.free_head)
     blk := make(ByteSlice, self.ctrl.blksize)
     copy(blk, head)
     if err := self.WriteBlock(pos, blk); err != nil {
         return err
     }
-    self.ctrl.free_chain = uint64(pos)
+    self.ctrl.free_head = uint64(pos)
     self.ctrl.free_len += 1
     return self.write_ctrlblk()
 }
 
 func (self *BlockFile) pop_free() (pos int64, err error) {
-    if self.ctrl.free_chain == 0 && self.ctrl.free_len == 0 {
+    if self.ctrl.free_head == 0 && self.ctrl.free_len == 0 {
         return 0, fmt.Errorf("No blocks free")
     }
-    pos = int64(self.ctrl.free_chain)
+    pos = int64(self.ctrl.free_head)
     if bytes, err := self.ReadBlock(pos); err != nil {
         return 0, err
     } else {
-        self.ctrl.free_chain = bytes[0:8].Int64()
+        self.ctrl.free_head = bytes[0:8].Int64()
     }
     self.ctrl.free_len -= 1
     if err := self.write_ctrlblk(); err != nil {
