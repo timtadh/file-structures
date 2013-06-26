@@ -100,13 +100,13 @@ func allocBlock(file file.BlockDevice) (blk *block, err error) {
 const FREE_VARCHAR_SIZE = 16
 type free_varchar struct {
     key int64
-    length int64
+    length uint64
     next int64
 }
 
 func (self *free_varchar) Bytes() []byte {
     bytes := make([]byte, FREE_VARCHAR_SIZE)
-    copy(bytes[0:8], bs.ByteSlice64(uint64(self.length)))
+    copy(bytes[0:8], bs.ByteSlice64(self.length))
     copy(bytes[8:16], bs.ByteSlice64(uint64(self.next)))
     return bytes
 }
@@ -117,7 +117,7 @@ func load_free_varchar(bytes bs.ByteSlice, key int64) (fv *free_varchar, err err
     }
     fv = &free_varchar{
         key: key,
-        length: int64(bytes[0:8].Int64()),
+        length: bytes[0:8].Int64(),
         next: int64(bytes[8:16].Int64()),
     }
     return fv, nil
@@ -288,11 +288,260 @@ func (self *Varchar) alloc_new(length uint64) (key int64, blocks []*block, err e
 }
 
 func (self *Varchar) alloc(length uint64) (key int64, blocks []*block, err error) {
-    return self.alloc_new(length)
+    if self.ctrl.free_len == 0 {
+        return self.alloc_new(length)
+    }
+    return self.alloc_free(length)
+}
+
+func (self *Varchar) alloc_free(length uint64) (key int64, blocks []*block, err error) {
+    defer func() {
+        if e := recover(); e != nil {
+            key = 0
+            blocks = nil
+            err = e.(error)
+        }
+    }()
+
+    var dirty []*free_varchar
+
+    write := self.panic_write
+
+    find_split := func(fv *free_varchar, length uint64) (new_free *free_varchar) {
+        block_size := datasize(self.file)
+        true_length := uint64(LENSIZE + fv.length)
+        start_alloc := uint64(block_size - (fv.key % block_size))
+        blocks, err := self.blocks(fv.key)
+        if err != nil { panic(err) }
+        last_block := blocks[len(blocks)-1]
+        full_blocks := (uint64(len(blocks))-2)*uint64(block_size)
+
+        if start_alloc < true_length {
+            // fits in first block
+            return &free_varchar{
+                key: fv.key + int64(true_length),
+                length: fv.length - true_length,
+                next: fv.next,
+            }
+        } else if start_alloc + full_blocks < true_length {
+            // fits in last block
+            return &free_varchar{
+                key: last_block.key + int64(true_length),
+                length: fv.length - true_length,
+                next: fv.next,
+            }
+        } else {
+            // is somewhere in the run
+            left := true_length - start_alloc
+            for _, blk := range blocks[1:] {
+                if left + uint64(block_size) < true_length {
+                    // found it
+                    return &free_varchar{
+                        key: blk.key + int64(true_length),
+                        length: fv.length - true_length,
+                        next: fv.next,
+                    }
+                }
+                left += true_length
+            }
+        }
+        panic(fmt.Errorf("couldn't find free_varchar split"))
+    }
+
+    pfv, free, err := self.firstfit(length)
+    if err != nil {
+        return 0, nil, err
+    }
+    if free == nil {
+        return self.alloc_new(length)
+    }
+
+    if free.length == length {
+        // If the selected block is the same size as the freeblk remove it from
+        // the list.
+        self.ctrl.free_len -= 1
+        pfv.next = free.next
+        dirty = append(dirty, pfv)
+    } else if free.length - length < FREE_VARCHAR_SIZE {
+        // Removing the amt from the block would result in a undersized free block
+        // so remove it from the list and allocate the extra space to the
+        // allocated block.
+        length = free.length
+        self.ctrl.free_len -= 1
+        pfv.next = free.next
+        dirty = append(dirty, pfv)
+    } else {
+        // Split the block
+        newfree := find_split(free, length) // find free + length
+        pfv.next = newfree.key
+        dirty = append(dirty, pfv, newfree)
+    }
+
+    key = free.key
+    if blk, err := readBlock(self.file, self.block_key(key)); err != nil {
+        return 0, nil, err
+    } else {
+        if err := self.set_length(key, blk, length); err != nil {
+            return 0, nil, err
+        }
+    }
+
+    if blocks, err = self.blocks(key); err != nil {
+        return 0, nil, err
+    }
+
+    // write out the dirty blocks
+    for _, dirt := range dirty {
+        write(dirt)
+    }
+
+    if err := self.write_ctrlblk(); err != nil {
+        return 0, nil, err
+    }
+
+    return key, blocks, nil
+}
+
+func (self *Varchar) firstfit(length uint64) (pfv, cfv *free_varchar, err error) {
+    defer func() {
+        if e := recover(); e != nil {
+            pfv = nil
+            cfv = nil
+            err = e.(error)
+        }
+    }()
+    load := self.panic_load
+    cur := self.ctrl.free_head
+    pfv = load(cur)
+    for i := 0; i < int(self.ctrl.free_len); i++ {
+        cfv := load(cur)
+        if cfv.length >= length {
+            return pfv, cfv, nil
+        }
+        cur = cfv.next
+        pfv = cfv
+    }
+    return nil, nil, nil
+}
+
+func (self *Varchar) panic_load(key int64) *free_varchar {
+    blk, err := readBlock(self.file, self.block_key(key))
+    if err != nil { panic(err) }
+    fv, err := readFreeVarchar(blk, key)
+    if err != nil { panic(err) }
+    return fv
+}
+
+func (self *Varchar) panic_write(fv *free_varchar) {
+    blk, err := readBlock(self.file, self.block_key(fv.key))
+    if err != nil { panic(err) }
+    fv.writeFreeVarchar(blk)
+    err = blk.WriteBlock(self.file)
+    if err != nil { panic(err) }
+}
+
+func (self *Varchar) insert_free(fv *free_varchar) (err error) {
+    var dirty []*free_varchar
+    defer func() {
+        if e := recover(); e != nil {
+            err = e.(error)
+        }
+    }()
+
+    load := self.panic_load
+
+    write := self.panic_write
+
+    find_end := func(fv *free_varchar) int64 {
+        block_size := datasize(self.file)
+        true_length := uint64(LENSIZE + fv.length)
+        start_alloc := uint64(block_size - (fv.key % block_size))
+        blocks, err := self.blocks(fv.key)
+        if err != nil { panic(err) }
+        final_offset := true_length - start_alloc - (uint64(len(blocks))-2)*uint64(block_size)
+        return blocks[len(blocks)-1].key + int64(final_offset)
+    }
+
+    combine := func() {
+        if self.ctrl.free_len <= 1 {
+            return
+        }
+        key := self.ctrl.free_head
+        pfv := load(key)
+        cfv := load(pfv.next)
+
+        // Starting at the second block go through the list
+        for i := 1; i < int(self.ctrl.free_len); i++ {
+            if find_end(pfv) == cfv.key {
+                pfv.length += cfv.length
+                pfv.next = cfv.next
+                self.ctrl.free_len -= 1
+                dirty = append(dirty, pfv)
+                cfv = load(cfv.next)
+                i -= 1 // we essentially "redo" this iteration
+            } else {
+                pfv = cfv
+                cfv = load(pfv.next)
+            }
+        }
+    }
+
+    dirty = append(dirty, fv)
+    fv_end := find_end(fv)
+    if self.ctrl.free_len == 0 {
+        // The list is empty
+        self.ctrl.free_head = fv.key
+        self.ctrl.free_len = 1
+    } else if fv_end < self.ctrl.free_head {
+        // first block in the list
+        fv.next = self.ctrl.free_head 
+        self.ctrl.free_head = fv.key
+        self.ctrl.free_len += 1
+    } else {
+        // Nominal case, this block goes somewhere in the list
+        pfv := load(self.ctrl.free_head)
+        var cfv *free_varchar
+        prev := self.ctrl.free_head
+        cur := pfv.next
+        var i int
+
+
+        // Start at the second block, and find the spot where this block goes.
+        for i = 1; i < int(self.ctrl.free_len); i++ {
+            pfv = load(prev)
+            cfv = load(cur)
+            if fv_end <= cfv.key {
+                // we found the spot
+                self.ctrl.free_len += 1
+                pfv.next = fv.key
+                fv.next = cfv.key
+                dirty = append(dirty, pfv, cfv)
+                break
+            }
+            prev = cur
+            cur = cfv.key
+        }
+
+        // It goes at the end of the list
+        if i == int(self.ctrl.free_len) {
+            self.ctrl.free_len += 1
+            pfv = load(prev)
+            pfv.next = fv.key
+            fv.next = 0
+        }
+    }
+
+    combine() // combine adjecent blocks
+
+    // write out the dirty blocks
+    for _, dirt := range dirty {
+        write(dirt)
+    }
+
+    return self.write_ctrlblk()
 }
 
 func (self *Varchar) free(key int64) (err error) {
-    block_size := datasize(self.file)
     start_blk_key := self.block_key(key)
     start_blk, err := readBlock(self.file, start_blk_key)
     if err != nil {
@@ -302,7 +551,7 @@ func (self *Varchar) free(key int64) (err error) {
     fv := &free_varchar{key: key, length:length}
     // insert the freed varchar into the list
     // keep the list key order
-    return fmt.Errorf("Unimplemented")
+    return self.insert_free(fv)
 }
 
 func (self *Varchar) length(key int64, blk *block) (length uint64) {
