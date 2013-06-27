@@ -387,7 +387,7 @@ func (self *Varchar) alloc_free(length uint64) (key int64, blocks []*block, err 
         panic(fmt.Errorf("couldn't find free_varchar split"))
     }
 
-    pfv, free, err := self.firstfit(length)
+    write_head, pfv, free, err := self.firstfit(length)
     if err != nil {
         return 0, nil, err
     }
@@ -395,29 +395,38 @@ func (self *Varchar) alloc_free(length uint64) (key int64, blocks []*block, err 
         return self.alloc_new(length)
     }
 
+    var nextkey int64
     if free.length == length {
         // If the selected block is the same size as the freeblk remove it from
         // the list.
+        fmt.Println("alloc_free case 1")
         self.ctrl.free_len -= 1
-        pfv.next = free.next
+        nextkey = free.next
         dirty = append(dirty, pfv)
     } else if free.length - length < FREE_VARCHAR_SIZE {
         // Removing the amt from the block would result in a undersized free block
         // so remove it from the list and allocate the extra space to the
         // allocated block.
+        fmt.Println("alloc_free case 2")
         length = free.length
         self.ctrl.free_len -= 1
-        pfv.next = free.next
+        nextkey = free.next
         dirty = append(dirty, pfv)
     } else {
         // Split the block
+        fmt.Println("alloc_free case 3")
         start_length := free.length
         newfree := find_split(free, length) // find free + length
         if start_length < newfree.length {
             panic(fmt.Errorf("split failed"))
         }
-        pfv.next = newfree.key
+        nextkey = newfree.key
         dirty = append(dirty, pfv, newfree)
+    }
+    if write_head {
+        self.ctrl.free_head = nextkey
+    } else {
+        pfv.next = nextkey
     }
 
     key = free.key
@@ -446,6 +455,11 @@ func (self *Varchar) alloc_free(length uint64) (key int64, blocks []*block, err 
         return 0, nil, err
     }
 
+    fmt.Println("allocated", length)
+    if self.length(key, blocks[0]) != length {
+        return 0, nil, fmt.Errorf("length not set correctly")
+    }
+
     // fmt.Println("final key", key)
     // fmt.Println("final blocks", blocks)
     // fmt.Println("length", self.length(key, blocks[0]))
@@ -453,7 +467,7 @@ func (self *Varchar) alloc_free(length uint64) (key int64, blocks []*block, err 
     return key, blocks, nil
 }
 
-func (self *Varchar) firstfit(length uint64) (pfv, cfv *free_varchar, err error) {
+func (self *Varchar) firstfit(length uint64) (write_head bool, pfv, cfv *free_varchar, err error) {
     defer func() {
         if e := recover(); e != nil {
             pfv = nil
@@ -464,15 +478,17 @@ func (self *Varchar) firstfit(length uint64) (pfv, cfv *free_varchar, err error)
     load := self.panic_load
     cur := self.ctrl.free_head
     pfv = load(cur)
+    write_head = true
     for i := 0; i < int(self.ctrl.free_len); i++ {
         cfv := load(cur)
         if cfv.length >= length {
-            return pfv, cfv, nil
+            return write_head, pfv, cfv, nil
         }
         cur = cfv.next
         pfv = cfv
+        write_head = false
     }
-    return nil, nil, nil
+    return false, nil, nil, nil
 }
 
 func (self *Varchar) print_free() {
@@ -508,32 +524,27 @@ func (self *Varchar) panic_write(fv *free_varchar) {
     if err != nil { panic(err) }
 }
 
-func (self *Varchar) panic_find_end(fv *free_varchar) (end int64) {
-    // fmt.Println("start find end", fv)
+func (self *Varchar) _find_end_algo(blocks []*block, key int64, length uint64) (end int64) {
     block_size := datasize(self.file)
-    true_length := uint64(LENSIZE + fv.length)
-    start_alloc := uint64(block_size - self.block_offset(fv.key))
-    blocks, err := self.blocks(fv.key)
-    if err != nil { panic(err) }
+    true_length := uint64(LENSIZE + length)
+    start_alloc := uint64(block_size - self.block_offset(key))
     if len(blocks) == 1 {
-        //fmt.Println("find_end", "len(blocks) == 1", fv.key, true_length)
-        end = fv.key + int64(true_length)
+        end = key + int64(true_length)
     } else if len(blocks) == 2 {
-        //fmt.Println("find_end", "len(blocks) == 2", fv.key, true_length, blocks[1].key, start_alloc)
         end = blocks[1].key + int64(true_length - start_alloc)
     } else {
         full_blocks := (uint64(len(blocks))-2)*uint64(block_size)
         final_offset := true_length - start_alloc - full_blocks
-        //fmt.Println("true_length", true_length)
-        //fmt.Println("start_alloc", start_alloc)
-        //fmt.Println("full_blocks", full_blocks, block_size)
-        //fmt.Println("final_offset", final_offset)
-        //fmt.Println("last_key", blocks[len(blocks)-1].key)
         end = blocks[len(blocks)-1].key + int64(final_offset)
-        //fmt.Println("key", fv.key, "found end", end)
     }
-    //fmt.Println("key", fv.key, "found end", end)
     return
+}
+
+func (self *Varchar) panic_find_end(fv *free_varchar) (end int64) {
+    // fmt.Println("start find end", fv)
+    blocks, err := self.blocks(fv.key)
+    if err != nil { panic(err) }
+    return self._find_end_algo(blocks, fv.key, fv.length)
 }
 
 
@@ -742,7 +753,33 @@ func (self *Varchar) blocks(key int64) (blocks []*block, err error) {
 }
 
 func (self *Varchar) Write(bytes bs.ByteSlice) (key int64, err error) {
-    return 0, fmt.Errorf("Unimplemented")
+    length := uint64(len(bytes))
+    key, blocks, err := self.alloc(length)
+    if err != nil {
+        return 0, err
+    }
+    start_offset := int(self.block_offset(key)) + LENSIZE
+    end_offset := int(self.block_offset(self._find_end_algo(blocks, key, length)))
+    // fmt.Println("start_offset", start_offset, "end_offset", end_offset)
+    if len(blocks) == 1 {
+        copy(blocks[0].data[start_offset:end_offset], bytes)
+    } else {
+        start_bytes_offset := len(blocks[0].data) - start_offset
+        copy(blocks[0].data[start_offset:], bytes[0:start_bytes_offset])
+        offset := start_bytes_offset
+        for _, blk := range blocks[1:len(blocks)-1] {
+            // fmt.Println(i, len(blocks), len(bytes), offset, offset + len(blk.data))
+            copy(blk.data, bytes[offset:offset+len(blk.data)])
+            offset += len(blk.data)
+        }
+        copy(blocks[len(blocks)-1].data[:end_offset], bytes[offset:])
+    }
+    for _, blk := range blocks {
+        if err := blk.WriteBlock(self.file); err != nil {
+            return 0, err
+        }
+    }
+    return key, nil
 }
 
 func (self *Varchar) Update(key int64, bytes bs.ByteSlice) (err error) {
@@ -750,10 +787,32 @@ func (self *Varchar) Update(key int64, bytes bs.ByteSlice) (err error) {
 }
 
 func (self *Varchar) Read(key int64) (bytes bs.ByteSlice, err error) {
-    return nil, fmt.Errorf("Unimplemented")
+    blocks, err := self.blocks(key)
+    if err != nil {
+        return nil, err
+    }
+    length := self.length(key, blocks[0])
+    fmt.Println("key", key, "length", length)
+    bytes = make(bs.ByteSlice, length)
+    start_offset := int(self.block_offset(key)) + LENSIZE
+    end_offset := int(self.block_offset(self._find_end_algo(blocks, key, length)))
+    if len(blocks) == 1 {
+        copy(bytes, blocks[0].data[start_offset:end_offset])
+    } else {
+        start_bytes_offset := len(blocks[0].data) - start_offset
+        copy(bytes[0:start_bytes_offset], blocks[0].data[start_offset:])
+        offset := start_bytes_offset
+        for _, blk := range blocks[1:len(blocks)-1] {
+            // fmt.Println(i, len(blocks), len(bytes), offset, offset + len(blk.data))
+            copy(bytes[offset:offset+len(blk.data)], blk.data)
+            offset += len(blk.data)
+        }
+        copy(bytes[offset:], blocks[len(blocks)-1].data[:end_offset])
+    }
+    return bytes, nil
 }
 
 func (self *Varchar) Remove(key int64) (err error) {
-    return fmt.Errorf("Unimplemented")
+    return self.free(key)
 }
 
