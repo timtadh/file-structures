@@ -268,12 +268,9 @@ func TestReadWriteUpdateRemove(t *testing.T) {
             t.Fatal("slices not equal")
         }
 
-        fmt.Println("read k3", k3)
         if rv3, err := varchar.Read(k3); err != nil {
             t.Fatal(err)
         } else if !rv3.Eq(v3) {
-            fmt.Println(len(v3), len(rv3))
-            panic("bad read")
             t.Fatal("slices not equal")
         }
 
@@ -312,7 +309,6 @@ func TestReadWriteUpdateRemove(t *testing.T) {
     if err = varchar.Remove(k3); err != nil { t.Fatal(err) }
     if err = varchar.Remove(k6); err != nil { t.Fatal(err) }
     if k3, err = varchar.Write(v3); err != nil { t.Fatal(err) }
-    fmt.Println("wrote k3", k3)
     if k6, err = varchar.Write(v6); err != nil { t.Fatal(err) }
 
     check_values(v2, v4)
