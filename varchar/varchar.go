@@ -791,6 +791,10 @@ func (self *Varchar) Update(key int64, bytes bs.ByteSlice) (err error) {
     if err != nil {
         return err
     }
+    length := self.length(key, blocks[0])
+    if uint64(len(bytes)) != length {
+        return fmt.Errorf("len(bytes) != %d", length)
+    }
     if err := self.write(blocks, key, bytes); err != nil {
         return err
     }
