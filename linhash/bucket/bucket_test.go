@@ -105,67 +105,74 @@ func TestGetPutRemoveBlockTable(t *testing.T) {
     }
 
     chosen := make(map[uint64]bool)
-    for c := 0; c < len(records); c++ {
-        i := rand.Intn(len(records))
-        record := records[i]
-        for {
-            record = records[i]
-            key := record.key
-            if _, has := chosen[key.Int64()]; !has {
-                chosen[key.Int64()] = true
-                break
+    test := func(bt *BlockTable) {
+        for c := 0; c < len(records)/4; c++ {
+            i := rand.Intn(len(records))
+            record := records[i]
+            for {
+                record = records[i]
+                key := record.key
+                if _, has := chosen[key.Int64()]; !has {
+                    chosen[key.Int64()] = true
+                    break
+                }
+                i = rand.Intn(len(records))
             }
-            i = rand.Intn(len(records))
-        }
-        if has := bt.Has(record.key); !has {
-            t.Fatal("Should have had key")
-        }
-        random_key := randslice(8)
-        _, real_key := keyset[random_key.Int64()]
-        if has := bt.Has(random_key); has != real_key {
-            t.Fatal("Has not working")
-        }
-        value, err := bt.Get(record.key)
-        if err != nil { t.Fatal(err) }
-        if !value.Eq(record.value) {
-            t.Log(c, i)
-            t.Log("key", record.key)
-            t.Log("value", record.value)
-            t.Log("value2", values2[i])
-            t.Log("actual", value)
-            t.Log()
-            for _, record := range bt.records[:bt.header.records] {
-                t.Log(record.key, record.value)
+            if has := bt.Has(record.key); !has {
+                t.Fatal("Should have had key")
             }
-            t.Fatal("Error getting record, value was not as expected")
-        }
-        err = bt.Put(record.key, values2[i])
-        if err != nil { t.Fatal(err) }
-        if bt.header.records != RECORDS {
-            t.Fatalf("Expected record count == %d got %d", RECORDS,
-              bt.header.records)
-        }
-        value2, err := bt.Get(record.key)
-        if err != nil { t.Fatal(err, record.key) }
-        if !value2.Eq(values2[i]) {
-            t.Fatal("Error getting record, value was not as expected")
+            random_key := randslice(8)
+            _, real_key := keyset[random_key.Int64()]
+            if has := bt.Has(random_key); has != real_key {
+                t.Fatal("Has not working")
+            }
+            value, err := bt.Get(record.key)
+            if err != nil { t.Fatal(err) }
+            if !value.Eq(record.value) {
+                t.Log(c, i)
+                t.Log("key", record.key)
+                t.Log("value", record.value)
+                t.Log("value2", values2[i])
+                t.Log("actual", value)
+                t.Log()
+                for _, record := range bt.records[:bt.header.records] {
+                    t.Log(record.key, record.value)
+                }
+                t.Fatal("Error getting record, value was not as expected")
+            }
+            err = bt.Put(record.key, values2[i])
+            if err != nil { t.Fatal(err) }
+            if bt.header.records != RECORDS {
+                t.Fatalf("Expected record count == %d got %d", RECORDS,
+                  bt.header.records)
+            }
+            value2, err := bt.Get(record.key)
+            if err != nil { t.Fatal(err, record.key) }
+            if !value2.Eq(values2[i]) {
+                t.Fatal("Error getting record, value was not as expected")
+            }
         }
     }
 
+    test(bt)
+    bt2, err := ReadBlockTable(f, bt.Key())
+    if err != nil { t.Fatal(err) }
+    test(bt2)
+
     for _, record := range records {
-        err := bt.Remove(record.key)
+        err := bt2.Remove(record.key)
         if err != nil {
             t.Log(record.key)
             t.Log()
-            for _, record := range bt.records[:bt.header.records] {
+            for _, record := range bt2.records[:bt2.header.records] {
                 t.Log(record.key)
             }
             t.Fatal(err)
         }
     }
 
-    if bt.header.records != 0 {
-        t.Fatalf("Expected record count == 0 got %d", bt.header.records)
+    if bt2.header.records != 0 {
+        t.Fatalf("Expected record count == 0 got %d", bt2.header.records)
     }
 }
 

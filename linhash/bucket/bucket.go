@@ -146,10 +146,13 @@ func (self *BlockTable) add_block() (err error) {
     h := last_blk.Header()
     h.next = blk.key
     last_blk.SetHeader(h)
+    if len(self.blocks) == 1 {
+        self.header = h
+    }
     self.blocks = append(self.blocks, blk)
     self.header.blocks += 1
     self.records = self._records()
-    return nil
+    return self.save()
 }
 
 type record_slice []*record
