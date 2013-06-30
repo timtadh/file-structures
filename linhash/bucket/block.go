@@ -1,4 +1,4 @@
-package hashblock
+package bucket
 
 import (
     bs "file-structures/block/byteslice"
@@ -12,8 +12,9 @@ type block struct {
     data bs.ByteSlice
 }
 
-func datasize(file file.BlockDevice) int64 {
-    return int64(file.BlockSize()) - HEADER_SIZE
+type record struct {
+    key bs.ByteSlice
+    value bs.ByteSlice
 }
 
 func (self *block) datasize() int64 {

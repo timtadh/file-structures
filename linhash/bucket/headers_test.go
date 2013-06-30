@@ -1,4 +1,4 @@
-package hashblock
+package bucket
 
 import "testing"
 
@@ -21,6 +21,19 @@ func init() {
             rand.Seed(int64(bs.ByteSlice(seed).Int64()))
         }
     }
+}
+
+func randslice(length int) bs.ByteSlice {
+    if urandom, err := os.Open("/dev/urandom"); err != nil {
+        panic(err)
+    } else {
+        slice := make([]byte, length)
+        if _, err := urandom.Read(slice); err != nil {
+            panic(err)
+        }
+        return slice
+    }
+    panic("unreachable")
 }
 
 func TestNewHeader(t *testing.T) {
@@ -48,21 +61,10 @@ func TestNewHeader(t *testing.T) {
 }
 
 func TestBytesKVStore(t *testing.T) {
-    randslice := func(length int) bs.ByteSlice {
-        if urandom, err := os.Open("/dev/urandom"); err != nil {
-            panic(err)
-        } else {
-            slice := make([]byte, length)
-            if _, err := urandom.Read(slice); err != nil {
-                panic(err)
-            }
-            return slice
-        }
-        panic("unreachable")
-    }
 
     var err error
-    store := NewBytesStore()
+    store, err := NewBytesStore(32, 200)
+    if err != nil { panic(err) }
 
     check := func(bytes, key, val bs.ByteSlice) (err error) {
         k2, v2, err := store.Get(bytes)

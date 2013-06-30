@@ -1,4 +1,4 @@
-package hashblock
+package bucket
 
 import (
     "fmt"
@@ -15,7 +15,7 @@ const (
 const HEADER_SIZE = 18
 type header struct {
     flag uint8
-    hashsize uint8
+    keysize uint8
     valsize uint8
     records uint32
     next int64
@@ -25,7 +25,7 @@ type header struct {
 func (self *header) Bytes() (bytes []byte) {
     bytes = make([]byte, HEADER_SIZE)
     bytes[0] = self.flag
-    bytes[1] = self.hashsize
+    bytes[1] = self.keysize
     bytes[2] = self.valsize
     copy(bytes[4:8], bs.ByteSlice32(self.records))
     copy(bytes[8:16], bs.ByteSlice64(uint64(self.next)))
@@ -33,8 +33,8 @@ func (self *header) Bytes() (bytes []byte) {
     return bytes
 }
 
-func new_header(hashsize, valsize uint8, overflow bool) *header {
-    self := &header{hashsize:hashsize, valsize:valsize}
+func new_header(keysize, valsize uint8, overflow bool) *header {
+    self := &header{keysize:keysize, valsize:valsize}
     self.set_flags(overflow)
     return self
 }
@@ -45,7 +45,7 @@ func load_header(bytes bs.ByteSlice) (h *header, err error) {
     }
     h = &header{
         flag: bytes[0],
-        hashsize: bytes[1],
+        keysize: bytes[1],
         valsize: bytes[2],
         records: bytes[4:8].Int32(),
         next: int64(bytes[8:16].Int64()),

@@ -1,4 +1,4 @@
-package hashblock
+package bucket
 
 import (
     "fmt"
@@ -8,13 +8,23 @@ import (
     bs "file-structures/block/byteslice"
 )
 
-type BytesStore struct{}
-
-func NewBytesStore() *BytesStore {
-    return &BytesStore{}
+const MAX_BYTES_STORE_SIZE = 255 - 2
+type BytesStore struct{
+    keysize uint8
+    valsize uint8
 }
 
-const MAX_BYTES_STORE_SIZE = 255 - 2
+func NewBytesStore(keysize, valsize uint8) (*BytesStore, error) {
+    if int(keysize) + int(valsize) + 2 > MAX_BYTES_STORE_SIZE {
+        return nil, fmt.Errorf("bytes store too big")
+    }
+    return &BytesStore{keysize, valsize}, nil
+}
+
+func (self *BytesStore) Size() uint8 {
+    return self.keysize + self.valsize + 2
+}
+
 type _bytes_kv struct {
     keysize uint8
     valsize uint8
@@ -24,7 +34,7 @@ type _bytes_kv struct {
 }
 
 func (self *_bytes_kv) Bytes() []byte {
-    size := int(self.keysize + self.valsize + 2)
+    size := int(self.keysize) + int(self.valsize) + 2
     if len(self.key) != int(self.keysize) {
         panic(fmt.Errorf("len(self.key) != self.keysize, %d != %d", len(self.key), self.keysize))
     }
@@ -76,16 +86,16 @@ func load_bytes_kv(bytes bs.ByteSlice) *_bytes_kv {
 }
 
 func (self *BytesStore) Get(bytes bs.ByteSlice) (key, value bs.ByteSlice, err error) {
-    if len(bytes) > MAX_BYTES_STORE_SIZE {
-        return nil, nil, fmt.Errorf("in ByteStore.Get len(bytes) > %d", MAX_BYTES_STORE_SIZE)
+    if len(bytes) > int(self.Size()) {
+        return nil, nil, fmt.Errorf("in ByteStore.Get len(bytes) > %d", self.Size())
     }
     kv := load_bytes_kv(bytes)
     return kv.key, kv.val, nil
 }
 
 func (self *BytesStore) Put(key, value bs.ByteSlice) (bytes bs.ByteSlice, err error) {
-    if len(key) + len(value) + 2 > MAX_BYTES_STORE_SIZE {
-        return nil, fmt.Errorf("in ByteStore.Get len(key) + len(val) + 2 > %d", MAX_BYTES_STORE_SIZE)
+    if len(key) + len(value) + 2 > int(self.Size()) {
+        return nil, fmt.Errorf("in ByteStore.Get len(key) + len(val) + 2 > %d", self.Size())
     }
     kv := new_bytes_kv(key, value)
     return kv.Bytes(), nil
