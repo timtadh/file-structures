@@ -35,7 +35,9 @@ func NewBlockTable(file file.BlockDevice, keysize, valsize uint8) (*BlockTable, 
     if err != nil {
         return nil, err
     }
-    blk.SetHeader(new_header(keysize, valsize, false))
+    h := new_header(keysize, valsize, false)
+    h.blocks = 1
+    blk.SetHeader(h)
     if err := blk.WriteBlock(file); err != nil {
         return nil, err
     }
@@ -143,16 +145,38 @@ func (self *BlockTable) add_block() (err error) {
     blk.SetHeader(myh)
 
     last_blk := self.blocks[len(self.blocks)-1]
-    h := last_blk.Header()
-    h.next = blk.key
-    last_blk.SetHeader(h)
     if len(self.blocks) == 1 {
-        self.header = h
+        self.header.next = blk.key
+    } else {
+        h := last_blk.Header()
+        h.next = blk.key
+        last_blk.SetHeader(h)
     }
     self.blocks = append(self.blocks, blk)
     self.header.blocks += 1
     self.records = self._records()
     return self.save()
+}
+
+func (self *BlockTable) remove_block() (err error) {
+    if len(self.blocks) <= 1 {
+        return fmt.Errorf("Cannot remove any more blocks")
+    }
+    freed := self.blocks[len(self.blocks)-1]
+    self.header.blocks -= 1
+    self.blocks = self.blocks[:len(self.blocks)-1]
+    last_blk := self.blocks[len(self.blocks)-1]
+    if len(self.blocks) == 1 {
+        self.header.next = 0
+    } else {
+        h := last_blk.Header()
+        h.next = 0
+        last_blk.SetHeader(h)
+    }
+    if err := self.file.Free(freed.key); err != nil {
+        return err
+    }
+    return nil
 }
 
 type record_slice []*record
@@ -177,6 +201,22 @@ func (self record_slice) find(key bs.ByteSlice) (int, bool) {
     return l, false
 }
 
+func (self record_slice) find_all(key bs.ByteSlice) (found record_slice) {
+    found = make(record_slice, 0, 5)
+    i, ok := self.find(key)
+    if !ok {
+        return found
+    }
+    for ; i < len(self); i++ {
+        if key.Eq(self[i].key) {
+            found = append(found, self[i])
+        } else {
+            break
+        }
+    }
+    return found
+}
+
 func (self *BlockTable) Has(key bs.ByteSlice) bool {
     all_records := self.records
     records := record_slice(all_records[:self.header.records])
@@ -196,10 +236,10 @@ func (self *BlockTable) Get(key bs.ByteSlice) (value bs.ByteSlice, err error) {
 }
 
 func (self *BlockTable) Put(key, value bs.ByteSlice) (err error) {
-    return self.put(key, value, true)
+    return self.put(key, value, func(x *record) bool { return true })
 }
 
-func (self *BlockTable) put(key, value bs.ByteSlice, replace bool) (err error) {
+func (self *BlockTable) put(key, value bs.ByteSlice, doreplace func(*record)bool) (err error) {
     if len(key) != int(self.header.keysize) {
         return fmt.Errorf(
           "Key size is wrong, %d != %d", self.header.keysize, len(key))
@@ -219,6 +259,20 @@ func (self *BlockTable) put(key, value bs.ByteSlice, replace bool) (err error) {
     }
     records := record_slice(all_records[:self.header.records])
     i, found := records.find(key)
+    replace := false
+    if found {
+        for j := i; j < len(records); j++ {
+            if key.Eq(records[j].key) {
+                replace = doreplace(records[j])
+                if replace {
+                    i = j
+                    break
+                }
+            } else {
+                break
+            }
+        }
+    }
     if !found || (found && !replace) {
         j := len(all_records)
         j -= 1
@@ -236,13 +290,8 @@ func (self *BlockTable) put(key, value bs.ByteSlice, replace bool) (err error) {
     return self.save()
 }
 
-func (self *BlockTable) Remove(key bs.ByteSlice) (err error) {
+func (self *BlockTable) remove_index(i int) (err error) {
     all_records := self.records
-    records := record_slice(all_records[:self.header.records])
-    i, ok := records.find(key)
-    if !ok {
-        return fmt.Errorf("Key not found!")
-    }
     for ; i < len(all_records)-1; i++ {
         cur := all_records[i]
         next := all_records[i+1]
@@ -250,7 +299,22 @@ func (self *BlockTable) Remove(key bs.ByteSlice) (err error) {
         copy(cur.value, next.value)
     }
     self.header.records -= 1
+    if (int(self.header.records) / self.records_per_blk()) + 1 < len(self.blocks) {
+        if err := self.remove_block(); err != nil {
+            return err
+        }
+    }
     return self.save()
+}
+
+func (self *BlockTable) Remove(key bs.ByteSlice) (err error) {
+    all_records := self.records
+    records := record_slice(all_records[:self.header.records])
+    i, ok := records.find(key)
+    if !ok {
+        return fmt.Errorf("Key not found!")
+    }
+    return self.remove_index(i)
 }
 
 // --------------------------------------------------------------------------------------------------
@@ -289,15 +353,78 @@ func (self *HashBucket) Key() int64 {
     return self.bt.Key()
 }
 
+func (self *HashBucket) Has(hash, key bs.ByteSlice) bool {
+    all_records := self.bt.records
+    records := record_slice(all_records[:self.bt.header.records])
+    found := records.find_all(hash)
+    for _, rec := range found {
+        k2, _, err := self.kv.Get(rec.value)
+        if err != nil {
+            panic(err)
+        }
+        if key.Eq(k2) {
+            return true
+        }
+    }
+    return false
+}
+
 func (self *HashBucket) Get(hash, key bs.ByteSlice) (value bs.ByteSlice, err error) {
-    return nil, fmt.Errorf("HashBucket.Get Unimplemented")
+    all_records := self.bt.records
+    records := record_slice(all_records[:self.bt.header.records])
+    found := records.find_all(hash)
+    for _, rec := range found {
+        k2, value, err := self.kv.Get(rec.value)
+        if err != nil {
+            return nil, err
+        }
+        if key.Eq(k2) {
+            return value, nil
+        }
+    }
+    return nil, fmt.Errorf("Key not found")
 }
 
 func (self *HashBucket) Put(hash, key, value bs.ByteSlice) (err error) {
-    return fmt.Errorf("HashBucket.Put Unimplemented")
+    defer func() {
+        if e := recover(); e != nil {
+            err = e.(error)
+        }
+    }()
+    bytes, err := self.kv.Put(key, value)
+    if err != nil {
+        return err
+    }
+    err = self.bt.put(hash, bytes, func(rec *record) bool {
+        k2, _, err := self.kv.Get(rec.value)
+        if err != nil { panic(err) }
+        return key.Eq(k2)
+    })
+    if err != nil {
+        return err
+    }
+    return self.bt.save()
 }
 
 func (self *HashBucket) Remove(hash, key bs.ByteSlice) (err error) {
-    return fmt.Errorf("HashBucket.Remove Unimplemented")
+    all_records := self.bt.records
+    records := record_slice(all_records[:self.bt.header.records])
+    i, found := records.find(hash)
+    if found {
+        for j := i; j < len(records); j++ {
+            if hash.Eq(records[j].key) {
+                k2, _, err := self.kv.Get(records[j].value)
+                if err != nil {
+                    return err
+                }
+                if key.Eq(k2) {
+                    return self.bt.remove_index(j)
+                }
+            } else {
+                break
+            }
+        }
+    }
+    return fmt.Errorf("Key not found")
 }
 

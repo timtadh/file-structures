@@ -31,6 +31,7 @@ func randslice(length int) bs.ByteSlice {
         if _, err := urandom.Read(slice); err != nil {
             panic(err)
         }
+        urandom.Close()
         return slice
     }
     panic("unreachable")
