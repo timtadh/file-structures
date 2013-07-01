@@ -138,6 +138,18 @@ func (self ByteSlice) Inc() ByteSlice {
     return bytes
 }
 
+func (self ByteSlice) And(b ByteSlice) (result ByteSlice) {
+    if len(self) <= len(b) {
+        result = make(ByteSlice, len(self))
+    } else {
+        result = make(ByteSlice, len(b))
+    }
+    for i := 0; i < len(result); i++ {
+        result[i] = self[i] & b[i]
+    }
+    return result
+}
+
 func (self ByteSlice) Concat(b ByteSlice) ByteSlice {
     bytes := make(ByteSlice, len(self)+len(b))
     copy(bytes, self)
