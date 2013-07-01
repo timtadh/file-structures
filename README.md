@@ -27,3 +27,9 @@ You can then install the python RPC bindings with:
     cd file-structures
     python setup.py install
 
+### Note
+
+As of July 1st 2013, there is now also a Linear Virtual Hashing implementation.
+It is also underdocumented but it should be fairly tested. Checkout:
+`file-structures/linhash`.
+
