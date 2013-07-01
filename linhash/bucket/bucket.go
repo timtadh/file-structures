@@ -236,7 +236,10 @@ func (self *BlockTable) Get(key bs.ByteSlice) (value bs.ByteSlice, err error) {
     records := record_slice(all_records[:self.header.records])
     i, ok := records.find(key)
     if !ok {
-        return nil ,fmt.Errorf("Key not found!")
+        for i, record := range records {
+            fmt.Println(i, record.key, record.value)
+        }
+        return nil, fmt.Errorf("Key not found!")
     }
     record := records[i]
     return record.value, nil
@@ -332,6 +335,9 @@ func (self *BlockTable) Remove(key bs.ByteSlice) (err error) {
 // --------------------------------------------------------------------------------------------------
 
 func NewHashBucket(file file.BlockDevice, hashsize uint8, kv KVStore) (self *HashBucket, err error) {
+    if hashsize != 8 {
+        return nil, fmt.Errorf("only support hash of size 8 right now")
+    }
     if kv == nil {
         return nil, fmt.Errorf("Must have a KVStore")
     }
@@ -363,6 +369,27 @@ func ReadHashBucket(file file.BlockDevice, key int64, kv KVStore) (self *HashBuc
 
 func (self *HashBucket) Key() int64 {
     return self.bt.Key()
+}
+
+func (self *HashBucket) PrintBucket() {
+    all_records := self.bt.records
+    records := record_slice(all_records[:self.bt.header.records])
+    for i, record := range records {
+        key, value, err := self.kv.Get(record.value)
+        fmt.Println(i, record.key, key, value, err)
+    }
+    fmt.Println()
+}
+
+func (self *HashBucket) Keys() (keys []bs.ByteSlice) {
+    all_records := self.bt.records
+    records := record_slice(all_records[:self.bt.header.records])
+    for _, record := range records {
+        key, _, err := self.kv.Get(record.value)
+        if err != nil { panic(err) }
+        keys = append(keys, key)
+    }
+    return keys
 }
 
 func (self *HashBucket) Has(hash, key bs.ByteSlice) bool {
@@ -451,27 +478,35 @@ func (self *HashBucket) Remove(hash, key bs.ByteSlice) (err error) {
     return fmt.Errorf("Key not found")
 }
 
-func (self *HashBucket) Split(i uint32) (other *HashBucket, err error) {
+func (self *HashBucket) Split(stay func(key bs.ByteSlice) bool) (other *HashBucket, err error) {
     defer func() {
         if e := recover(); e != nil {
             other = nil
             err = e.(error)
         }
     }()
-    mask := bs.ByteSlice64(1 << i)
+    // mask := uint64(1 << i)
     all_records := self.bt.records
     records := record_slice(all_records[:self.bt.header.records])
     var mine []*record
     var theirs []*record
 
     for _, rec := range records {
-        if mask.Eq(mask.And(rec.key)) {
+        if stay(rec.key) {
+            mine = append(mine, rec)
+        } else {
+            theirs = append(theirs, rec)
+        }
+        /*
+        key := rec.key.Int64()
+        if key & mask == mask {
             // The bit is a 1
             theirs = append(theirs, rec)
         } else {
             // The bit is a zero
             mine = append(mine, rec)
         }
+        */
     }
 
     write_bucket := func(bucket *HashBucket, records []*record) {

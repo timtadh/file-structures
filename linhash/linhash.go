@@ -57,7 +57,7 @@ type LinearHash struct {
 
 func NewLinearHash(file file.BlockDevice, kv bucket.KVStore) (self *LinearHash, err error) {
     const NUMBUCKETS = 16
-    const I = 4
+    const I = 5
     table, err := bucket.NewBlockTable(file, 4, 8)
     if err != nil {
         return nil, err
@@ -131,8 +131,8 @@ func (self *LinearHash) bucket(hash uint64) uint32 {
         return uint32(m)
     } else {
         m = m ^ (1<<(i-1)) // unset the top bit
-        if m < n {
-            panic(fmt.Errorf("Expected m < self.ctrl.buckets, got %d < %d", m, self.ctrl.buckets))
+        if m >= n {
+            panic(fmt.Errorf("Expected m < self.ctrl.buckets, got %d >= %d", m, self.ctrl.buckets))
         }
         return uint32(m)
     }
@@ -151,10 +151,12 @@ func (self *LinearHash) split_needed() bool {
 func (self *LinearHash) get_bucket(bkt_idx uint32) (*bucket.HashBucket, error) {
     bkt_key, err := self.table.Get(bs.ByteSlice32(bkt_idx))
     if err != nil {
+        fmt.Println("Couldn't get bkt_idx out of table", bkt_idx)
         return nil, err
     }
     bkt, err := bucket.ReadHashBucket(self.file, int64(bkt_key.Int64()), self.kv)
     if err != nil {
+        fmt.Println("Couldn't read bucket", bkt_key.Int64())
         return nil, err
     }
     return bkt, nil
@@ -166,16 +168,39 @@ func (self *LinearHash) split() (err error) {
     if err != nil {
         return err
     }
-    newbkt, err := bkt.Split(uint32(self.ctrl.i))
-    err = self.table.Put(bs.ByteSlice32(self.ctrl.buckets + 1), bs.ByteSlice64(uint64(newbkt.Key())))
+    keys := bkt.Keys()
+    self.ctrl.buckets += 1
+    if self.ctrl.buckets > (1 << self.ctrl.i) {
+        self.ctrl.i += 1
+    }
+    newbkt, err := bkt.Split(func(key bs.ByteSlice)bool {
+        this_idx := self.bucket(key.Int64())
+        return this_idx == bkt_idx
+    })
+    err = self.table.Put(bs.ByteSlice32(self.ctrl.buckets-1), bs.ByteSlice64(uint64(newbkt.Key())))
     if err != nil {
         return err
     }
-    self.ctrl.buckets += 1
-    if self.ctrl.buckets >= (1 << self.ctrl.i) {
-        self.ctrl.i += 1
+    err = self.write_ctrlblk()
+    if err != nil {
+        return err
     }
-    return self.write_ctrlblk()
+    for _, key := range keys {
+        if has, err := self.Has(key); err != nil {
+            return err
+        } else if !has {
+            hash := bs.ByteSlice64(hash(key))
+            in_first := bkt.Has(hash, key)
+            in_second := newbkt.Has(hash, key)
+            fmt.Println()
+            fmt.Println("i", self.ctrl.i, "records", self.ctrl.records, "buckets", self.ctrl.buckets)
+            fmt.Println("key", key, "hash", hash)
+            fmt.Println("in_first", in_first, bkt_idx)
+            fmt.Println("in_second", in_second, self.ctrl.buckets-1)
+            return fmt.Errorf("Key went missing during split")
+        }
+    }
+    return nil
 }
 
 func (self *LinearHash) Length() int {
@@ -189,7 +214,9 @@ func (self *LinearHash) Has(key bs.ByteSlice) (has bool, error error) {
     if err != nil {
         return false, err
     }
-    return bkt.Has(bs.ByteSlice64(hash), key), nil
+    has = bkt.Has(bs.ByteSlice64(hash), key)
+    // fmt.Println("LinearHash.Has", bs.ByteSlice64(hash), key, bkt_idx, has)
+    return has, nil
 }
 
 func (self *LinearHash) Put(key bs.ByteSlice, value bs.ByteSlice) (err error) {
@@ -197,6 +224,7 @@ func (self *LinearHash) Put(key bs.ByteSlice, value bs.ByteSlice) (err error) {
     bkt_idx := self.bucket(hash)
     bkt, err := self.get_bucket(bkt_idx)
     if err != nil {
+        fmt.Println("Couldn't get bucket idx", bkt_idx)
         return err
     }
     updated, err := bkt.Put(bs.ByteSlice64(hash), key, value)
@@ -206,8 +234,10 @@ func (self *LinearHash) Put(key bs.ByteSlice, value bs.ByteSlice) (err error) {
     if !updated {
         self.ctrl.records += 1
         if self.split_needed() {
+            // fmt.Println("did split")
             return self.split()
         }
+        // fmt.Println("no split")
         return self.write_ctrlblk()
     }
     return nil

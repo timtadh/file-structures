@@ -3,6 +3,7 @@ package linhash
 import "testing"
 
 import (
+    "fmt"
     "os"
     "math/rand"
 )
@@ -14,7 +15,7 @@ import (
     bucket "file-structures/linhash/bucket"
 )
 
-const PATH = "/tmp/__lin_hash"
+const PATH = "/tmp/__lin_linhash"
 const VPATH = "/tmp/__varchar_store_lin_hash"
 
 func init() {
@@ -60,21 +61,22 @@ func TestNewLinearHash(t *testing.T) {
     defer g.Close()
     store, err := bucket.NewVarcharStore(g)
     if err != nil { panic(err) }
-    hash, err := NewLinearHash(testfile(t, PATH), store)
-    defer hash.Close()
+    linhash, err := NewLinearHash(testfile(t, PATH), store)
+    defer linhash.Close()
     if err != nil {
         t.Fatal(err)
     }
 }
 
 func TestPutHasGetRemoveLinearHash(t *testing.T) {
+    fmt.Println("start test")
     const RECORDS = 300
     g := testfile(t, VPATH)
     defer g.Close()
     store, err := bucket.NewVarcharStore(g)
     if err != nil { panic(err) }
-    hash, err := NewLinearHash(testfile(t, PATH), store)
-    defer hash.Close()
+    linhash, err := NewLinearHash(testfile(t, PATH), store)
+    defer linhash.Close()
     if err != nil {
         t.Fatal(err)
     }
@@ -88,82 +90,115 @@ func TestPutHasGetRemoveLinearHash(t *testing.T) {
     var records []*record
     var values2 []bs.ByteSlice
     for i := 0; i < RECORDS; i++ {
-        key := randslice(rand.Intn(25)+1)
+        key := randslice(rand.Intn(16)+1)
         for {
             if _, has := keyset[string(key)]; !has {
                 break
             }
-            key = randslice(rand.Intn(25)+1)
+            key = randslice(rand.Intn(16)+1)
         }
         keyset[string(key)] = true
-        records = append(records, &record{key, randslice(1232)})
-        values2 = append(values2, randslice(2327))
+        records = append(records, &record{key, randslice(rand.Intn(150)+25)})
+        values2 = append(values2, randslice(rand.Intn(150)+25))
     }
+    fmt.Println("real start test")
 
-    for _, record := range records {
-        err := hash.Put(record.key, record.value)
+    for i, record := range records {
+        err := linhash.Put(record.key, record.value)
         if err != nil { t.Fatal(err) }
+        has, err := linhash.Has(record.key)
+        if err != nil { t.Fatal(err) }
+        if !has {
+            hash := hash(record.key)
+            bkt_idx := linhash.bucket(hash)
+            bkt, _ := linhash.get_bucket(bkt_idx)
+            bkt.PrintBucket()
+            bkt_idx2 := bkt_idx - (1<<(linhash.ctrl.i-1))
+            if bkt_idx2 < linhash.ctrl.buckets {
+                bkt2, _ := linhash.get_bucket(bkt_idx2)
+                bkt2.PrintBucket()
+            }
+            fmt.Println(i, bs.ByteSlice64(hash), record.key, bkt_idx, bkt_idx2, linhash.ctrl.buckets, linhash.ctrl.i)
+            t.Fatal("Expected key")
+        }
+        value, err := linhash.Get(record.key)
+        if err != nil { t.Fatal(err) }
+        if !value.Eq(record.value) {
+            t.Fatal("Error getting record, value was not as expected")
+        }
     }
 
-    if hash.ctrl.records != RECORDS {
+    if linhash.ctrl.records != RECORDS {
         t.Fatalf("Expected record count == %d got %d", RECORDS,
-          hash.ctrl.records)
+          linhash.ctrl.records)
     }
 
-    for _, record := range records {
-        has, err := hash.Has(record.key)
+    for i, record := range records {
+        has, err := linhash.Has(record.key)
         if err != nil { t.Fatal(err) }
-        if !has { t.Fatal("Expected key") }
-        value, err := hash.Get(record.key)
+        if !has {
+            hash := hash(record.key)
+            bkt_idx := linhash.bucket(hash)
+            bkt, _ := linhash.get_bucket(bkt_idx)
+            bkt.PrintBucket()
+            bkt_idx2 := bkt_idx - (1<<(linhash.ctrl.i-1))
+            if bkt_idx2 < linhash.ctrl.buckets {
+                bkt2, _ := linhash.get_bucket(bkt_idx2)
+                bkt2.PrintBucket()
+            }
+            fmt.Println(i, bs.ByteSlice64(hash), record.key, bkt_idx, bkt_idx2, linhash.ctrl.buckets, linhash.ctrl.i)
+            t.Fatal("Expected key")
+        }
+        value, err := linhash.Get(record.key)
         if err != nil { t.Fatal(err) }
         if !value.Eq(record.value) {
             t.Fatal("Error getting record, value was not as expected")
         }
         ran := randslice(rand.Intn(25)+1)
         if _, has := keyset[string(ran)]; !has {
-            value, err := hash.DefaultGet(ran, bs.ByteSlice64(0))
+            value, err := linhash.DefaultGet(ran, bs.ByteSlice64(0))
             if err != nil { t.Fatal(err) }
             if !value.Eq(bs.ByteSlice64(0)) {
                 t.Fatal("Error getting default")
             }
         } else {
-            _, err := hash.DefaultGet(ran, bs.ByteSlice64(0))
+            _, err := linhash.DefaultGet(ran, bs.ByteSlice64(0))
             if err != nil { t.Fatal(err) }
         }
     }
 
     for i, record := range records {
-        has, err := hash.Has(record.key)
+        has, err := linhash.Has(record.key)
         if err != nil { t.Fatal(err) }
         if !has { t.Fatal("Expected key") }
-        value, err := hash.Get(record.key)
+        value, err := linhash.Get(record.key)
         if err != nil { t.Fatal(err) }
         if !value.Eq(record.value) {
             t.Fatal("Error getting record, value was not as expected")
         }
-        err = hash.Put(record.key, values2[i])
+        err = linhash.Put(record.key, values2[i])
         if err != nil {
             t.Fatal(err)
         }
-        value, err = hash.Get(record.key)
+        value, err = linhash.Get(record.key)
         if err != nil { t.Fatal(err) }
         if !value.Eq(values2[i]) {
             t.Fatal("Error getting record, value was not as expected")
         }
-        if hash.Length() != RECORDS {
+        if linhash.Length() != RECORDS {
             t.Fatalf("Expected record count == %d got %d", RECORDS,
-              hash.ctrl.records)
+              linhash.ctrl.records)
         }
     }
 
-    length := hash.Length()
+    length := linhash.Length()
     for _, record := range records[length/2:] {
-        err := hash.Remove(record.key)
+        err := linhash.Remove(record.key)
         if err != nil { t.Fatal(err) }
     }
 
     for _, record := range records[length/2:] {
-        has, err := hash.Has(record.key)
+        has, err := linhash.Has(record.key)
         if err != nil { t.Fatal(err) }
         if has {
             t.Fatal("expected key to be gone")
@@ -171,10 +206,10 @@ func TestPutHasGetRemoveLinearHash(t *testing.T) {
     }
 
     for i, record := range records[:length/2] {
-        has, err := hash.Has(record.key)
+        has, err := linhash.Has(record.key)
         if err != nil { t.Fatal(err) }
         if !has { t.Fatal("Expected key") }
-        value, err := hash.Get(record.key)
+        value, err := linhash.Get(record.key)
         if err != nil { t.Fatal(err) }
         if !value.Eq(values2[i]) {
             t.Fatal("Error getting record, value was not as expected")
@@ -182,21 +217,21 @@ func TestPutHasGetRemoveLinearHash(t *testing.T) {
     }
 
     for _, record := range records[:length/2] {
-        err := hash.Remove(record.key)
+        err := linhash.Remove(record.key)
         if err != nil { t.Fatal(err) }
     }
 
     for _, record := range records {
-        has, err := hash.Has(record.key)
+        has, err := linhash.Has(record.key)
         if err != nil { t.Fatal(err) }
         if has {
             t.Fatal("expected key to be gone")
         }
     }
 
-    if hash.Length() != 0 {
+    if linhash.Length() != 0 {
         t.Fatalf("Expected record count == %d got %d", 0,
-          hash.ctrl.records)
+          linhash.ctrl.records)
     }
 }
 

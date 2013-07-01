@@ -393,7 +393,9 @@ func TestSplitHashBucket(t *testing.T) {
         }
     }
 
-    other, err := hb.Split(7)
+    other, err := hb.Split(func(key bs.ByteSlice) bool {
+        return key.Int64() & (1<<7) != (1<<7)
+    })
     if err != nil {
         t.Fatal(err)
     }
