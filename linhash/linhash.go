@@ -11,6 +11,7 @@ import (
     bucket "file-structures/linhash/bucket"
 )
 
+const HASHSIZE = 8
 func hash(data []byte) uint64 {
     fnv := fnv.New64a()
     fnv.Write(data)
@@ -50,14 +51,36 @@ func load_ctrlblk(bytes bs.ByteSlice) (cb *ctrlblk, err error) {
 type LinearHash struct {
     file file.BlockDevice
     kv   bucket.KVStore
+    table *bucket.BlockTable
     ctrl ctrlblk
 }
 
 func NewLinearHash(file file.BlockDevice, kv bucket.KVStore) (self *LinearHash, err error) {
+    const NUMBUCKETS = 16
+    const I = 4
+    table, err := bucket.NewBlockTable(file, 4, 8)
+    if err != nil {
+        return nil, err
+    }
+    for n := uint32(0); n < NUMBUCKETS; n++ {
+        bkt, err := bucket.NewHashBucket(file, HASHSIZE, kv)
+        if err != nil {
+            return nil, err
+        }
+        err = table.Put(bs.ByteSlice32(n), bs.ByteSlice64(uint64(bkt.Key())))
+        if err != nil {
+            return nil, err
+        }
+    }
     self = &LinearHash{
         file: file,
         kv: kv,
+        table: table,
         ctrl: ctrlblk{
+            buckets: NUMBUCKETS,
+            records: 0,
+            table: table.Key(),
+            i: I,
         },
     }
     return self, self.write_ctrlblk()
@@ -92,42 +115,140 @@ func (self *LinearHash) read_ctrlblk() error {
             self.ctrl = *cb
         }
     }
+    table, err := bucket.ReadBlockTable(self.file, self.ctrl.table)
+    if err != nil {
+        return err
+    }
+    self.table = table
     return nil
 }
 
-func (self *LinearHash) bucket(hash uint64) uint64 {
+func (self *LinearHash) bucket(hash uint64) uint32 {
     i := uint64(self.ctrl.i)
     n := uint64(self.ctrl.buckets)
     m := hash & ((1<<i)-1) // last i bits of hash as bucket number m
     if m < n {
-        return m
+        return uint32(m)
     } else {
         m = m ^ (1<<(i-1)) // unset the top bit
         if m < n {
             panic(fmt.Errorf("Expected m < self.ctrl.buckets, got %d < %d", m, self.ctrl.buckets))
         }
-        return m
+        return uint32(m)
     }
 }
 
+func (self *LinearHash) split_needed() bool {
+    records := float64(self.ctrl.records)
+    buckets := float64(self.ctrl.buckets)
+    records_per_block := float64(self.table.RecordsPerBlock())
+    if records/buckets/records_per_block > .8 {
+        return true
+    }
+    return false
+}
+
+func (self *LinearHash) get_bucket(bkt_idx uint32) (*bucket.HashBucket, error) {
+    bkt_key, err := self.table.Get(bs.ByteSlice32(bkt_idx))
+    if err != nil {
+        return nil, err
+    }
+    bkt, err := bucket.ReadHashBucket(self.file, int64(bkt_key.Int64()), self.kv)
+    if err != nil {
+        return nil, err
+    }
+    return bkt, nil
+}
+
+func (self *LinearHash) split() (err error) {
+    bkt_idx := self.ctrl.buckets % (1 << (self.ctrl.i - 1))
+    bkt, err := self.get_bucket(bkt_idx)
+    if err != nil {
+        return err
+    }
+    newbkt, err := bkt.Split(uint32(self.ctrl.i))
+    err = self.table.Put(bs.ByteSlice32(self.ctrl.buckets + 1), bs.ByteSlice64(uint64(newbkt.Key())))
+    if err != nil {
+        return err
+    }
+    self.ctrl.buckets += 1
+    if self.ctrl.buckets >= (1 << self.ctrl.i) {
+        self.ctrl.i += 1
+    }
+    return self.write_ctrlblk()
+}
+
+func (self *LinearHash) Length() int {
+    return int(self.ctrl.records)
+}
+
 func (self *LinearHash) Has(key bs.ByteSlice) (has bool, error error) {
-    return false, fmt.Errorf("Has Unimplemented")
+    hash := hash(key)
+    bkt_idx := self.bucket(hash)
+    bkt, err := self.get_bucket(bkt_idx)
+    if err != nil {
+        return false, err
+    }
+    return bkt.Has(bs.ByteSlice64(hash), key), nil
 }
 
 func (self *LinearHash) Put(key bs.ByteSlice, value bs.ByteSlice) (err error) {
     hash := hash(key)
-    return fmt.Errorf("Put Unimplemented %v %v", key, hash)
+    bkt_idx := self.bucket(hash)
+    bkt, err := self.get_bucket(bkt_idx)
+    if err != nil {
+        return err
+    }
+    updated, err := bkt.Put(bs.ByteSlice64(hash), key, value)
+    if err != nil {
+        return err
+    }
+    if !updated {
+        self.ctrl.records += 1
+        if self.split_needed() {
+            return self.split()
+        }
+        return self.write_ctrlblk()
+    }
+    return nil
 }
 
 func (self *LinearHash) Get(key bs.ByteSlice) (value bs.ByteSlice, err error) {
-    return nil, fmt.Errorf("Get Unimplemented")
+    hash := hash(key)
+    bkt_idx := self.bucket(hash)
+    bkt, err := self.get_bucket(bkt_idx)
+    if err != nil {
+        return nil, err
+    }
+    return bkt.Get(bs.ByteSlice64(hash), key)
 }
 
 func (self *LinearHash) DefaultGet(key bs.ByteSlice, default_value bs.ByteSlice) (value bs.ByteSlice, err error) {
-    return nil, fmt.Errorf("DefaultGet Unimplemented")
+    hash := hash(key)
+    hash_bytes := bs.ByteSlice64(hash)
+    bkt_idx := self.bucket(hash)
+    bkt, err := self.get_bucket(bkt_idx)
+    if err != nil {
+        return nil, err
+    }
+    if bkt.Has(hash_bytes, key) {
+        return bkt.Get(hash_bytes, key)
+    }
+    return default_value, nil
 }
 
 func (self *LinearHash) Remove(key bs.ByteSlice) (err error) {
-    return fmt.Errorf("Remove Unimplemented")
+    hash := hash(key)
+    bkt_idx := self.bucket(hash)
+    bkt, err := self.get_bucket(bkt_idx)
+    if err != nil {
+        return err
+    }
+    err = bkt.Remove(bs.ByteSlice64(hash), key)
+    if err != nil {
+        return err
+    }
+    self.ctrl.records -= 1
+    return self.write_ctrlblk()
 }
 

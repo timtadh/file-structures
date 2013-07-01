@@ -43,7 +43,7 @@ func randslice(length int) bs.ByteSlice {
 }
 
 func testfile(t *testing.T, path string) file.BlockDevice {
-    const CACHESIZE = 1000
+    const CACHESIZE = 10000
     ibf := file.NewBlockFile(path, &buf.NoBuffer{})
     if err := ibf.Open(); err != nil {
         t.Fatal(err)
@@ -84,20 +84,20 @@ func TestPutHasGetRemoveLinearHash(t *testing.T) {
         value bs.ByteSlice
     }
 
-    keyset := make(map[uint64]bool)
+    keyset := make(map[string]bool)
     var records []*record
     var values2 []bs.ByteSlice
     for i := 0; i < RECORDS; i++ {
-        key := randslice(8)
+        key := randslice(rand.Intn(25)+1)
         for {
-            if _, has := keyset[key.Int64()]; !has {
+            if _, has := keyset[string(key)]; !has {
                 break
             }
-            key = randslice(8)
+            key = randslice(rand.Intn(25)+1)
         }
-        keyset[key.Int64()] = true
-        records = append(records, &record{key, randslice(255)})
-        values2 = append(values2, randslice(255))
+        keyset[string(key)] = true
+        records = append(records, &record{key, randslice(1232)})
+        values2 = append(values2, randslice(2327))
     }
 
     for _, record := range records {
@@ -119,6 +119,84 @@ func TestPutHasGetRemoveLinearHash(t *testing.T) {
         if !value.Eq(record.value) {
             t.Fatal("Error getting record, value was not as expected")
         }
+        ran := randslice(rand.Intn(25)+1)
+        if _, has := keyset[string(ran)]; !has {
+            value, err := hash.DefaultGet(ran, bs.ByteSlice64(0))
+            if err != nil { t.Fatal(err) }
+            if !value.Eq(bs.ByteSlice64(0)) {
+                t.Fatal("Error getting default")
+            }
+        } else {
+            _, err := hash.DefaultGet(ran, bs.ByteSlice64(0))
+            if err != nil { t.Fatal(err) }
+        }
+    }
+
+    for i, record := range records {
+        has, err := hash.Has(record.key)
+        if err != nil { t.Fatal(err) }
+        if !has { t.Fatal("Expected key") }
+        value, err := hash.Get(record.key)
+        if err != nil { t.Fatal(err) }
+        if !value.Eq(record.value) {
+            t.Fatal("Error getting record, value was not as expected")
+        }
+        err = hash.Put(record.key, values2[i])
+        if err != nil {
+            t.Fatal(err)
+        }
+        value, err = hash.Get(record.key)
+        if err != nil { t.Fatal(err) }
+        if !value.Eq(values2[i]) {
+            t.Fatal("Error getting record, value was not as expected")
+        }
+        if hash.Length() != RECORDS {
+            t.Fatalf("Expected record count == %d got %d", RECORDS,
+              hash.ctrl.records)
+        }
+    }
+
+    length := hash.Length()
+    for _, record := range records[length/2:] {
+        err := hash.Remove(record.key)
+        if err != nil { t.Fatal(err) }
+    }
+
+    for _, record := range records[length/2:] {
+        has, err := hash.Has(record.key)
+        if err != nil { t.Fatal(err) }
+        if has {
+            t.Fatal("expected key to be gone")
+        }
+    }
+
+    for i, record := range records[:length/2] {
+        has, err := hash.Has(record.key)
+        if err != nil { t.Fatal(err) }
+        if !has { t.Fatal("Expected key") }
+        value, err := hash.Get(record.key)
+        if err != nil { t.Fatal(err) }
+        if !value.Eq(values2[i]) {
+            t.Fatal("Error getting record, value was not as expected")
+        }
+    }
+
+    for _, record := range records[:length/2] {
+        err := hash.Remove(record.key)
+        if err != nil { t.Fatal(err) }
+    }
+
+    for _, record := range records {
+        has, err := hash.Has(record.key)
+        if err != nil { t.Fatal(err) }
+        if has {
+            t.Fatal("expected key to be gone")
+        }
+    }
+
+    if hash.Length() != 0 {
+        t.Fatalf("Expected record count == %d got %d", 0,
+          hash.ctrl.records)
     }
 }
 

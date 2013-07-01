@@ -106,6 +106,10 @@ func (self *BlockTable) Key() int64 {
     return self.key
 }
 
+func (self *BlockTable) RecordsPerBlock() int {
+    return self.records_per_blk()
+}
+
 func (self *BlockTable) records_per_blk() int {
     blk := self.blocks[0]
     h := self.header
@@ -393,33 +397,33 @@ func (self *HashBucket) Get(hash, key bs.ByteSlice) (value bs.ByteSlice, err err
     return nil, fmt.Errorf("Key not found")
 }
 
-func (self *HashBucket) Put(hash, key, value bs.ByteSlice) (err error) {
-    /*
+func (self *HashBucket) Put(hash, key, value bs.ByteSlice) (updated bool, err error) {
     defer func() {
         if e := recover(); e != nil {
             err = e.(error)
         }
     }()
-    */
     bytes, err := self.kv.Put(key, value)
     if err != nil {
-        return err
+        return false, err
     }
+    updated = false
     err = self.bt.put(hash, bytes, func(rec *record) (bool, bs.ByteSlice) {
         k2, _, err := self.kv.Get(rec.value)
         if err != nil { panic(err) }
         if key.Eq(k2) {
             newbytes, err := self.kv.Update(bytes, key, value)
             if err != nil { panic(err) }
+            updated = true
             return true, newbytes
         } else {
             return false, nil
         }
     })
     if err != nil {
-        return err
+        return false, err
     }
-    return self.bt.save()
+    return updated, self.bt.save()
 }
 
 func (self *HashBucket) Remove(hash, key bs.ByteSlice) (err error) {

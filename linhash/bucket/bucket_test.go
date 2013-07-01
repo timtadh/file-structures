@@ -245,7 +245,7 @@ func TestGetPutRemoveHashBucket(t *testing.T) {
     }
 
     for _, record := range records {
-        err := hb.Put(record.hash, record.key, record.value)
+        _, err := hb.Put(record.hash, record.key, record.value)
         if err != nil { t.Fatal(err) }
     }
 
@@ -284,7 +284,7 @@ func TestGetPutRemoveHashBucket(t *testing.T) {
             if !value.Eq(record.value) {
                 t.Fatal("Error getting record, value was not as expected")
             }
-            err = hb.Put(record.hash, record.key, values2[i])
+            _, err = hb.Put(record.hash, record.key, values2[i])
             if err != nil { t.Fatal(err) }
             if int(hb.bt.header.records) != len(records) {
                 fmt.Println("x", record.hash, record.key, values2[i])
@@ -376,7 +376,7 @@ func TestSplitHashBucket(t *testing.T) {
     }
 
     for _, record := range records {
-        err := hb.Put(record.hash, record.key, record.value)
+        _, err := hb.Put(record.hash, record.key, record.value)
         if err != nil { t.Fatal(err) }
     }
 
