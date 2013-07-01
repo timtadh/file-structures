@@ -238,14 +238,16 @@ func (self *Varchar) alloc_new(length uint64) (key int64, blocks []*block, err e
     // fmt.Println("self.ctrl.end", self.ctrl.end)
     var start_blk *block
     block_size := datasize(self.file)
-    if (FREE_VARCHAR_SIZE + self.ctrl.end) % block_size > block_size {
+    if (FREE_VARCHAR_SIZE + self.ctrl.end) - self.block_key(self.ctrl.end) >= block_size {
         // we have to allocate a new block no matter what
+        // fmt.Println("alloc new block")
         start_blk, err = allocBlock(self.file)
         if err != nil {
             return 0, nil, err
         }
         self.ctrl.end = start_blk.key
     } else {
+        // fmt.Println("append to old block", self.ctrl.end)
         start_blk_key := self.block_key(self.ctrl.end)
         start_blk, err = readBlock(self.file, start_blk_key)
         if err != nil {
@@ -258,6 +260,10 @@ func (self *Varchar) alloc_new(length uint64) (key int64, blocks []*block, err e
         return 0, nil, err
     }
 
+    if self.length(key, start_blk) != length {
+        return 0, nil, fmt.Errorf("alloc_new quick sanity length not set correctly")
+    }
+
     true_length := LENSIZE + length
     if uint64(key) + true_length < uint64(key) {
         return 0, nil, fmt.Errorf("Length of varchar overflowed the block pointer")
@@ -265,8 +271,8 @@ func (self *Varchar) alloc_new(length uint64) (key int64, blocks []*block, err e
 
     blocks = append(blocks, start_blk)
     end := self.ctrl.end
-    if (uint64(key) + true_length) <= uint64(key) + uint64(block_size) {
-        // fmt.Println("no need to alloc")
+    if (uint64(key) + true_length) <= uint64(start_blk.key) + uint64(block_size) {
+        // fmt.Println("no need to alloc", uint64(key) + true_length)
         // we fit in the currently allocated block !
         end += int64(true_length)
     } else {
@@ -306,7 +312,8 @@ func (self *Varchar) alloc_new(length uint64) (key int64, blocks []*block, err e
     }
 
     if self.length(key, start_blk) != length {
-        return 0, nil, fmt.Errorf("length not set correctly")
+        // fmt.Println(blocks, length, self.length(key, start_blk), key, start_blk.key, blocks[0].key)
+        return 0, nil, fmt.Errorf("alloc_new length not set correctly")
     }
 
     // fmt.Println("final key", key)
@@ -453,7 +460,7 @@ func (self *Varchar) alloc_free(length uint64) (key int64, blocks []*block, err 
     }
 
     if self.length(key, blocks[0]) != length {
-        return 0, nil, fmt.Errorf("length not set correctly")
+        return 0, nil, fmt.Errorf("alloc_free length not set correctly")
     }
 
     // fmt.Println("final key", key)
@@ -753,6 +760,9 @@ func (self *Varchar) write(blocks []*block, key int64, bytes bs.ByteSlice) (err 
     start_offset := int(self.block_offset(key)) + LENSIZE
     end_offset := int(self.block_offset(self._find_end_algo(blocks, key, length)))
     if len(blocks) == 1 {
+        // fmt.Println(
+          // "Varchar.write", self.block_key(key), len(blocks[0].data), start_offset, end_offset,
+          // len(bytes))
         copy(blocks[0].data[start_offset:end_offset], bytes)
     } else {
         start_bytes_offset := len(blocks[0].data) - start_offset

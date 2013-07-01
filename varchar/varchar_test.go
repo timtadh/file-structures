@@ -222,6 +222,7 @@ func TestReadWriteUpdateRemove(t *testing.T) {
             if _, err := urandom.Read(slice); err != nil {
                 panic(err)
             }
+            urandom.Close()
             return slice
         }
         panic("unreachable")

@@ -28,9 +28,9 @@ func init() {
     }
 }
 
-func testfile(t *testing.T) file.BlockDevice {
-    const CACHESIZE = 1000
-    ibf := file.NewBlockFile(PATH, &buf.NoBuffer{})
+func testfile(t *testing.T, path string) file.BlockDevice {
+    const CACHESIZE = 10000
+    ibf := file.NewBlockFile(path, &buf.NoBuffer{})
     if err := ibf.Open(); err != nil {
         t.Fatal(err)
     }
@@ -44,7 +44,7 @@ func testfile(t *testing.T) file.BlockDevice {
 
 
 func Test_records(t *testing.T) {
-    f := testfile(t)
+    f := testfile(t, PATH)
     defer f.Close()
     bt, err := NewBlockTable(f, 8, 8)
     if err != nil { t.Fatal(err) }
@@ -66,7 +66,7 @@ func Test_records(t *testing.T) {
 
 func TestGetPutRemoveBlockTable(t *testing.T) {
     const RECORDS = 300
-    f := testfile(t)
+    f := testfile(t, PATH)
     defer f.Close()
     bt, err := NewBlockTable(f, 8, 255)
     if err != nil { t.Fatal(err) }
@@ -211,10 +211,12 @@ func TestGetPutRemoveBlockTable(t *testing.T) {
 
 func TestGetPutRemoveHashBucket(t *testing.T) {
     const RECORDS = 300
-    f := testfile(t)
+    f := testfile(t, PATH)
     defer f.Close()
-    store, err := NewBytesStore(8, 128)
-    if err != nil { t.Fatal(err) }
+    g := testfile(t, "/tmp/__varchar_store")
+    defer g.Close()
+    store, err := NewVarcharStore(g)
+    if err != nil { panic(err) }
     hb, err := NewHashBucket(f, 8, store)
     if err != nil { t.Fatal(err) }
 
@@ -342,7 +344,7 @@ func TestGetPutRemoveHashBucket(t *testing.T) {
 
 func TestSplitHashBucket(t *testing.T) {
     const RECORDS = 300
-    f := testfile(t)
+    f := testfile(t, PATH)
     defer f.Close()
     store, err := NewBytesStore(8, 128)
     if err != nil { t.Fatal(err) }

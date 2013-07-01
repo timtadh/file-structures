@@ -6,6 +6,8 @@ import (
 
 import (
     bs "file-structures/block/byteslice"
+    file "file-structures/block/file2"
+    varchar "file-structures/varchar"
 )
 
 const MAX_BYTES_STORE_SIZE = 255 - 2
@@ -107,5 +109,111 @@ func (self *BytesStore) Update(bytes, key, value bs.ByteSlice) (rbytes bs.ByteSl
 
 func (self *BytesStore) Remove(bytes bs.ByteSlice) (err error) {
     return nil
+}
+
+// ------------------------------------------------------------------------------------------------
+
+
+type VarcharStore struct {
+    varchar *varchar.Varchar
+}
+
+type _varchar_kv struct {
+    keysize uint32
+    valsize uint32
+    key bs.ByteSlice
+    val bs.ByteSlice
+}
+
+func new_varchar_kv(key, value bs.ByteSlice) *_varchar_kv {
+    return &_varchar_kv {
+        keysize: uint32(len(key)),
+        valsize: uint32(len(value)),
+        key: key,
+        val: value,
+    }
+}
+
+func (self *_varchar_kv) Bytes() []byte {
+    bytes := make([]byte, 8 + self.keysize + self.valsize)
+    copy(bytes[0:4], bs.ByteSlice32(self.keysize))
+    copy(bytes[4:8], bs.ByteSlice32(self.valsize))
+    copy(bytes[8:8+self.keysize], self.key)
+    copy(bytes[8+self.keysize:8+self.keysize+self.valsize], self.val)
+    return bytes
+}
+
+func load_varchar_kv(bytes bs.ByteSlice) *_varchar_kv {
+    keysize := bytes[0:4].Int32()
+    valsize := bytes[4:8].Int32()
+    return &_varchar_kv{
+        keysize: keysize,
+        valsize: valsize,
+        key: bytes[8:8+keysize],
+        val: bytes[8+keysize:8+keysize+valsize],
+    }
+}
+
+
+func NewVarcharStore(file file.BlockDevice) (*VarcharStore, error) {
+    vc, err := varchar.NewVarchar(file)
+    if err != nil {
+        return nil, err
+    }
+    return &VarcharStore{vc}, nil
+}
+
+func (self *VarcharStore) Size() uint8 {
+    return 8
+}
+
+func (self *VarcharStore) Get(bytes bs.ByteSlice) (key, value bs.ByteSlice, err error) {
+    vc := self.varchar
+    vkey := int64(bytes.Int64())
+    bytes, err = vc.Read(vkey)
+    if err != nil {
+        return nil, nil, err
+    }
+    kv := load_varchar_kv(bytes)
+    return kv.key, kv.val, nil
+}
+
+func (self *VarcharStore) Put(key, value bs.ByteSlice) (bytes bs.ByteSlice, err error) {
+    vc := self.varchar
+    kv := new_varchar_kv(key, value).Bytes()
+    vkey, err := vc.Write(kv)
+    if err != nil {
+        return nil, err
+    }
+    return bs.ByteSlice64(uint64(vkey)), nil
+}
+
+func (self *VarcharStore) Update(bytes, key, value bs.ByteSlice) (rbytes bs.ByteSlice, err error) {
+    vc := self.varchar
+    vkey := int64(bytes.Int64())
+    kv := new_varchar_kv(key, value).Bytes()
+    oldkv, err := vc.Read(vkey)
+    if err != nil {
+        return nil, err
+    }
+    if len(oldkv) == len(kv) {
+        err = vc.Update(vkey, kv)
+        if err != nil {
+            return nil, err
+        }
+        return bs.ByteSlice64(uint64(vkey)), nil
+    } else {
+        err := vc.Remove(vkey)
+        if err != nil {
+            return nil, err
+        }
+        return self.Put(key, value)
+    }
+}
+
+func (self *VarcharStore) Remove(bytes bs.ByteSlice) (err error) {
+    vc := self.varchar
+    vkey := int64(bytes.Int64())
+    return vc.Remove(vkey)
 }
 

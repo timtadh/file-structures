@@ -239,10 +239,12 @@ func (self *BlockTable) Get(key bs.ByteSlice) (value bs.ByteSlice, err error) {
 }
 
 func (self *BlockTable) Put(key, value bs.ByteSlice) (err error) {
-    return self.put(key, value, func(x *record) bool { return true })
+    return self.put(key, value, func(x *record) (bool, bs.ByteSlice) {
+        return true, value
+    })
 }
 
-func (self *BlockTable) put(key, value bs.ByteSlice, doreplace func(*record)bool) (err error) {
+func (self *BlockTable) put(key, value bs.ByteSlice, doreplace func(*record)(bool,bs.ByteSlice)) (err error) {
     if len(key) != int(self.header.keysize) {
         return fmt.Errorf(
           "Key size is wrong, %d != %d", self.header.keysize, len(key))
@@ -263,12 +265,15 @@ func (self *BlockTable) put(key, value bs.ByteSlice, doreplace func(*record)bool
     records := record_slice(all_records[:self.header.records])
     i, found := records.find(key)
     replace := false
+    bytes := value
     if found {
         for j := i; j < len(records); j++ {
             if key.Eq(records[j].key) {
-                replace = doreplace(records[j])
+                var tmp bs.ByteSlice
+                replace, tmp = doreplace(records[j])
                 if replace {
                     i = j
+                    bytes = tmp
                     break
                 }
             } else {
@@ -289,7 +294,7 @@ func (self *BlockTable) put(key, value bs.ByteSlice, doreplace func(*record)bool
     }
     spot := all_records[i]
     copy(spot.key, key)
-    copy(spot.value, value)
+    copy(spot.value, bytes)
     return self.save()
 }
 
@@ -389,19 +394,27 @@ func (self *HashBucket) Get(hash, key bs.ByteSlice) (value bs.ByteSlice, err err
 }
 
 func (self *HashBucket) Put(hash, key, value bs.ByteSlice) (err error) {
+    /*
     defer func() {
         if e := recover(); e != nil {
             err = e.(error)
         }
     }()
+    */
     bytes, err := self.kv.Put(key, value)
     if err != nil {
         return err
     }
-    err = self.bt.put(hash, bytes, func(rec *record) bool {
+    err = self.bt.put(hash, bytes, func(rec *record) (bool, bs.ByteSlice) {
         k2, _, err := self.kv.Get(rec.value)
         if err != nil { panic(err) }
-        return key.Eq(k2)
+        if key.Eq(k2) {
+            newbytes, err := self.kv.Update(bytes, key, value)
+            if err != nil { panic(err) }
+            return true, newbytes
+        } else {
+            return false, nil
+        }
     })
     if err != nil {
         return err
@@ -421,6 +434,9 @@ func (self *HashBucket) Remove(hash, key bs.ByteSlice) (err error) {
                     return err
                 }
                 if key.Eq(k2) {
+                    if err := self.kv.Remove(records[j].value); err != nil {
+                        return err
+                    }
                     return self.bt.remove_index(j)
                 }
             } else {
