@@ -340,3 +340,89 @@ func TestGetPutRemoveHashBucket(t *testing.T) {
     }
 }
 
+func TestSplitHashBucket(t *testing.T) {
+    const RECORDS = 300
+    f := testfile(t)
+    defer f.Close()
+    store, err := NewBytesStore(8, 128)
+    if err != nil { t.Fatal(err) }
+    hb, err := NewHashBucket(f, 8, store)
+    if err != nil { t.Fatal(err) }
+
+    type hash_record struct {
+        hash, key, value bs.ByteSlice
+    }
+
+    hashset := make(map[uint64]bool)
+    var records []*hash_record
+    var values2 []bs.ByteSlice
+    for i := 0; i < RECORDS; i++ {
+        hash := randslice(8)
+        for {
+            if _, has := hashset[hash.Int64()]; !has {
+                break
+            }
+            hash = randslice(8)
+        }
+        hashset[hash.Int64()] = true
+        records = append(records,
+          &hash_record{hash, randslice(8), randslice(128)})
+        records = append(records,
+          &hash_record{hash, randslice(8), randslice(128)})
+        values2 = append(values2, randslice(128))
+        values2 = append(values2, randslice(128))
+    }
+
+    for _, record := range records {
+        err := hb.Put(record.hash, record.key, record.value)
+        if err != nil { t.Fatal(err) }
+    }
+
+    if int(hb.bt.header.records) != len(records) {
+        t.Fatalf("Expected record count == %d got %d", len(records),
+          hb.bt.header.records)
+    }
+
+    for _, record := range records {
+        value, err := hb.Get(record.hash, record.key)
+        if err != nil { t.Fatal(err) }
+        if !value.Eq(record.value) {
+            t.Fatal("Error getting record, value was not as expected")
+        }
+    }
+
+    other, err := hb.Split(7)
+    if err != nil {
+        t.Fatal(err)
+    }
+
+    count := 0
+    for _, record := range records {
+        if !hb.Has(record.hash, record.key) && !other.Has(record.hash, record.key) {
+            t.Error("Couldn't find record after split")
+            count += 1
+        }
+    }
+
+    mask := uint64(1) << 7
+    for _, rec := range hb.bt.records[:hb.bt.header.records] {
+        key := rec.key.Int64()
+        if key & mask == mask {
+            t.Errorf("Record in wrong block should be in other")
+        }
+    }
+    for _, rec := range other.bt.records[:other.bt.header.records] {
+        key := rec.key.Int64()
+        if key & mask == 0 {
+            t.Errorf("Record in wrong block should be in hb")
+        }
+    }
+
+    if hb.bt.header.records == 0 {
+        t.Errorf("hb shouldn't be empty")
+    }
+    if other.bt.header.records == 0 {
+        t.Errorf("other shouldn't be empty")
+    }
+}
+

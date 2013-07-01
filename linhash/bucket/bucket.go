@@ -31,6 +31,9 @@ type HashBucket struct {
 }
 
 func NewBlockTable(file file.BlockDevice, keysize, valsize uint8) (*BlockTable, error) {
+    if keysize > 8 {
+        return nil, fmt.Errorf("Key is too big (max 8)")
+    }
     blk, err := allocBlock(file)
     if err != nil {
         return nil, err
@@ -426,5 +429,56 @@ func (self *HashBucket) Remove(hash, key bs.ByteSlice) (err error) {
         }
     }
     return fmt.Errorf("Key not found")
+}
+
+func (self *HashBucket) Split(i uint32) (other *HashBucket, err error) {
+    defer func() {
+        if e := recover(); e != nil {
+            other = nil
+            err = e.(error)
+        }
+    }()
+    mask := bs.ByteSlice64(1 << i)
+    all_records := self.bt.records
+    records := record_slice(all_records[:self.bt.header.records])
+    var mine []*record
+    var theirs []*record
+
+    for _, rec := range records {
+        if mask.Eq(mask.And(rec.key)) {
+            // The bit is a 1
+            theirs = append(theirs, rec)
+        } else {
+            // The bit is a zero
+            mine = append(mine, rec)
+        }
+    }
+
+    write_bucket := func(bucket *HashBucket, records []*record) {
+        all_records := bucket.bt.records
+        for len(all_records) < len(records) {
+            if err := bucket.bt.add_block(); err != nil { panic(err) }
+            all_records = bucket.bt.records
+        }
+        for i, rec := range records {
+            copy(all_records[i].key, rec.key)
+            copy(all_records[i].value, rec.value)
+        }
+        bucket.bt.header.records = uint32(len(records))
+        needed := (int(bucket.bt.header.records) / bucket.bt.records_per_blk()) + 1
+        for needed < len(bucket.bt.blocks) {
+            if err := bucket.bt.remove_block(); err != nil { panic(err) }
+        }
+        if err := bucket.bt.save(); err != nil { panic(err) }
+    }
+
+    other, err = NewHashBucket(self.bt.file, self.bt.header.keysize, self.kv)
+    if err != nil {
+        return nil, err
+    }
+
+    write_bucket(other, theirs)
+    write_bucket(self, mine)
+    return other, nil
 }
 
