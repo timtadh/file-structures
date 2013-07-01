@@ -19,6 +19,7 @@ type CacheFile struct {
     disk_keys  *priorityQueue
     nextkey    int64
     free_keys  []int64
+    userdata   []byte
 }
 
 func NewCacheFile(file RemovableBlockDevice, size uint64) (cf *CacheFile, err error) {
@@ -35,6 +36,7 @@ func NewCacheFile(file RemovableBlockDevice, size uint64) (cf *CacheFile, err er
         disk_keys:  newPriorityQueue(cache_size, MAX_HEAP),
         nextkey:    int64(file.BlockSize()),
         free_keys:  make([]int64, 0, 100),
+        userdata:   make([]byte, file.BlockSize()-CONTROLSIZE),
     }
     return cf, nil
 }
@@ -47,11 +49,18 @@ func (self *CacheFile) Close() error {
 }
 
 func (self *CacheFile) ControlData() (data bs.ByteSlice, err error) {
-    return self.file.ControlData()
+    data = make(bs.ByteSlice, self.file.BlockSize()-CONTROLSIZE)
+    copy(data, self.userdata)
+    return data, nil
 }
 
 func (self *CacheFile) SetControlData(data bs.ByteSlice) (err error) {
-    return self.file.SetControlData(data)
+    if len(data) > int(self.file.BlockSize()-CONTROLSIZE) {
+        return fmt.Errorf("control data was too large")
+    }
+    self.userdata = make([]byte, self.file.BlockSize()-CONTROLSIZE)
+    copy(self.userdata, data)
+    return nil
 }
 
 func (self *CacheFile) BlockSize() uint32 { return self.file.BlockSize() }
