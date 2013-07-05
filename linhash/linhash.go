@@ -11,6 +11,8 @@ import (
     bucket "file-structures/linhash/bucket"
 )
 
+const UTILIZATION = .9
+
 const HASHSIZE = 8
 func hash(data []byte) uint64 {
     fnv := fnv.New64a()
@@ -142,7 +144,7 @@ func (self *LinearHash) split_needed() bool {
     records := float64(self.ctrl.records)
     buckets := float64(self.ctrl.buckets)
     records_per_block := float64(self.table.RecordsPerBlock())
-    if records/buckets/records_per_block > .8 {
+    if records/buckets/records_per_block > UTILIZATION {
         return true
     }
     return false
@@ -207,7 +209,19 @@ func (self *LinearHash) Length() int {
     return int(self.ctrl.records)
 }
 
-func (self *LinearHash) Has(key bs.ByteSlice) (has bool, error error) {
+func (self *LinearHash) Keys() (keys []bs.ByteSlice, err error) {
+    keys = make([]bs.ByteSlice, 0, self.ctrl.records)
+    for i := uint32(0); i < self.ctrl.buckets; i++ {
+        bkt, err := self.get_bucket(i)
+        if err != nil {
+            return nil, err
+        }
+        keys = append(keys, bkt.Keys()...)
+    }
+    return keys, nil
+}
+
+func (self *LinearHash) Has(key bs.ByteSlice) (has bool, err error) {
     hash := hash(key)
     bkt_idx := self.bucket(hash)
     bkt, err := self.get_bucket(bkt_idx)

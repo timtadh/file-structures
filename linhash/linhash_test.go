@@ -133,6 +133,23 @@ func TestPutHasGetRemoveLinearHash(t *testing.T) {
           linhash.ctrl.records)
     }
 
+    rkeys, err := linhash.Keys()
+    if err != nil { t.Fatal(err) }
+    rkeyset := make(map[string]bool)
+    for _, bkey := range rkeys {
+        key := string(bkey)
+        if _, has := keyset[key]; !has {
+            t.Fatal("got non-existent key", bs.ByteSlice(key))
+        }
+        rkeyset[key] = true
+    }
+
+    for key, _ := range keyset {
+        if _, has := rkeyset[key]; !has {
+            t.Fatal("missed key", bs.ByteSlice(key))
+        }
+    }
+
     for i, record := range records {
         has, err := linhash.Has(record.key)
         if err != nil { t.Fatal(err) }
