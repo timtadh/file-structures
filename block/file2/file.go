@@ -9,6 +9,8 @@ import (
 import buf "file-structures/block/buffers"
 import . "file-structures/block/byteslice"
 
+const BLOCKSIZE = 16384
+
 type ctrlblk struct {
     blksize   uint32
     free_head uint64
@@ -58,12 +60,19 @@ type BlockFile struct {
 }
 
 func NewBlockFile(path string, buf buf.Buffer) *BlockFile {
+    return NewBlockFileCustomBlockSize(path, buf, BLOCKSIZE)
+}
+
+func NewBlockFileCustomBlockSize(path string, buf buf.Buffer, size uint32) *BlockFile {
+    if size % 4096 != 0 {
+        panic(fmt.Errorf("blocksize must be divisible by 4096"))
+    }
     return &BlockFile{
         path: path,
         buf:  buf,
         ctrl: ctrlblk{
-            blksize:  4096,
-            userdata: make([]byte, 4096-CONTROLSIZE),
+            blksize:  size,
+            userdata: make([]byte, size-CONTROLSIZE),
         },
     }
 }

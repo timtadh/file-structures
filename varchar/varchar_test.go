@@ -29,7 +29,7 @@ func init() {
 
 func testfile(t *testing.T) file.BlockDevice {
     const CACHESIZE = 1000
-    ibf := file.NewBlockFile(PATH, &buf.NoBuffer{})
+    ibf := file.NewBlockFileCustomBlockSize(PATH, &buf.NoBuffer{}, 4096)
     if err := ibf.Open(); err != nil {
         t.Fatal(err)
     }

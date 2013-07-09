@@ -24,7 +24,7 @@ func init() {
 }
 
 const PATH = "/tmp/__x"
-const CACHESIZE = 4096 * 16
+const CACHESIZE = BLOCKSIZE * 16
 
 func cleanup(path string) {
     os.Remove(path)
@@ -46,8 +46,8 @@ func TestAllocate(t *testing.T) {
     }
     if p, err := f.Allocate(); err != nil {
         t.Fatal(err)
-    } else if p != 4096 {
-        t.Fatalf("Expected p == 4096 got %d", p)
+    } else if p != BLOCKSIZE {
+        t.Fatalf("Expected p == BLOCKSIZE got %d", p)
     }
 }
 
@@ -59,8 +59,8 @@ func TestSize(t *testing.T) {
     }
     if p, err := f.Allocate(); err != nil {
         t.Fatal(err)
-    } else if p != 4096 {
-        t.Fatalf("Expected p == 4096 got %d", p)
+    } else if p != BLOCKSIZE {
+        t.Fatalf("Expected p == BLOCKSIZE got %d", p)
     }
     if size, err := f.Size(); err != nil {
         t.Fatal(err)
@@ -83,8 +83,8 @@ func TestWriteRead(t *testing.T) {
 
     if p, err := f.Allocate(); err != nil {
         t.Fatal(err)
-    } else if p != 4096 {
-        t.Fatalf("Expected p == 4096 got %d", p)
+    } else if p != BLOCKSIZE {
+        t.Fatalf("Expected p == BLOCKSIZE got %d", p)
     }
     if size, err := f.Size(); err != nil {
         t.Fatal(err)
@@ -95,7 +95,7 @@ func TestWriteRead(t *testing.T) {
     for i := range blk {
         blk[i] = 0xf
     }
-    if err := f.WriteBlock(4096, blk); err != nil {
+    if err := f.WriteBlock(BLOCKSIZE, blk); err != nil {
         t.Fatal(err)
     }
     if err := f.Close(); err != nil {
@@ -104,7 +104,7 @@ func TestWriteRead(t *testing.T) {
     if err := f.Open(); err != nil {
         t.Fatal(err)
     }
-    if rblk, err := f.ReadBlock(4096); err != nil {
+    if rblk, err := f.ReadBlock(BLOCKSIZE); err != nil {
         t.Fatal(err)
     } else if len(rblk) != int(f.BlockSize()) {
         t.Fatalf("Expected len(rblk) == %d got %d", f.BlockSize(), len(rblk))
@@ -118,24 +118,24 @@ func TestWriteRead(t *testing.T) {
 
     if p, err := f.Allocate(); err != nil {
         t.Fatal(err)
-    } else if p != 8192 {
-        t.Fatalf("Expected p == 8192 got %d", p)
+    } else if p != BLOCKSIZE*2 {
+        t.Fatalf("Expected p == BLOCKSIZE*2 got %d", p)
     }
 
-    if err := f.Free(4096); err != nil {
+    if err := f.Free(BLOCKSIZE); err != nil {
         t.Fatal(err)
     }
     if p, err := f.Allocate(); err != nil {
         t.Fatal(err)
-    } else if p != 4096 {
-        t.Fatalf("Expected p == 4096 got %d", p)
+    } else if p != BLOCKSIZE {
+        t.Fatalf("Expected p == BLOCKSIZE got %d", p)
     }
     if size, err := f.Size(); err != nil {
         t.Fatal(err)
     } else if size != 3*uint64(f.BlockSize()) {
         t.Fatalf("Expected size == %d got %d", 3*f.BlockSize(), size)
     }
-    if err := f.WriteBlock(4096, blk); err != nil {
+    if err := f.WriteBlock(BLOCKSIZE, blk); err != nil {
         t.Fatal(err)
     }
     if err := f.Close(); err != nil {
@@ -144,7 +144,7 @@ func TestWriteRead(t *testing.T) {
     if err := f.Open(); err != nil {
         t.Fatal(err)
     }
-    if rblk, err := f.ReadBlock(4096); err != nil {
+    if rblk, err := f.ReadBlock(BLOCKSIZE); err != nil {
         t.Fatal(err)
     } else if len(rblk) != int(f.BlockSize()) {
         t.Fatalf("Expected len(rblk) == %d got %d", f.BlockSize(), len(rblk))
@@ -179,8 +179,8 @@ func TestGenericWriteRead(t *testing.T) {
 
         if A, err = f.Allocate(); err != nil {
             t.Fatal(err)
-        } else if A != 4096 {
-            t.Fatalf("Expected A == 4096 got %d", A)
+        } else if A != BLOCKSIZE {
+            t.Fatalf("Expected A == BLOCKSIZE got %d", A)
         }
         if err := f.WriteBlock(A, blk); err != nil {
             t.Fatal(err)
@@ -199,8 +199,8 @@ func TestGenericWriteRead(t *testing.T) {
 
         if B, err = f.Allocate(); err != nil {
             t.Fatal(err)
-        } else if B != 8192 {
-            t.Fatalf("Expected B == 8192 got %d", B)
+        } else if B != BLOCKSIZE*2 {
+            t.Fatalf("Expected B == BLOCKSIZE*2 got %d", B)
         }
 
         if err = f.Free(A); err != nil {
@@ -261,7 +261,7 @@ func TestPageOut(t *testing.T) {
     if err := ibf.Open(); err != nil {
         t.Fatal(err)
     }
-    f, err := NewCacheFile(ibf, 4096*CACHESIZE)
+    f, err := NewCacheFile(ibf, BLOCKSIZE*CACHESIZE)
     if err != nil {
         t.Fatal(err)
     }
