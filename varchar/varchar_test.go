@@ -27,6 +27,20 @@ func init() {
     }
 }
 
+func randslice(length int) bs.ByteSlice {
+    if urandom, err := os.Open("/dev/urandom"); err != nil {
+        panic(err)
+    } else {
+        slice := make([]byte, length)
+        if _, err := urandom.Read(slice); err != nil {
+            panic(err)
+        }
+        urandom.Close()
+        return slice
+    }
+    panic("unreachable")
+}
+
 func testfile(t *testing.T) file.BlockDevice {
     const CACHESIZE = 1000
     ibf := file.NewBlockFileCustomBlockSize(PATH, &buf.NoBuffer{}, 4096)
@@ -213,20 +227,6 @@ func TestAllocateLengthBlocksFree(t *testing.T) {
 func TestReadWriteUpdateRemove(t *testing.T) {
     varchar, _ := NewVarchar(testfile(t))
     defer varchar.Close()
-
-    randslice := func(length int) bs.ByteSlice {
-        if urandom, err := os.Open("/dev/urandom"); err != nil {
-            panic(err)
-        } else {
-            slice := make([]byte, length)
-            if _, err := urandom.Read(slice); err != nil {
-                panic(err)
-            }
-            urandom.Close()
-            return slice
-        }
-        panic("unreachable")
-    }
 
     var err error
     var k1, k2, k3, k4, k5, k6, k7 int64
