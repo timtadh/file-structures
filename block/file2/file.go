@@ -9,7 +9,7 @@ import (
 import buf "file-structures/block/buffers"
 import . "file-structures/block/byteslice"
 
-const BLOCKSIZE = 16384
+const BLOCKSIZE = 4096
 
 type ctrlblk struct {
     blksize   uint32
