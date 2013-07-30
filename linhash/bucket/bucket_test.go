@@ -34,7 +34,7 @@ func testfile(t *testing.T, path string) file.BlockDevice {
     if err := ibf.Open(); err != nil {
         t.Fatal(err)
     }
-    f, err := file.NewCacheFile(ibf, 4096*CACHESIZE)
+    f, err := file.NewLFUCacheFile(ibf, 4096*CACHESIZE)
     if err != nil {
         t.Fatal(err)
     }

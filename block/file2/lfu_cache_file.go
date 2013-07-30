@@ -10,7 +10,7 @@ import bs "file-structures/block/byteslice"
 const MIN_HEAP = true
 const MAX_HEAP = false
 
-type CacheFile struct {
+type LFUCacheFile struct {
     file       RemovableBlockDevice
     cache      map[int64]bs.ByteSlice
     cache_size int
@@ -22,12 +22,12 @@ type CacheFile struct {
     userdata   []byte
 }
 
-func NewCacheFile(file RemovableBlockDevice, size uint64) (cf *CacheFile, err error) {
+func NewLFUCacheFile(file RemovableBlockDevice, size uint64) (cf *LFUCacheFile, err error) {
     cache_size := 0
     if size > 0 {
         cache_size = 1 + int(size/uint64(file.BlockSize()))
     }
-    cf = &CacheFile{
+    cf = &LFUCacheFile{
         file:       file,
         cache:      make(map[int64]bs.ByteSlice),
         cache_size: cache_size,
@@ -41,20 +41,20 @@ func NewCacheFile(file RemovableBlockDevice, size uint64) (cf *CacheFile, err er
     return cf, nil
 }
 
-func (self *CacheFile) Close() error {
+func (self *LFUCacheFile) Close() error {
     if err := self.file.Close(); err != nil {
         return err
     }
     return self.file.Remove()
 }
 
-func (self *CacheFile) ControlData() (data bs.ByteSlice, err error) {
+func (self *LFUCacheFile) ControlData() (data bs.ByteSlice, err error) {
     data = make(bs.ByteSlice, self.file.BlockSize()-CONTROLSIZE)
     copy(data, self.userdata)
     return data, nil
 }
 
-func (self *CacheFile) SetControlData(data bs.ByteSlice) (err error) {
+func (self *LFUCacheFile) SetControlData(data bs.ByteSlice) (err error) {
     if len(data) > int(self.file.BlockSize()-CONTROLSIZE) {
         return fmt.Errorf("control data was too large")
     }
@@ -63,9 +63,9 @@ func (self *CacheFile) SetControlData(data bs.ByteSlice) (err error) {
     return nil
 }
 
-func (self *CacheFile) BlockSize() uint32 { return self.file.BlockSize() }
+func (self *LFUCacheFile) BlockSize() uint32 { return self.file.BlockSize() }
 
-func (self *CacheFile) Free(key int64) error {
+func (self *LFUCacheFile) Free(key int64) error {
     disk_has := self.disk_keys.HasKey(key)
     cache_has := self.cache_keys.HasKey(key)
     if disk_has && cache_has {
@@ -85,7 +85,7 @@ func (self *CacheFile) Free(key int64) error {
     return self.balance()
 }
 
-func (self *CacheFile) Allocate() (key int64, err error) {
+func (self *LFUCacheFile) Allocate() (key int64, err error) {
     if len(self.free_keys) > 0 {
         key = self.free_keys[len(self.free_keys)-1]
         self.free_keys = self.free_keys[:len(self.free_keys)-1]
@@ -96,7 +96,7 @@ func (self *CacheFile) Allocate() (key int64, err error) {
     return key, self.WriteBlock(key, make(bs.ByteSlice, self.file.BlockSize()))
 }
 
-func (self *CacheFile) writeFile(key int64, count int, block bs.ByteSlice) (err error) {
+func (self *LFUCacheFile) writeFile(key int64, count int, block bs.ByteSlice) (err error) {
     var disk_key int64
     disk_key, has := self.keymap[key]
     if !has {
@@ -113,12 +113,12 @@ func (self *CacheFile) writeFile(key int64, count int, block bs.ByteSlice) (err 
     return nil
 }
 
-func (self *CacheFile) writeCache(key int64, count int, block bs.ByteSlice) {
+func (self *LFUCacheFile) writeCache(key int64, count int, block bs.ByteSlice) {
     self.cache[key] = block
     self.cache_keys.Update(key, count)
 }
 
-func (self *CacheFile) readFile(key int64) (block bs.ByteSlice, count int, err error) {
+func (self *LFUCacheFile) readFile(key int64) (block bs.ByteSlice, count int, err error) {
     count, err = self.disk_keys.GetCount(key)
     if err != nil {
         return nil, 0, err
@@ -131,7 +131,7 @@ func (self *CacheFile) readFile(key int64) (block bs.ByteSlice, count int, err e
     return
 }
 
-func (self *CacheFile) readCache(key int64) (block bs.ByteSlice, count int, err error) {
+func (self *LFUCacheFile) readCache(key int64) (block bs.ByteSlice, count int, err error) {
     count, err = self.cache_keys.GetCount(key)
     if err != nil {
         return nil, 0, err
@@ -143,7 +143,7 @@ func (self *CacheFile) readCache(key int64) (block bs.ByteSlice, count int, err 
     return
 }
 
-func (self *CacheFile) removeFile(key int64) (err error) {
+func (self *LFUCacheFile) removeFile(key int64) (err error) {
     var disk_key int64
     disk_key, has := self.keymap[key]
     if !has {
@@ -154,7 +154,7 @@ func (self *CacheFile) removeFile(key int64) (err error) {
     return self.file.Free(disk_key)
 }
 
-func (self *CacheFile) removeCache(key int64) (err error) {
+func (self *LFUCacheFile) removeCache(key int64) (err error) {
     if _, has := self.cache[key]; !has {
         return fmt.Errorf("removeCache: cache did not have key")
     }
@@ -163,7 +163,7 @@ func (self *CacheFile) removeCache(key int64) (err error) {
     return nil
 }
 
-func (self *CacheFile) balance() error {
+func (self *LFUCacheFile) balance() error {
     count := func(h *priorityQueue) int {
         item := h.Peek()
         if item == nil {
@@ -225,7 +225,7 @@ func (self *CacheFile) balance() error {
     return nil
 }
 
-func (self *CacheFile) WriteBlock(key int64, block bs.ByteSlice) (err error) {
+func (self *LFUCacheFile) WriteBlock(key int64, block bs.ByteSlice) (err error) {
     disk_has := self.disk_keys.HasKey(key)
     cache_has := self.cache_keys.HasKey(key)
     if disk_has && cache_has {
@@ -258,11 +258,11 @@ func (self *CacheFile) WriteBlock(key int64, block bs.ByteSlice) (err error) {
     }
 }
 
-func (self *CacheFile) pageout(key int64, block bs.ByteSlice) (err error) {
+func (self *LFUCacheFile) pageout(key int64, block bs.ByteSlice) (err error) {
     return fmt.Errorf("Unimplemented")
 }
 
-func (self *CacheFile) ReadBlock(key int64) (block bs.ByteSlice, err error) {
+func (self *LFUCacheFile) ReadBlock(key int64) (block bs.ByteSlice, err error) {
     var count int
     disk_has := self.disk_keys.HasKey(key)
     cache_has := self.cache_keys.HasKey(key)

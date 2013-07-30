@@ -246,94 +246,125 @@ func TestGenericWriteRead(t *testing.T) {
     if err := ibf.Open(); err != nil {
         t.Fatal(err)
     }
-    cf, err := NewCacheFile(ibf, CACHESIZE)
+    cf, err := NewLFUCacheFile(ibf, CACHESIZE)
     if err != nil {
         t.Fatal(err)
     }
-    defer cf.Close()
     tester(cf)
+    cf.Close()
+    cleanup(ibf.Path())
+
+    rbf := NewBlockFile(PATH, &buf.NoBuffer{})
+    if err := rbf.Open(); err != nil {
+        t.Fatal(err)
+    }
+    lrucf, err := NewLRUCacheFile(rbf, CACHESIZE)
+    if err != nil {
+        t.Fatal(err)
+    }
+    tester(lrucf)
+    lrucf.Close()
+    cleanup(rbf.Path())
+
 }
 
 func TestPageOut(t *testing.T) {
     const ITEMS = 1000
     const CACHESIZE = 950
+
+    test := func(f BlockDevice) {
+        var keys []int64
+        for i := 1; i <= ITEMS; i++ {
+            var err error
+            var P int64
+            if P, err = f.Allocate(); err != nil {
+                t.Fatal(err)
+            }
+            keys = append(keys, P)
+            blk := make([]byte, f.BlockSize())
+            for i := range blk {
+                blk[i] = byte(P)
+            }
+
+            if err := f.WriteBlock(P, blk); err != nil {
+                t.Fatal(err)
+            }
+
+            R := keys[rand.Intn(len(keys)/2+1)]
+            // t.Logf("key = %d", P)
+            if rblk, err := f.ReadBlock(R); err != nil {
+                t.Fatal(err)
+            } else if len(rblk) != int(f.BlockSize()) {
+                t.Fatalf("Expected len(rblk) == %d got %d", f.BlockSize(), len(rblk))
+            } else {
+                for i, b := range rblk {
+                    if b != byte(R) {
+                        t.Fatalf("Expected rblk[%d] == 0xf got %d", i, b)
+                    }
+                }
+            }
+
+            if rblk, err := f.ReadBlock(P); err != nil {
+                t.Fatal(err)
+            } else if len(rblk) != int(f.BlockSize()) {
+                t.Fatalf("Expected len(rblk) == %d got %d", f.BlockSize(), len(rblk))
+            } else {
+                for i, b := range rblk {
+                    if b != byte(P) {
+                        t.Fatalf("Expected rblk[%d] == 0xf got %d", i, b)
+                    }
+                }
+            }
+        }
+
+        for i := 1; i <= ITEMS*5; i++ {
+            P := keys[rand.Intn(len(keys))]
+            keys = append(keys, P)
+            blk := make([]byte, f.BlockSize())
+            for i := range blk {
+                blk[i] = byte(P)
+            }
+            if err := f.WriteBlock(P, blk); err != nil {
+                t.Fatal(err)
+            }
+        }
+
+        for i := 1; i <= ITEMS*5; i++ {
+            P := keys[rand.Intn(len(keys))]
+            if rblk, err := f.ReadBlock(P); err != nil {
+                t.Fatal(err)
+            } else if len(rblk) != int(f.BlockSize()) {
+                t.Fatalf("Expected len(rblk) == %d got %d", f.BlockSize(), len(rblk))
+            } else {
+                for i, b := range rblk {
+                    if b != byte(P) {
+                        t.Fatalf("Expected rblk[%d] == 0xf got %d", i, b)
+                    }
+                }
+            }
+        }
+    }
+
     ibf := NewBlockFile(PATH, &buf.NoBuffer{})
     if err := ibf.Open(); err != nil {
         t.Fatal(err)
     }
-    f, err := NewCacheFile(ibf, BLOCKSIZE*CACHESIZE)
+    f, err := NewLFUCacheFile(ibf, BLOCKSIZE*CACHESIZE)
     if err != nil {
         t.Fatal(err)
     }
-    defer f.Close()
+    test(f)
+    f.Close()
 
-    var keys []int64
-    for i := 1; i <= ITEMS; i++ {
-        var P int64
-        if P, err = f.Allocate(); err != nil {
-            t.Fatal(err)
-        }
-        keys = append(keys, P)
-        blk := make([]byte, f.BlockSize())
-        for i := range blk {
-            blk[i] = byte(P)
-        }
-
-        if err := f.WriteBlock(P, blk); err != nil {
-            t.Fatal(err)
-        }
-
-        R := keys[rand.Intn(len(keys)/2+1)]
-        // t.Logf("key = %d", P)
-        if rblk, err := f.ReadBlock(R); err != nil {
-            t.Fatal(err)
-        } else if len(rblk) != int(f.BlockSize()) {
-            t.Fatalf("Expected len(rblk) == %d got %d", f.BlockSize(), len(rblk))
-        } else {
-            for i, b := range rblk {
-                if b != byte(R) {
-                    t.Fatalf("Expected rblk[%d] == 0xf got %d", i, b)
-                }
-            }
-        }
-
-        if rblk, err := f.ReadBlock(P); err != nil {
-            t.Fatal(err)
-        } else if len(rblk) != int(f.BlockSize()) {
-            t.Fatalf("Expected len(rblk) == %d got %d", f.BlockSize(), len(rblk))
-        } else {
-            for i, b := range rblk {
-                if b != byte(P) {
-                    t.Fatalf("Expected rblk[%d] == 0xf got %d", i, b)
-                }
-            }
-        }
+    rbf := NewBlockFile(PATH, &buf.NoBuffer{})
+    if err := rbf.Open(); err != nil {
+        t.Fatal(err)
     }
-
-    for i := 1; i <= ITEMS*5; i++ {
-        P := keys[rand.Intn(len(keys))]
-        keys = append(keys, P)
-        blk := make([]byte, f.BlockSize())
-        for i := range blk {
-            blk[i] = byte(P)
-        }
-        if err := f.WriteBlock(P, blk); err != nil {
-            t.Fatal(err)
-        }
+    lrucf, err := NewLRUCacheFile(rbf, CACHESIZE)
+    if err != nil {
+        t.Fatal(err)
     }
-
-    for i := 1; i <= ITEMS*5; i++ {
-        P := keys[rand.Intn(len(keys))]
-        if rblk, err := f.ReadBlock(P); err != nil {
-            t.Fatal(err)
-        } else if len(rblk) != int(f.BlockSize()) {
-            t.Fatalf("Expected len(rblk) == %d got %d", f.BlockSize(), len(rblk))
-        } else {
-            for i, b := range rblk {
-                if b != byte(P) {
-                    t.Fatalf("Expected rblk[%d] == 0xf got %d", i, b)
-                }
-            }
-        }
-    }
+    test(lrucf)
+    lrucf.Close()
+    cleanup(rbf.Path())
 }
