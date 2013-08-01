@@ -105,7 +105,7 @@ func (self *LRUCacheFile) pageout(key int64, block []byte) error {
 }
 
 func (self *LRUCacheFile) WriteBlock(key int64, block bs.ByteSlice) (err error) {
-    return self.lru.Update(key, block)
+    return self.lru.Update(key, block, false)
 }
 
 func (self *LRUCacheFile) ReadBlock(key int64) (block bs.ByteSlice, err error) {
@@ -119,7 +119,7 @@ func (self *LRUCacheFile) ReadBlock(key int64) (block bs.ByteSlice, err error) {
         if err != nil {
             return nil, err
         }
-        err = self.lru.Update(key, block)
+        err = self.lru.Update(key, block, true)
         if err != nil {
             return nil, err
         }
@@ -135,13 +135,15 @@ func (self *LRUCacheFile) ReadBlock(key int64) (block bs.ByteSlice, err error) {
 type lru_item struct {
     bytes []byte
     p     int64
+    dirty bool
 }
 
 func new_lruitem(p int64, bytes []byte) *lru_item {
-    self := new(lru_item)
-    self.p = p
-    self.bytes = bytes
-    return self
+    return &lru_item{
+        p:p,
+        bytes:bytes,
+        dirty:true,
+    }
 }
 
 func newLRU(size int, pageout func(int64,[]byte)error) *lru {
@@ -156,16 +158,18 @@ func newLRU(size int, pageout func(int64,[]byte)error) *lru {
 func (self *lru) Size() int { return self.size }
 
 func (self *lru) Remove(p int64) {
-    self.Update(p, nil)
+    self.Update(p, nil, false)
 }
 
-func (self *lru) Update(p int64, block []byte) error {
+func (self *lru) Update(p int64, block []byte, fromdisk bool) error {
     if e, has := self.buffer[p]; has {
         if block == nil {
             delete(self.buffer, p)
             self.stack.Remove(e)
         } else {
-            e.Value.(*lru_item).bytes = block
+            item := e.Value.(*lru_item)
+            item.bytes = block
+            item.dirty = true
             self.stack.MoveToFront(e)
         }
     } else {
@@ -177,13 +181,20 @@ func (self *lru) Update(p int64, block []byte) error {
         for self.size < self.stack.Len() {
             e = self.stack.Back()
             i := e.Value.(*lru_item)
-            if err := self.pageout(i.p, i.bytes); err != nil {
-                return err
+            if i.dirty {
+                err := self.pageout(i.p, i.bytes)
+                if err != nil {
+                    return err
+                }
             }
             delete(self.buffer, i.p)
             self.stack.Remove(e)
         }
-        e = self.stack.PushFront(new_lruitem(p, block))
+        item := new_lruitem(p, block)
+        if fromdisk {
+            item.dirty = false
+        }
+        e = self.stack.PushFront(item)
         self.buffer[p] = e
     }
     return nil
