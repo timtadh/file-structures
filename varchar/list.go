@@ -313,7 +313,7 @@ func (self *VarcharList) _find_end_algo(blocks list_blocks, item_key int64, leng
         // fmt.Println( "VarcharList._find_end_algo", item_key, end)
     } else {
         full_blocks := (uint32(len(blocks))-2)*uint32(block_size)
-        final_offset := length - start_alloc - full_blocks + LIST_HEADER_LEN
+        final_offset := length - start_alloc - full_blocks
         end = blocks[len(blocks)-1].key + int64(final_offset)
         // fmt.Println( "VarcharList._find_end_algo", item_key, end, final_offset)
     }
@@ -336,15 +336,30 @@ func (self *VarcharList) Push(key int64, raw_bytes bs.ByteSlice) (err error) {
         copy(blocks[0].data[start_offset:end_offset], bytes)
     } else {
         // fmt.Println("VarcharList.Push", "several blocks")
+        var strings []string
         start_bytes_offset := len(blocks[0].data) - start_offset
+        s := fmt.Sprint("start ", len(blocks), len(bytes), start_offset, start_bytes_offset)
+        strings = append(strings, s)
         copy(blocks[0].data[start_offset:], bytes[0:start_bytes_offset])
         offset := start_bytes_offset
-        for _, blk := range blocks[1:len(blocks)-1] {
-            // fmt.Println(i, len(blocks), len(bytes), offset, offset + len(blk.data))
+        for i, blk := range blocks[1:len(blocks)-1] {
+            s := fmt.Sprint("middle ", i, len(blocks), len(bytes), offset, offset + len(blk.data))
+            strings = append(strings, s)
             copy(blk.data, bytes[offset:offset+len(blk.data)])
             offset += len(blk.data)
         }
-        copy(blocks[len(blocks)-1].data[:end_offset], bytes[offset:])
+        if offset > len(bytes) {
+            fmt.Println(len(blocks), len(bytes), offset)
+            panic(fmt.Errorf("offset out of bounds on bytes"))
+        }
+        if end_offset > len(blocks[len(blocks)-1].data) {
+            for _, s := range strings {
+                fmt.Println(s)
+            }
+            fmt.Println(len(blocks), len(bytes),len(blocks[len(blocks)-1].data), end_offset)
+            panic(fmt.Errorf("offset out of bounds on blocks[len(blocks)-1].data")) // this is the trigger!
+        }
+        copy(blocks[len(blocks)-1].data[:end_offset], bytes[offset:]) // BUG HERE
     }
     hblk.header.list_length += 1
     err = dirty.Write()
