@@ -3,9 +3,9 @@ package varchar
 import "testing"
 
 import (
-    "os"
-    "math/rand"
     "fmt"
+    "math/rand"
+    "os"
 )
 
 import (
@@ -164,8 +164,6 @@ func TestAllocateLengthBlocksFree(t *testing.T) {
         t.Fatal(err)
     }
 
-
-
     // fmt.Println("\nfree k2", k2)
     if err = varchar.free(k2); err != nil {
         t.Fatal(err)
@@ -184,8 +182,8 @@ func TestAllocateLengthBlocksFree(t *testing.T) {
     // fmt.Println("\nalloc k5_2")
     if k5_2, blocks, err = varchar.alloc(9000); err != nil {
         t.Fatal(err)
-    // } else if k5 - 42 - 8!= k5_2 {
-    //     t.Fatalf("Expected key == key2 got %d != %d", k5 - 42 - 8, k5_2)
+        // } else if k5 - 42 - 8!= k5_2 {
+        //     t.Fatalf("Expected key == key2 got %d != %d", k5 - 42 - 8, k5_2)
     } else if err := check(k5_2, blocks, err, 3, 9000); err != nil {
         t.Fatal(err)
     }
@@ -196,7 +194,6 @@ func TestAllocateLengthBlocksFree(t *testing.T) {
     } else if err := check(k5_2, blocks, err, 3, 9000); err != nil {
         t.Fatal(err)
     }
-
 
     // fmt.Println("\nfree k6", k6)
     if err = varchar.free(k6); err != nil {
@@ -248,13 +245,27 @@ func TestReadWriteUpdateRemove(t *testing.T) {
     v6 := randslice(l6)
     v7 := randslice(l7)
 
-    if k1, err = varchar.Write(v1); err != nil { t.Fatal(err) }
-    if k2, err = varchar.Write(v2); err != nil { t.Fatal(err) }
-    if k3, err = varchar.Write(v3); err != nil { t.Fatal(err) }
-    if k4, err = varchar.Write(v4); err != nil { t.Fatal(err) }
-    if k5, err = varchar.Write(v5); err != nil { t.Fatal(err) }
-    if k6, err = varchar.Write(v6); err != nil { t.Fatal(err) }
-    if k7, err = varchar.Write(v7); err != nil { t.Fatal(err) }
+    if k1, err = varchar.Write(v1); err != nil {
+        t.Fatal(err)
+    }
+    if k2, err = varchar.Write(v2); err != nil {
+        t.Fatal(err)
+    }
+    if k3, err = varchar.Write(v3); err != nil {
+        t.Fatal(err)
+    }
+    if k4, err = varchar.Write(v4); err != nil {
+        t.Fatal(err)
+    }
+    if k5, err = varchar.Write(v5); err != nil {
+        t.Fatal(err)
+    }
+    if k6, err = varchar.Write(v6); err != nil {
+        t.Fatal(err)
+    }
+    if k7, err = varchar.Write(v7); err != nil {
+        t.Fatal(err)
+    }
 
     check_values := func(v2, v4 bs.ByteSlice) {
         if rv1, err := varchar.Read(k1); err != nil {
@@ -307,28 +318,53 @@ func TestReadWriteUpdateRemove(t *testing.T) {
     }
     check_values(v2, v4)
 
-    if err = varchar.Remove(k3); err != nil { t.Fatal(err) }
-    if err = varchar.Remove(k6); err != nil { t.Fatal(err) }
-    if k3, err = varchar.Write(v3); err != nil { t.Fatal(err) }
-    if k6, err = varchar.Write(v6); err != nil { t.Fatal(err) }
+    if err = varchar.Remove(k3); err != nil {
+        t.Fatal(err)
+    }
+    if err = varchar.Remove(k6); err != nil {
+        t.Fatal(err)
+    }
+    if k3, err = varchar.Write(v3); err != nil {
+        t.Fatal(err)
+    }
+    if k6, err = varchar.Write(v6); err != nil {
+        t.Fatal(err)
+    }
 
     check_values(v2, v4)
 
-    if err = varchar.Update(k2, v2_2); err != nil { t.Fatal(err) }
-    if err = varchar.Update(k4, v4_2); err != nil { t.Fatal(err) }
+    if err = varchar.Update(k2, v2_2); err != nil {
+        t.Fatal(err)
+    }
+    if err = varchar.Update(k4, v4_2); err != nil {
+        t.Fatal(err)
+    }
 
     check_values(v2_2, v4_2)
 
-    if err = varchar.Remove(k1); err != nil { t.Fatal(err) }
-    if err = varchar.Remove(k2); err != nil { t.Fatal(err) }
-    if err = varchar.Remove(k3); err != nil { t.Fatal(err) }
-    if err = varchar.Remove(k4); err != nil { t.Fatal(err) }
-    if err = varchar.Remove(k5); err != nil { t.Fatal(err) }
-    if err = varchar.Remove(k6); err != nil { t.Fatal(err) }
-    if err = varchar.Remove(k7); err != nil { t.Fatal(err) }
+    if err = varchar.Remove(k1); err != nil {
+        t.Fatal(err)
+    }
+    if err = varchar.Remove(k2); err != nil {
+        t.Fatal(err)
+    }
+    if err = varchar.Remove(k3); err != nil {
+        t.Fatal(err)
+    }
+    if err = varchar.Remove(k4); err != nil {
+        t.Fatal(err)
+    }
+    if err = varchar.Remove(k5); err != nil {
+        t.Fatal(err)
+    }
+    if err = varchar.Remove(k6); err != nil {
+        t.Fatal(err)
+    }
+    if err = varchar.Remove(k7); err != nil {
+        t.Fatal(err)
+    }
 
     if varchar.ctrl.free_len != 1 {
         t.Fatalf("Expected free_len == 1 got %d", varchar.ctrl.free_len)
     }
 }
-
