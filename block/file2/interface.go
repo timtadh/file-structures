@@ -9,6 +9,7 @@ type BlockSizer interface {
 type BlockReader interface {
     BlockSizer
     ReadBlock(key int64) (block ByteSlice, err error)
+    ReadBlocks(key int64, n int) (blocks ByteSlice, err error)
 }
 
 type BlockWriter interface {
@@ -19,6 +20,7 @@ type BlockWriter interface {
 type BlockReadWriter interface {
     BlockSizer
     ReadBlock(key int64) (block ByteSlice, err error)
+    ReadBlocks(key int64, n int) (blocks ByteSlice, err error)
     WriteBlock(key int64, block ByteSlice) error
 }
 

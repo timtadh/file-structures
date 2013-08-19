@@ -45,6 +45,10 @@ func (self *LFUCacheFile) Close() error {
     if err := self.file.Close(); err != nil {
         return err
     }
+    return nil
+}
+
+func (self *LFUCacheFile) Remove() error {
     return self.file.Remove()
 }
 
@@ -285,6 +289,21 @@ func (self *LFUCacheFile) ReadBlock(key int64) (block bs.ByteSlice, err error) {
     }
     return block, self.balance()
 }
+
+func (self *LFUCacheFile) ReadBlocks(key int64, n int) (blocks bs.ByteSlice, err error) {
+    blk_size := int64(self.BlockSize())
+    blocks = make(bs.ByteSlice, n*int(blk_size))
+    for i := int64(0); i < int64(n); i++ {
+        blk, err := self.ReadBlock(key + i*blk_size)
+        if err != nil {
+            return nil, err
+        }
+        copy(blocks[i*blk_size:(i+1)*blk_size], blk)
+    }
+    return blocks, nil
+}
+
+
 
 // -------------------------------------------------------------------------------
 

@@ -28,7 +28,7 @@ func init() {
     }
 }
 
-func testfile(t *testing.T, path string) file.BlockDevice {
+func testfile(t *testing.T, path string) file.RemovableBlockDevice {
     const CACHESIZE = 10000
     ibf := file.NewBlockFile(path, &buf.NoBuffer{})
     if err := ibf.Open(); err != nil {
@@ -45,7 +45,10 @@ func testfile(t *testing.T, path string) file.BlockDevice {
 
 func Test_records(t *testing.T) {
     f := testfile(t, PATH)
-    defer f.Close()
+    defer func() {
+        if e := f.Close(); e != nil { panic(e) }
+        if e := f.Remove(); e != nil { panic(e) }
+    }()
     bt, err := NewBlockTable(f, 8, 8)
     if err != nil { t.Fatal(err) }
     if bt == nil { t.Fatal(fmt.Errorf("bt == nil")) }
@@ -67,7 +70,10 @@ func Test_records(t *testing.T) {
 func TestGetPutRemoveBlockTable(t *testing.T) {
     const RECORDS = 300
     f := testfile(t, PATH)
-    defer f.Close()
+    defer func() {
+        if e := f.Close(); e != nil { panic(e) }
+        if e := f.Remove(); e != nil { panic(e) }
+    }()
     bt, err := NewBlockTable(f, 8, 255)
     if err != nil { t.Fatal(err) }
 
@@ -212,9 +218,15 @@ func TestGetPutRemoveBlockTable(t *testing.T) {
 func TestGetPutRemoveHashBucket(t *testing.T) {
     const RECORDS = 300
     f := testfile(t, PATH)
-    defer f.Close()
+    defer func() {
+        if e := f.Close(); e != nil { panic(e) }
+        if e := f.Remove(); e != nil { panic(e) }
+    }()
     g := testfile(t, "/tmp/__varchar_store")
-    defer g.Close()
+    defer func() {
+        if e := g.Close(); e != nil { panic(e) }
+        if e := g.Remove(); e != nil { panic(e) }
+    }()
     store, err := NewVarcharStore(g)
     if err != nil { panic(err) }
     hb, err := NewHashBucket(f, 8, store)
@@ -345,7 +357,10 @@ func TestGetPutRemoveHashBucket(t *testing.T) {
 func TestSplitHashBucket(t *testing.T) {
     const RECORDS = 300
     f := testfile(t, PATH)
-    defer f.Close()
+    defer func() {
+        if e := f.Close(); e != nil { panic(e) }
+        if e := f.Remove(); e != nil { panic(e) }
+    }()
     store, err := NewBytesStore(8, 128)
     if err != nil { t.Fatal(err) }
     hb, err := NewHashBucket(f, 8, store)

@@ -19,9 +19,9 @@ type LRUCacheFile struct {
     cache      map[int64]*lru_item
     cache_size int
     lru        *lru
-    keymap     map[int64]int64 "memkey -> diskkey"
-    nextkey    int64
-    free_keys  []int64
+    // keymap     map[int64]int64 "memkey -> diskkey"
+    // nextkey    int64
+    // free_keys  []int64
     userdata   []byte
 }
 
@@ -34,9 +34,9 @@ func NewLRUCacheFile(file RemovableBlockDevice, size uint64) (cf *LRUCacheFile, 
         file:       file,
         cache:      make(map[int64]*lru_item),
         cache_size: cache_size,
-        keymap:     make(map[int64]int64),
-        nextkey:    int64(file.BlockSize()),
-        free_keys:  make([]int64, 0, 100),
+        // keymap:     make(map[int64]int64),
+        // nextkey:    int64(file.BlockSize()),
+        // free_keys:  make([]int64, 0, 100),
         userdata:   make([]byte, file.BlockSize()-CONTROLSIZE),
     }
     cf.lru = newLRU(cache_size, cf.pageout)
@@ -47,6 +47,10 @@ func (self *LRUCacheFile) Close() error {
     if err := self.file.Close(); err != nil {
         return err
     }
+    return nil
+}
+
+func (self *LRUCacheFile) Remove() error {
     return self.file.Remove()
 }
 
@@ -69,39 +73,23 @@ func (self *LRUCacheFile) BlockSize() uint32 { return self.file.BlockSize() }
 
 func (self *LRUCacheFile) Free(key int64) error {
     self.lru.Remove(key)
-    if disk_key, has := self.keymap[key]; has {
-        delete(self.keymap, key)
-        if err := self.file.Free(disk_key); err != nil {
-            return err
-        }
+    if err := self.file.Free(key); err != nil {
+        return err
     }
-    self.free_keys = append(self.free_keys, key)
     return nil
 }
 
 func (self *LRUCacheFile) Allocate() (key int64, err error) {
-    if len(self.free_keys) > 0 {
-        key = self.free_keys[len(self.free_keys)-1]
-        self.free_keys = self.free_keys[:len(self.free_keys)-1]
-    } else {
-        key = self.nextkey
-        self.nextkey += int64(self.file.BlockSize())
+    key, err = self.file.Allocate()
+    if err != nil {
+        return 0, err
     }
-    return key, self.WriteBlock(key, make(bs.ByteSlice, self.file.BlockSize()))
+    block := make(bs.ByteSlice, self.BlockSize())
+    return key, self.WriteBlock(key, block)
 }
 
 func (self *LRUCacheFile) pageout(key int64, block []byte) error {
-    var disk_key int64
-    disk_key, has := self.keymap[key]
-    if !has {
-        var err error
-        disk_key, err = self.file.Allocate()
-        if err != nil {
-            return err
-        }
-        self.keymap[key] = disk_key
-    }
-    return self.file.WriteBlock(disk_key, block)
+    return self.file.WriteBlock(key, block)
 }
 
 func (self *LRUCacheFile) WriteBlock(key int64, block bs.ByteSlice) (err error) {
@@ -111,11 +99,7 @@ func (self *LRUCacheFile) WriteBlock(key int64, block bs.ByteSlice) (err error) 
 func (self *LRUCacheFile) ReadBlock(key int64) (block bs.ByteSlice, err error) {
     block, has := self.lru.Read(key, self.BlockSize())
     if !has {
-        disk_key, has := self.keymap[key]
-        if !has {
-            return nil, fmt.Errorf("disk did not have key")
-        }
-        block, err := self.file.ReadBlock(disk_key)
+        block, err := self.file.ReadBlock(key)
         if err != nil {
             return nil, err
         }
@@ -127,6 +111,19 @@ func (self *LRUCacheFile) ReadBlock(key int64) (block bs.ByteSlice, err error) {
     } else {
         return block, nil
     }
+}
+
+func (self *LRUCacheFile) ReadBlocks(key int64, n int) (blocks bs.ByteSlice, err error) {
+    blk_size := int64(self.BlockSize())
+    blocks = make(bs.ByteSlice, n*int(blk_size))
+    for i := int64(0); i < int64(n); i++ {
+        blk, err := self.ReadBlock(key + i*blk_size)
+        if err != nil {
+            return nil, err
+        }
+        copy(blocks[i*blk_size:(i+1)*blk_size], blk)
+    }
+    return blocks, nil
 }
 
 // -------------------------------------------------------------------------------------
@@ -178,8 +175,11 @@ func (self *lru) Update(p int64, block []byte, fromdisk bool) error {
             // so do nothing.
             return nil
         }
-        for self.size < self.stack.Len() {
+        for self.size < self.stack.Len() && self.stack.Len() > 0{
             e = self.stack.Back()
+            if e == nil {
+                return fmt.Errorf("Element unexpectedly nil %v", self.stack.Len())
+            }
             i := e.Value.(*lru_item)
             if i.dirty {
                 err := self.pageout(i.p, i.bytes)
@@ -195,6 +195,9 @@ func (self *lru) Update(p int64, block []byte, fromdisk bool) error {
             item.dirty = false
         }
         e = self.stack.PushFront(item)
+        if e == nil {
+            return fmt.Errorf("Element unexpectedly nil on insert")
+        }
         self.buffer[p] = e
     }
     return nil

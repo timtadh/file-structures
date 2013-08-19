@@ -258,3 +258,25 @@ func (self *BlockFile) ReadBlock(p int64) (ByteSlice, error) {
     self.buf.Update(p, block)
     return block, nil
 }
+
+func (self *BlockFile) ReadBlocks(p int64, n int) (ByteSlice, error) {
+    if !self.opened {
+        return nil, fmt.Errorf("File is not open")
+    }
+    if b, ok := self.buf.Read(p, self.ctrl.blksize); ok {
+        return b, nil
+    }
+    block := make([]byte, int(self.ctrl.blksize)*n)
+    for pos, err := self.file.Seek(p, 0); pos != p; pos, err = self.file.Seek(p, 0) {
+        if err != nil {
+            return nil, err
+        }
+    }
+    if _, err := self.file.Read(block); err != nil {
+        return nil, err
+    }
+    self.buf.Update(p, block)
+    return block, nil
+}
+
+

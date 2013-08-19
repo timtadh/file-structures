@@ -7,17 +7,47 @@ import (
 )
 
 import (
+    file "file-structures/block/file2"
+    buf "file-structures/block/buffers"
     bs "file-structures/block/byteslice"
 )
 
 func TestMakeCloseVarcharList(t *testing.T) {
-    list := MakeVarcharList(testfile(t))
-    defer list.Close()
+    f := testfile(t)
+    list := MakeVarcharList(f)
+    defer func() {
+        err := list.Close()
+        if err != nil {
+            panic(err)
+        }
+        err = f.Remove()
+        if err != nil {
+            panic(err)
+        }
+    }()
 }
 
 func TestCompleteNewPushReadFreeList(t *testing.T) {
-    list := MakeVarcharList(testfile(t))
-    defer list.Close()
+    my_testfile := func(t *testing.T) file.RemovableBlockDevice {
+        const CACHESIZE = 100000
+        ibf := file.NewBlockFileCustomBlockSize("/tmp/__testCompleteNewPushReadFreeList", &buf.NoBuffer{}, 4096)
+        if err := ibf.Open(); err != nil {
+            t.Fatal(err)
+        }
+        return ibf
+    }
+    f := my_testfile(t)
+    list := MakeVarcharList(f)
+    defer func() {
+        err := list.Close()
+        if err != nil {
+            panic(err)
+        }
+        err = f.Remove()
+        if err != nil {
+            panic(err)
+        }
+    }()
 
     lists := make([][]bs.ByteSlice, 1)
     list_keys := make([]int64, 1)
@@ -78,11 +108,29 @@ func TestCompleteNewPushReadFreeList(t *testing.T) {
 }
 
 func TestNewPushReadFreeVarcharList(t *testing.T) {
-    list := MakeVarcharList(testfile(t))
-    defer list.Close()
+    my_testfile := func(t *testing.T) file.RemovableBlockDevice {
+        const CACHESIZE = 100000
+        ibf := file.NewBlockFileCustomBlockSize("/tmp/__testNewPushReadFreeVarchar", &buf.NoBuffer{}, 4096)
+        if err := ibf.Open(); err != nil {
+            t.Fatal(err)
+        }
+        return ibf
+    }
+    f := my_testfile(t)
+    list := MakeVarcharList(f)
+    defer func() {
+        err := list.Close()
+        if err != nil {
+            panic(err)
+        }
+        err = f.Remove()
+        if err != nil {
+            panic(err)
+        }
+    }()
 
-    lists := make([][]bs.ByteSlice, 1000)
-    list_keys := make([]int64, 1000)
+    lists := make([][]bs.ByteSlice, 100)
+    list_keys := make([]int64, 100)
     for i := range list_keys {
         key, err := list.New()
         if err != nil {

@@ -126,12 +126,12 @@ func TestBytesKVStore(t *testing.T) {
     test(bs)
 
     f := testfile(t, "/tmp/__varchar_store")
-    defer f.Close()
+    defer func() {
+        if e := f.Close(); e != nil { panic(e) }
+        if e := f.Remove(); e != nil { panic(e) }
+    }()
     varchar, err := NewVarcharStore(f)
     if err != nil { panic(err) }
     test(varchar)
-
-
-
 }
 

@@ -41,7 +41,7 @@ func randslice(length int) bs.ByteSlice {
     panic("unreachable")
 }
 
-func testfile(t *testing.T) file.BlockDevice {
+func testfile(t *testing.T) file.RemovableBlockDevice {
     const CACHESIZE = 100000
     ibf := file.NewBlockFileCustomBlockSize(PATH, &buf.NoBuffer{}, 4096)
     if err := ibf.Open(); err != nil {
@@ -55,18 +55,38 @@ func testfile(t *testing.T) file.BlockDevice {
 }
 
 func TestNewVarchar(t *testing.T) {
-    if v, err := NewVarchar(testfile(t)); err != nil {
+    f := testfile(t)
+    if v, err := NewVarchar(f); err != nil {
         t.Fatal(err)
     } else if v == nil {
         t.Fatal("Expected a initialized Varchar got nil")
     } else {
-        v.Close()
+        defer func() {
+            err := v.Close()
+            if err != nil {
+                panic(err)
+            }
+            err = f.Remove()
+            if err != nil {
+                panic(err)
+            }
+        }()
     }
 }
 
 func TestAllocateLengthBlocksFree(t *testing.T) {
-    varchar, _ := NewVarchar(testfile(t))
-    defer varchar.Close()
+    f := testfile(t)
+    varchar, _ := NewVarchar(f)
+    defer func() {
+        err := varchar.Close()
+        if err != nil {
+            panic(err)
+        }
+        err = f.Remove()
+        if err != nil {
+            panic(err)
+        }
+    }()
 
     check := func(key int64, blocks []*block, err error, num_blocks int, length uint64) error {
         if err != nil {
@@ -222,8 +242,18 @@ func TestAllocateLengthBlocksFree(t *testing.T) {
 }
 
 func TestReadWriteUpdateRemove(t *testing.T) {
-    varchar, _ := NewVarchar(testfile(t))
-    defer varchar.Close()
+    f := testfile(t)
+    varchar, _ := NewVarchar(f)
+    defer func() {
+        err := varchar.Close()
+        if err != nil {
+            panic(err)
+        }
+        err = f.Remove()
+        if err != nil {
+            panic(err)
+        }
+    }()
 
     var err error
     var k1, k2, k3, k4, k5, k6, k7 int64

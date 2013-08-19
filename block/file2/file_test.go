@@ -270,7 +270,7 @@ func TestGenericWriteRead(t *testing.T) {
 
 func TestPageOut(t *testing.T) {
     const ITEMS = 1000
-    const CACHESIZE = 950
+    const CACHESIZE = 5
 
     test := func(f BlockDevice) {
         var keys []int64

@@ -43,7 +43,7 @@ func randslice(length int) bs.ByteSlice {
     panic("unreachable")
 }
 
-func testfile(t *testing.T, path string) file.BlockDevice {
+func testfile(t *testing.T, path string) file.RemovableBlockDevice {
     const CACHESIZE = 10000
     ibf := file.NewBlockFile(path, &buf.NoBuffer{})
     if err := ibf.Open(); err != nil {
@@ -58,11 +58,18 @@ func testfile(t *testing.T, path string) file.BlockDevice {
 
 func TestNewLinearHash(t *testing.T) {
     g := testfile(t, VPATH)
-    defer g.Close()
+    defer func() {
+        if e := g.Close(); e != nil { panic(e) }
+        if e := g.Remove(); e != nil { panic(e) }
+    }()
     store, err := bucket.NewVarcharStore(g)
     if err != nil { panic(err) }
-    linhash, err := NewLinearHash(testfile(t, PATH), store)
-    defer linhash.Close()
+    f := testfile(t, PATH)
+    defer func() {
+        if e := f.Close(); e != nil { panic(e) }
+        if e := f.Remove(); e != nil { panic(e) }
+    }()
+    _, err = NewLinearHash(f, store)
     if err != nil {
         t.Fatal(err)
     }
@@ -72,11 +79,18 @@ func TestPutHasGetRemoveLinearHash(t *testing.T) {
     fmt.Println("start test")
     const RECORDS = 300
     g := testfile(t, VPATH)
-    defer g.Close()
+    defer func() {
+        if e := g.Close(); e != nil { panic(e) }
+        if e := g.Remove(); e != nil { panic(e) }
+    }()
     store, err := bucket.NewVarcharStore(g)
     if err != nil { panic(err) }
-    linhash, err := NewLinearHash(testfile(t, PATH), store)
-    defer linhash.Close()
+    f := testfile(t, PATH)
+    defer func() {
+        if e := f.Close(); e != nil { panic(e) }
+        if e := f.Remove(); e != nil { panic(e) }
+    }()
+    linhash, err := NewLinearHash(f, store)
     if err != nil {
         t.Fatal(err)
     }

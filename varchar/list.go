@@ -9,7 +9,7 @@ import (
     file "file-structures/block/file2"
 )
 
-const RUN_SIZE = 512
+const RUN_SIZE = 128
 const LIST_HEADER_LEN = 52
 
 type list_header struct {
@@ -66,6 +66,10 @@ func load_list_block(file file.BlockDevice, key int64) (self *list_block, err er
     if err != nil {
         return nil, err
     }
+    return load_list_block_from_bytes(file, key, bytes)
+}
+
+func load_list_block_from_bytes(file file.BlockDevice, key int64, bytes bs.ByteSlice) (self *list_block, err error) {
     data := bytes[LIST_HEADER_LEN:]
     header := load_list_header(bytes)
     self = &list_block{
@@ -94,11 +98,16 @@ func (self *list_block) Free() (err error) {
 }
 
 func (self list_blocks) Write() (err error) {
+    keys := make(map[int64]bool)
     for _, blk := range self {
+        if _, has := keys[blk.key]; has {
+            panic("double write")
+        }
         err = blk.Write()
         if err != nil {
             return err
         }
+        keys[blk.key] = true
     }
     return nil
 }
@@ -195,6 +204,9 @@ func (self *VarcharList) New() (key int64, err error) {
     if err != nil {
         return 0, err
     }
+    if blk.header.insert_point == 0 {
+        panic("in New insert_point == 0")
+    }
     err = blk.Write()
     if err != nil {
         return 0, err
@@ -245,7 +257,7 @@ func (self *VarcharList) alloc_block(hblk *list_block) (block_key int64, err err
 // hblk will be dirtied by this function. hblk will be dirtied but not added to the dirt list.
 // the new block will be in the dirty list.
 
-func (self *VarcharList) new_list_block(hblk *list_block) (block *list_block, dirty list_blocks, err error) {
+func (self *VarcharList) new_list_block(hblk *list_block) (block *list_block, err error) {
     block_key, err := self.alloc_block(hblk)
     if err != nil {
         panic(err)
@@ -254,8 +266,7 @@ func (self *VarcharList) new_list_block(hblk *list_block) (block *list_block, di
     if err != nil {
         panic(err)
     }
-    dirty = append(dirty, blk)
-    return blk, dirty, nil
+    return blk, nil
 }
 
 // note all allocated blocks will be in the dirty list but not all dirty will be
@@ -271,7 +282,11 @@ func (self *VarcharList) alloc(list_key int64, amt int64) (item_key int64, hblk 
             hblk = nil
             dirty = nil
             allocated = nil
-            err = e.(error)
+            var ok bool
+            err, ok = e.(error)
+            if !ok {
+                panic(e)
+            }
         }
         return
     }()
@@ -293,13 +308,11 @@ func (self *VarcharList) alloc(list_key int64, amt int64) (item_key int64, hblk 
     }
 
     append_block := func() *list_block {
-        blk, dirt, err := self.new_list_block(hblk)
+        blk, err := self.new_list_block(hblk)
         if err != nil {
             panic(err)
         }
-        for _, blk := range dirt {
-            dirty = append(dirty, blk)
-        }
+        dirty = append(dirty, blk)
 
         tail.header.next = blk.key
         hblk.header.tail = blk.key
@@ -313,7 +326,7 @@ func (self *VarcharList) alloc(list_key int64, amt int64) (item_key int64, hblk 
     calc_start := func() int64 {
         start := hblk.header.insert_point - tail.key
         if start < LIST_HEADER_LEN {
-            panic(fmt.Errorf("VarcharList.alloc insert_point is non-sense %v %v", hblk.header.insert_point, start))
+            panic(fmt.Errorf("VarcharList.alloc insert_point is non-sense %v %v %v", hblk.key, hblk.header.insert_point, start))
         }
         return start
     }
@@ -433,6 +446,20 @@ func (self *VarcharList) Push(key int64, raw_bytes bs.ByteSlice) (err error) {
     if err != nil {
         return err
     }
+    has_hblk := false
+    for _, blk := range dirty {
+        if blk.key == hblk.key && !has_hblk {
+            has_hblk = true
+        } else if blk.key == hblk.key {
+            panic("2 copies of hblk")
+        }
+    }
+    if !has_hblk {
+        panic(fmt.Errorf("dirty did not have header"))
+    }
+    if hblk.header.insert_point == 0 {
+        panic(fmt.Errorf("insert_point was 0"))
+    }
     start_blk := blocks[0]
     offset := item_key - start_blk.key
     ramt := start_blk.bytes[offset : offset+4].Int32()
@@ -445,22 +472,48 @@ func (self *VarcharList) Push(key int64, raw_bytes bs.ByteSlice) (err error) {
 }
 
 func (self *VarcharList) get_blocks(list_key int64) (blocks list_blocks, err error) {
+    defer func() {
+        if e := recover(); e != nil {
+            blocks = nil
+            err = e.(error)
+        }
+        return
+    }()
+
+    load_run := func(first int64) (run_blocks list_blocks) {
+        blocks, err := self.file.ReadBlocks(first, RUN_SIZE)
+        if err != nil {
+            panic(err)
+        }
+        blk_size := int64(self.file.BlockSize())
+        for i := int64(0); i < RUN_SIZE; i++ {
+            bytes := blocks[i*blk_size:(i+1)*blk_size]
+            blk, err := load_list_block_from_bytes(self.file, first + i*blk_size, bytes)
+            if err != nil {
+                panic(err)
+            }
+            run_blocks = append(run_blocks, blk)
+        }
+        return run_blocks
+    }
+
     hblk, err := load_list_block(self.file, list_key)
     if err != nil {
         return nil, err
     }
-    blocks = make(list_blocks, 0, hblk.header.block_count)
+    blocks = make(list_blocks, 0, hblk.header.block_count + RUN_SIZE)
     blocks = append(blocks, hblk)
-    cur := hblk
-    for i := uint32(1); i < hblk.header.block_count; i++ {
-        blk, err := load_list_block(self.file, cur.header.next)
-        if err != nil {
-            return nil, err
+
+    last := hblk
+    for i := uint32(1); i < hblk.header.block_count; i += RUN_SIZE {
+        run := load_run(last.header.next)
+        for _, blk := range run {
+            blocks = append(blocks, blk)
         }
-        blocks = append(blocks, blk)
-        cur = blk
+        last = run[len(run)-1]
     }
-    return blocks, nil
+
+    return blocks[:hblk.header.block_count], nil
 }
 
 func (self *VarcharList) GetList(key int64) (bytes_list []bs.ByteSlice, err error) {
