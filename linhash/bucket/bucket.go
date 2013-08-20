@@ -124,6 +124,7 @@ func (self *BlockTable) _records() (records []*record) {
     valsize := int(self.header.valsize)
     rec_size := keysize + valsize
     length := self.records_per_blk()
+    structs := make([]record, length*len(self.blocks))
     records = make([]*record, length*len(self.blocks))
     offset := 0
     for j, blk := range self.blocks {
@@ -131,10 +132,9 @@ func (self *BlockTable) _records() (records []*record) {
         for i := 0; i < length; i++ {
             end := blk_offset + rec_size
             recbytes := blk.data[blk_offset:end]
-            records[j*length+i] = &record{
-                key: recbytes[:keysize],
-                value: recbytes[keysize:],
-            }
+            structs[j*length+i].key = recbytes[:keysize]
+            structs[j*length+i].value = recbytes[keysize:]
+            records[j*length+i] = &(structs[j*length+i])
             blk_offset = end
         }
         offset += length
