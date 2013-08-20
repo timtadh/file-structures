@@ -9,7 +9,7 @@ import (
     file "file-structures/block/file2"
 )
 
-const RUN_SIZE = 128
+const RUN_SIZE = 16
 const LIST_HEADER_LEN = 52
 
 type list_header struct {
