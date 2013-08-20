@@ -19,9 +19,6 @@ type LRUCacheFile struct {
     cache      map[int64]*lru_item
     cache_size int
     lru        *lru
-    // keymap     map[int64]int64 "memkey -> diskkey"
-    // nextkey    int64
-    // free_keys  []int64
     userdata   []byte
 }
 
@@ -34,12 +31,31 @@ func NewLRUCacheFile(file RemovableBlockDevice, size uint64) (cf *LRUCacheFile, 
         file:       file,
         cache:      make(map[int64]*lru_item),
         cache_size: cache_size,
-        // keymap:     make(map[int64]int64),
-        // nextkey:    int64(file.BlockSize()),
-        // free_keys:  make([]int64, 0, 100),
         userdata:   make([]byte, file.BlockSize()-CONTROLSIZE),
     }
     cf.lru = newLRU(cache_size, cf.pageout)
+    return cf, nil
+}
+
+func OpenLRUCacheFile(file RemovableBlockDevice, size uint64) (cf *LRUCacheFile, err error) {
+    cache_size := 0
+    if size > 0 {
+        cache_size = 1 + int(size/uint64(file.BlockSize()))
+    }
+    cf = &LRUCacheFile{
+        file:       file,
+        cache:      make(map[int64]*lru_item),
+        cache_size: cache_size,
+    }
+    cf.lru = newLRU(cache_size, cf.pageout)
+    data, err := cf.file.ControlData()
+    if err != nil {
+        return nil, err
+    }
+    err = cf.SetControlData(data)
+    if err != nil {
+        return nil, err
+    }
     return cf, nil
 }
 
@@ -52,6 +68,14 @@ func (self *LRUCacheFile) Close() error {
 
 func (self *LRUCacheFile) Remove() error {
     return self.file.Remove()
+}
+
+func (self *LRUCacheFile) Persist() error {
+    err := self.lru.Persist()
+    if err != nil {
+        return err
+    }
+    return self.file.SetControlData(self.userdata)
 }
 
 func (self *LRUCacheFile) ControlData() (data bs.ByteSlice, err error) {
@@ -84,8 +108,7 @@ func (self *LRUCacheFile) Allocate() (key int64, err error) {
     if err != nil {
         return 0, err
     }
-    block := make(bs.ByteSlice, self.BlockSize())
-    return key, self.WriteBlock(key, block)
+    return key, nil
 }
 
 func (self *LRUCacheFile) pageout(key int64, block []byte) error {
@@ -156,6 +179,25 @@ func (self *lru) Size() int { return self.size }
 
 func (self *lru) Remove(p int64) {
     self.Update(p, nil, false)
+}
+
+func (self *lru) Persist() error {
+    for self.stack.Len() > 0 {
+        e := self.stack.Back()
+        if e == nil {
+            return fmt.Errorf("Element unexpectedly nil %v", self.stack.Len())
+        }
+        i := e.Value.(*lru_item)
+        if i.dirty {
+            err := self.pageout(i.p, i.bytes)
+            if err != nil {
+                return err
+            }
+        }
+        delete(self.buffer, i.p)
+        self.stack.Remove(e)
+    }
+    return nil
 }
 
 func (self *lru) Update(p int64, block []byte, fromdisk bool) error {

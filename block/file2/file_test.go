@@ -368,3 +368,135 @@ func TestPageOut(t *testing.T) {
     lrucf.Close()
     cleanup(rbf.Path())
 }
+
+func TestPersist(t *testing.T) {
+    const ITEMS = 1000
+    const CACHESIZE = 5
+
+    test := func(f *LRUCacheFile, path string) {
+        var keys []int64
+        for i := 1; i <= ITEMS; i++ {
+            var err error
+            var P int64
+            if P, err = f.Allocate(); err != nil {
+                t.Fatal(err)
+            }
+            keys = append(keys, P)
+            blk := make([]byte, f.BlockSize())
+            for i := range blk {
+                blk[i] = byte(P)
+            }
+
+            if err := f.WriteBlock(P, blk); err != nil {
+                t.Fatal(err)
+            }
+
+            R := keys[rand.Intn(len(keys)/2+1)]
+            // t.Logf("key = %d", P)
+            if rblk, err := f.ReadBlock(R); err != nil {
+                t.Fatal(err)
+            } else if len(rblk) != int(f.BlockSize()) {
+                t.Fatalf("Expected len(rblk) == %d got %d", f.BlockSize(), len(rblk))
+            } else {
+                for i, b := range rblk {
+                    if b != byte(R) {
+                        t.Fatalf("Expected rblk[%d] == 0xf got %d", i, b)
+                    }
+                }
+            }
+
+            if rblk, err := f.ReadBlock(P); err != nil {
+                t.Fatal(err)
+            } else if len(rblk) != int(f.BlockSize()) {
+                t.Fatalf("Expected len(rblk) == %d got %d", f.BlockSize(), len(rblk))
+            } else {
+                for i, b := range rblk {
+                    if b != byte(P) {
+                        t.Fatalf("Expected rblk[%d] == 0xf got %d", i, b)
+                    }
+                }
+            }
+        }
+
+        for i := 1; i <= ITEMS*5; i++ {
+            P := keys[rand.Intn(len(keys))]
+            keys = append(keys, P)
+            blk := make([]byte, f.BlockSize())
+            for i := range blk {
+                blk[i] = byte(P)
+            }
+            if err := f.WriteBlock(P, blk); err != nil {
+                t.Fatal(err)
+            }
+        }
+
+        if err := f.Persist(); err != nil {
+            t.Fatal(err)
+        }
+        if err := f.Close(); err != nil {
+            t.Fatal(err)
+        }
+
+        rbf := NewBlockFile(path, &buf.NoBuffer{})
+        if err := rbf.Open(); err != nil {
+            t.Fatal(err)
+        }
+
+        for i := 1; i <= ITEMS*5; i++ {
+            P := keys[rand.Intn(len(keys))]
+            if rblk, err := rbf.ReadBlock(P); err != nil {
+                t.Fatal(err)
+            } else if len(rblk) != int(rbf.BlockSize()) {
+                t.Fatalf("Expected len(rblk) == %d got %d", rbf.BlockSize(), len(rblk))
+            } else {
+                for i, b := range rblk {
+                    if b != byte(P) {
+                        t.Fatalf("Expected rblk[%d] == 0xf got %d", i, b)
+                    }
+                }
+            }
+        }
+        if err := rbf.Close(); err != nil {
+            t.Fatal(err)
+        }
+
+        rbf = NewBlockFile(path, &buf.NoBuffer{})
+        if err := rbf.Open(); err != nil {
+            t.Fatal(err)
+        }
+        f, err := OpenLRUCacheFile(rbf, CACHESIZE)
+        if err != nil {
+            t.Fatal(err)
+        }
+
+        for i := 1; i <= ITEMS*5; i++ {
+            P := keys[rand.Intn(len(keys))]
+            if rblk, err := f.ReadBlock(P); err != nil {
+                t.Fatal(err)
+            } else if len(rblk) != int(f.BlockSize()) {
+                t.Fatalf("Expected len(rblk) == %d got %d", f.BlockSize(), len(rblk))
+            } else {
+                for i, b := range rblk {
+                    if b != byte(P) {
+                        t.Fatalf("Expected rblk[%d] == 0xf got %d", i, b)
+                    }
+                }
+            }
+        }
+        if err := f.Close(); err != nil {
+            t.Fatal(err)
+        }
+    }
+
+    rbf := NewBlockFile(PATH, &buf.NoBuffer{})
+    if err := rbf.Open(); err != nil {
+        t.Fatal(err)
+    }
+    lrucf, err := NewLRUCacheFile(rbf, CACHESIZE)
+    if err != nil {
+        t.Fatal(err)
+    }
+    test(lrucf, rbf.Path())
+    cleanup(rbf.Path())
+}
+
