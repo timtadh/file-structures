@@ -3,15 +3,15 @@
 package file2
 
 import "os"
+import "syscall"
 
 /*
 The O_DIRECT flag seems to lower performance. So I am turning it off. O_SYNC
 flag REALLY lowers performance.
 */
-import "syscall"
-var OPENFLAG = os.O_RDWR | os.O_CREATE | syscall.O_DIRECT | syscall.O_NOATIME // | os.O_SYNC
+// var OPENFLAG = os.O_RDWR | os.O_CREATE | syscall.O_DIRECT | syscall.O_NOATIME // | os.O_SYNC
 
-// var OPENFLAG = os.O_RDWR | os.O_CREATE
+var OPENFLAG = os.O_RDWR | os.O_CREATE | syscall.O_NOATIME
 
 func (self *BlockFile) open() error {
     // the O_DIRECT flag turns off os buffering of pages allow us to do it manually
