@@ -104,11 +104,11 @@ func (self *LRUCacheFile) Free(key int64) error {
 }
 
 func (self *LRUCacheFile) Allocate() (key int64, err error) {
-    key, err = self.file.Allocate()
-    if err != nil {
-        return 0, err
-    }
-    return key, nil
+    return self.file.Allocate()
+}
+
+func (self *LRUCacheFile) AllocateBlocks(n int) (key int64, err error) {
+    return self.file.AllocateBlocks(n)
 }
 
 func (self *LRUCacheFile) pageout(key int64, block []byte) error {

@@ -100,6 +100,19 @@ func (self *LFUCacheFile) Allocate() (key int64, err error) {
     return key, self.WriteBlock(key, make(bs.ByteSlice, self.file.BlockSize()))
 }
 
+func (self *LFUCacheFile) AllocateBlocks(n int) (key int64, err error) {
+    key = self.nextkey
+    self.nextkey += int64(self.file.BlockSize())*int64(n)
+    for i := 0; i < n; i++ {
+        ckey := key + int64(self.file.BlockSize())*int64(i)
+        err = self.WriteBlock(ckey, make(bs.ByteSlice, self.file.BlockSize()))
+        if err != nil {
+            return 0, err
+        }
+    }
+    return key, err
+}
+
 func (self *LFUCacheFile) writeFile(key int64, count int, block bs.ByteSlice) (err error) {
     var disk_key int64
     disk_key, has := self.keymap[key]

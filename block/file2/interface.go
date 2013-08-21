@@ -27,6 +27,7 @@ type BlockReadWriter interface {
 type BlockAllocator interface {
     Free(key int64) error
     Allocate() (key int64, err error)
+    AllocateBlocks(n int) (key int64, err error)
 }
 
 type Closer interface {

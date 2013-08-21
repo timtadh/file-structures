@@ -199,12 +199,13 @@ func (self *BlockFile) pop_free() (pos int64, err error) {
     return pos, err
 }
 
-func (self *BlockFile) alloc() (pos int64, err error) {
+func (self *BlockFile) alloc(n int) (pos int64, err error) {
     var size uint64
+    amt := uint64(self.ctrl.blksize) * uint64(n)
     if size, err = self.Size(); err != nil {
         return 0, err
     }
-    if err := self.resize(int64(size + uint64(self.ctrl.blksize))); err != nil {
+    if err := self.resize(int64(size + amt)); err != nil {
         return 0, err
     }
     return int64(size), nil
@@ -212,9 +213,13 @@ func (self *BlockFile) alloc() (pos int64, err error) {
 
 func (self *BlockFile) Allocate() (pos int64, err error) {
     if self.ctrl.free_len == 0 {
-        return self.alloc()
+        return self.alloc(1)
     }
     return self.pop_free()
+}
+
+func (self *BlockFile) AllocateBlocks(n int) (pos int64, err error) {
+    return self.alloc(n)
 }
 
 func (self *BlockFile) WriteBlock(p int64, block ByteSlice) error {
