@@ -59,7 +59,7 @@ func TestCompleteNewPushReadFreeList(t *testing.T) {
         list_keys[i] = key
     }
 
-    for j := 0; j < 4096*5; j++ {
+    for j := 0; j < 1024*1; j++ {
         for i := range lists {
             item := randslice(j + 1)
             lists[i] = append(lists[i], item)

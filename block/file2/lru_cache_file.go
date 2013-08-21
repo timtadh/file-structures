@@ -137,16 +137,33 @@ func (self *LRUCacheFile) ReadBlock(key int64) (block bs.ByteSlice, err error) {
 }
 
 func (self *LRUCacheFile) ReadBlocks(key int64, n int) (blocks bs.ByteSlice, err error) {
-    blk_size := int64(self.BlockSize())
-    blocks = make(bs.ByteSlice, n*int(blk_size))
-    for i := int64(0); i < int64(n); i++ {
-        blk, err := self.ReadBlock(key + i*blk_size)
-        if err != nil {
-            return nil, err
+    buffer_read := func() bool {
+        ckey := key
+        for i := 0; i < n; i++ {
+            if self.lru.Has(ckey) {
+                return true
+            }
+            ckey += int64(self.BlockSize())
         }
-        copy(blocks[i*blk_size:(i+1)*blk_size], blk)
+        return false
+    }()
+
+    if buffer_read {
+        blk_size := int64(self.BlockSize())
+        blocks = make(bs.ByteSlice, n*int(blk_size))
+        for i := int64(0); i < int64(n); i++ {
+            blk, err := self.ReadBlock(key + i*blk_size)
+            if err != nil {
+                return nil, err
+            }
+            copy(blocks[i*blk_size:(i+1)*blk_size], blk)
+        }
+        return blocks, nil
+    } else {
+        return self.file.ReadBlocks(key, n)
+        // we aren't saving it the cache on purpose. This could read a bunch of one use
+        // blocks
     }
-    return blocks, nil
 }
 
 // -------------------------------------------------------------------------------------
@@ -198,6 +215,11 @@ func (self *lru) Persist() error {
         self.stack.Remove(e)
     }
     return nil
+}
+
+func (self *lru) Has(p int64) bool {
+    _, has := self.buffer[p]
+    return has
 }
 
 func (self *lru) Update(p int64, block []byte, fromdisk bool) error {

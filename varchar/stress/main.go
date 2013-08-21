@@ -118,7 +118,7 @@ func randslice(length int) bs.ByteSlice {
     panic("unreachable")
 }
 
-func testfile(path string) file.BlockDevice {
+func testfile(path string) file.RemovableBlockDevice {
     ibf := file.NewBlockFileCustomBlockSize(path, &buf.NoBuffer{}, 4096*1)
     if err := ibf.Open(); err != nil {
         panic(err)
@@ -228,7 +228,11 @@ func read(list_path, keys_path string) {
         }
     }
 
-    list := varchar.MakeVarcharList(testfile(list_path))
+    ibf := testfile(list_path)
+    cf, err := file.OpenLRUCacheFile(ibf, 1024*1024*12)
+    if err != nil { panic(err) }
+
+    list := varchar.MakeVarcharList(cf)
     defer list.Close()
 
     err = pprof.StartCPUProfile(profile_writer)

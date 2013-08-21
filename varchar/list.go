@@ -9,7 +9,7 @@ import (
     file "file-structures/block/file2"
 )
 
-const RUN_SIZE = 16
+const RUN_SIZE = 512
 const LIST_HEADER_LEN = 52
 
 type list_header struct {
@@ -212,6 +212,14 @@ func (self *VarcharList) New() (key int64, err error) {
         return 0, err
     }
     return blk.key, nil
+}
+
+func (self *VarcharList) ListLength(list_key int64) (length uint32, err error) {
+    hblk, err := load_list_block(self.file, list_key)
+    if err != nil {
+        return 0, err
+    }
+    return hblk.header.list_length, nil
 }
 
 // hblk will be dirtied by this function.
@@ -516,11 +524,12 @@ func (self *VarcharList) get_blocks(list_key int64) (blocks list_blocks, err err
     return blocks[:hblk.header.block_count], nil
 }
 
-func (self *VarcharList) GetList(key int64) (bytes_list []bs.ByteSlice, err error) {
+// This is (surprisingly) a thread safe operation because it reads all the blocks before it returns
+func (self *VarcharList) AsyncGetList(key int64, send chan<- bs.ByteSlice, quit <-chan bool) (length uint32, err error) {
     // fmt.Println()
     blocks, err := self.get_blocks(key)
     if err != nil {
-        return nil, err
+        return 0, err
     }
     header := blocks[0].header
     read := func(offset int64, amt uint32, block *list_block) (left uint32, bytes bs.ByteSlice) {
@@ -565,17 +574,41 @@ func (self *VarcharList) GetList(key int64) (bytes_list []bs.ByteSlice, err erro
         // fmt.Println("VarcharList.GetList.read_item", i, length)
         return bytes, stop, blocks[i-1:] //wrong
     }
-    offset := int64(0)
-    bytes_list = make([]bs.ByteSlice, 0, header.list_length)
-    // fmt.Println("VarcharList.GetList", blocks[0].bytes)
-    for i := uint32(0); i < header.list_length; i++ {
-        // fmt.Println()
-        var item bs.ByteSlice
-        item, offset, blocks = read_item(offset, blocks)
-        bytes_list = append(bytes_list, item)
-        // fmt.Println("VarcharList.GetList len(bytes_list)", len(bytes_list), len(item))
+
+    go func() {
+        offset := int64(0)
+        // fmt.Println("VarcharList.GetList", blocks[0].bytes)
+        forloop: for i := uint32(0); i < header.list_length; i++ {
+            // fmt.Println()
+            var item bs.ByteSlice
+            item, offset, blocks = read_item(offset, blocks)
+            select {
+            case send<-item:
+            case <-quit:
+                break forloop
+            }
+            // fmt.Println("VarcharList.GetList len(bytes_list)", len(bytes_list), len(item))
+        }
+        close(send)
+    }()
+
+    return header.list_length, nil
+}
+
+func (self *VarcharList) GetList(key int64) (list_bytes []bs.ByteSlice, err error) {
+    output := make(chan bs.ByteSlice)
+    quit := make(chan bool)
+    length, err := self.AsyncGetList(key, output, quit)
+    if err != nil {
+        return nil, err
     }
-    return bytes_list, nil
+
+    list_bytes = make([]bs.ByteSlice, 0, length)
+    for item := range output {
+        list_bytes = append(list_bytes, item)
+    }
+    close(quit)
+    return list_bytes, nil
 }
 
 func (self *VarcharList) Free(key int64) (err error) {
@@ -585,3 +618,4 @@ func (self *VarcharList) Free(key int64) (err error) {
     }
     return blocks.Free()
 }
+
