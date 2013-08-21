@@ -128,8 +128,8 @@ func testfile(path string) file.RemovableBlockDevice {
 
 const item_base_size = 4096 // 100
 const item_variance = 1 // 4096*5
-const list_base_size = 23
-const list_variance = 830*2
+const list_base_size = 830 // 23
+const list_variance = 1 // 830*2
 const list_count = 10
 
 func create(list_path, keys_path string) {
