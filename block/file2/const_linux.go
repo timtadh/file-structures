@@ -9,7 +9,7 @@ The O_DIRECT flag seems to lower performance. So I am turning it off. O_SYNC
 flag REALLY lowers performance.
 */
 import "syscall"
-var OPENFLAG = os.O_RDWR | os.O_CREATE | syscall.O_DIRECT // | os.O_SYNC
+var OPENFLAG = os.O_RDWR | os.O_CREATE | syscall.O_DIRECT | syscall.O_NOATIME // | os.O_SYNC
 
 // var OPENFLAG = os.O_RDWR | os.O_CREATE
 
