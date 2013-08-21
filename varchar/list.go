@@ -9,7 +9,7 @@ import (
     file "file-structures/block/file2"
 )
 
-const RUN_SIZE = 512
+const RUN_SIZE = 128
 const LIST_HEADER_LEN = 52
 
 type list_header struct {
@@ -214,14 +214,6 @@ func (self *VarcharList) New() (key int64, err error) {
     return blk.key, nil
 }
 
-func (self *VarcharList) ListLength(list_key int64) (length uint32, err error) {
-    hblk, err := load_list_block(self.file, list_key)
-    if err != nil {
-        return 0, err
-    }
-    return hblk.header.list_length, nil
-}
-
 // hblk will be dirtied by this function.
 
 func (self *VarcharList) alloc_block(hblk *list_block) (block_key int64, err error) {
@@ -232,18 +224,12 @@ func (self *VarcharList) alloc_block(hblk *list_block) (block_key int64, err err
         }
         return
     }()
-    alloc_run := func() (run []int64) {
-        run = make([]int64, RUN_SIZE)
-        pkey := int64(0)
-        for i := range run {
-            key, err := self.file.Allocate()
-            if err != nil { panic(key) }
-            if pkey != 0 && pkey + int64(self.file.BlockSize()) != key {
-                panic(fmt.Errorf("Expected key to be in run, it was outside of it"))
-            }
-            run[i] = key
+    alloc_run := func() (first int64, length int) {
+        first, err := self.file.AllocateBlocks(RUN_SIZE)
+        if err != nil {
+            panic(err)
         }
-        return run
+        return first, RUN_SIZE
     }
 
     if hblk.header.run_remaining > 0 {
@@ -255,9 +241,9 @@ func (self *VarcharList) alloc_block(hblk *list_block) (block_key int64, err err
         }
         return block_key, nil
     } else {
-        run := alloc_run()
-        hblk.header.next_block = run[0]
-        hblk.header.run_remaining = uint32(len(run))
+        first, length := alloc_run()
+        hblk.header.next_block = first
+        hblk.header.run_remaining = uint32(length)
         return self.alloc_block(hblk)
     }
 }
@@ -481,20 +467,24 @@ func (self *VarcharList) Push(key int64, raw_bytes bs.ByteSlice) (err error) {
 
 func (self *VarcharList) get_blocks(list_key int64) (blocks list_blocks, err error) {
     defer func() {
-        if e := recover(); e != nil {
-            blocks = nil
-            err = e.(error)
-        }
+        // if e := recover(); e != nil {
+            // blocks = nil
+            // err = e.(error)
+        // }
         return
     }()
 
-    load_run := func(first int64) (run_blocks list_blocks) {
-        blocks, err := self.file.ReadBlocks(first, RUN_SIZE)
+    load_run := func(first int64, left uint32) (run_blocks list_blocks) {
+        READ_SIZE := int64(RUN_SIZE)
+        if left < RUN_SIZE {
+            READ_SIZE = int64(left)
+        }
+        blocks, err := self.file.ReadBlocks(first, int(READ_SIZE))
         if err != nil {
             panic(err)
         }
         blk_size := int64(self.file.BlockSize())
-        for i := int64(0); i < RUN_SIZE; i++ {
+        for i := int64(0); i < READ_SIZE; i++ {
             bytes := blocks[i*blk_size:(i+1)*blk_size]
             blk, err := load_list_block_from_bytes(self.file, first + i*blk_size, bytes)
             if err != nil {
@@ -509,27 +499,27 @@ func (self *VarcharList) get_blocks(list_key int64) (blocks list_blocks, err err
     if err != nil {
         return nil, err
     }
-    blocks = make(list_blocks, 0, hblk.header.block_count + RUN_SIZE)
-    blocks = append(blocks, hblk)
+    blocks = make(list_blocks, hblk.header.block_count)
+    blocks[0] = hblk
 
     last := hblk
-    for i := uint32(1); i < hblk.header.block_count; i += RUN_SIZE {
-        run := load_run(last.header.next)
+    for i := uint32(1); i < hblk.header.block_count; {
+        run := load_run(last.header.next, hblk.header.block_count - i)
         for _, blk := range run {
-            blocks = append(blocks, blk)
+            blocks[i] = blk
+            i += 1
         }
         last = run[len(run)-1]
     }
 
-    return blocks[:hblk.header.block_count], nil
+    return blocks, nil
 }
 
-// This is (surprisingly) a thread safe operation because it reads all the blocks before it returns
-func (self *VarcharList) AsyncGetList(key int64, send chan<- bs.ByteSlice, quit <-chan bool) (length uint32, err error) {
+func (self *VarcharList) GetList(key int64) (bytes_list []bs.ByteSlice, err error) {
     // fmt.Println()
     blocks, err := self.get_blocks(key)
     if err != nil {
-        return 0, err
+        return nil, err
     }
     header := blocks[0].header
     read := func(offset int64, amt uint32, block *list_block) (left uint32, bytes bs.ByteSlice) {
@@ -574,41 +564,17 @@ func (self *VarcharList) AsyncGetList(key int64, send chan<- bs.ByteSlice, quit 
         // fmt.Println("VarcharList.GetList.read_item", i, length)
         return bytes, stop, blocks[i-1:] //wrong
     }
-
-    go func() {
-        offset := int64(0)
-        // fmt.Println("VarcharList.GetList", blocks[0].bytes)
-        forloop: for i := uint32(0); i < header.list_length; i++ {
-            // fmt.Println()
-            var item bs.ByteSlice
-            item, offset, blocks = read_item(offset, blocks)
-            select {
-            case send<-item:
-            case <-quit:
-                break forloop
-            }
-            // fmt.Println("VarcharList.GetList len(bytes_list)", len(bytes_list), len(item))
-        }
-        close(send)
-    }()
-
-    return header.list_length, nil
-}
-
-func (self *VarcharList) GetList(key int64) (list_bytes []bs.ByteSlice, err error) {
-    output := make(chan bs.ByteSlice)
-    quit := make(chan bool)
-    length, err := self.AsyncGetList(key, output, quit)
-    if err != nil {
-        return nil, err
+    offset := int64(0)
+    bytes_list = make([]bs.ByteSlice, 0, header.list_length)
+    // fmt.Println("VarcharList.GetList", blocks[0].bytes)
+    for i := uint32(0); i < header.list_length; i++ {
+        // fmt.Println()
+        var item bs.ByteSlice
+        item, offset, blocks = read_item(offset, blocks)
+        bytes_list = append(bytes_list, item)
+        // fmt.Println("VarcharList.GetList len(bytes_list)", len(bytes_list), len(item))
     }
-
-    list_bytes = make([]bs.ByteSlice, 0, length)
-    for item := range output {
-        list_bytes = append(list_bytes, item)
-    }
-    close(quit)
-    return list_bytes, nil
+    return bytes_list, nil
 }
 
 func (self *VarcharList) Free(key int64) (err error) {
@@ -618,4 +584,3 @@ func (self *VarcharList) Free(key int64) (err error) {
     }
     return blocks.Free()
 }
-
