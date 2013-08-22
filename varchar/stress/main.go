@@ -133,20 +133,17 @@ const list_variance = 1 // 830*2
 const list_count = 10
 
 func create(list_path, keys_path string) {
-    list := varchar.MakeVarcharList(testfile(list_path))
+    ibf := testfile(list_path)
+    // cf, err := file.OpenLRUCacheFile(ibf, 1024*1024*1024*2)
+    // if err != nil { panic(err) }
+
+    list := varchar.MakeVarcharList(ibf)
     defer list.Close()
 
     list_keys := make([]int64, list_count)
     list_size := make([]int, list_count)
-    for j := range list_keys {
-        var err error
-        list_keys[j], err = list.New()
-        if err != nil { panic(err) }
-        list_size[j] = list_base_size + rand.Intn(list_variance)
-        if j == 7 {
-            list_size[j] += rand.Intn(list_variance)*2
-        }
-    }
+    item_size := item_base_size + rand.Intn(item_variance)
+    item := randslice(item_size)
 
     err := pprof.StartCPUProfile(profile_writer)
     if err != nil { panic(err) }
@@ -162,19 +159,46 @@ func create(list_path, keys_path string) {
         fmt.Fprintln(os.Stderr, "j", j)
     }
     */
+    max_extra_small := 100
+    max_extra_big := 5
     i := 0
     for {
         any_left := false
         for j, key := range list_keys {
+            if key == 0 {
+                var err error
+                list_keys[j], err = list.New()
+                if err != nil { panic(err) }
+                list_size[j] = list_base_size + rand.Intn(list_variance)
+                if j == 7 {
+                    list_size[j] += rand.Intn(list_variance)*2
+                }
+                key = list_keys[j]
+            }
             if list_size[j] <= 0 {
                 continue
             } else {
                 list_size[j] -= 1
                 any_left = true
             }
-            item_size := item_base_size + rand.Intn(item_variance)
-            err := list.Push(key, randslice(item_size))
+            err := list.Push(key, item)
             if err != nil { panic(err) }
+            if (j*i + int(key)) % 17 == 0 && max_extra_small > 0 {
+                var err error
+                list_key, err := list.New()
+                if err != nil { panic(err) }
+                list_keys = append(list_keys, list_key)
+                list_size = append(list_size, 1)
+                max_extra_small += 1
+            }
+            if (j*i + int(key)) % 57 == 0 && max_extra_big > 0 {
+                var err error
+                list_key, err := list.New()
+                if err != nil { panic(err) }
+                list_keys = append(list_keys, list_key)
+                list_size = append(list_size, list_base_size)
+                max_extra_big -= 1
+            }
         }
         if i % 20 == 0 {
             fmt.Fprintln(os.Stderr, "i", i)
@@ -195,9 +219,18 @@ func create(list_path, keys_path string) {
         os.Exit(ErrorCodes["file-create"])
     }
 
+    for i := range list_keys {
+        j := rand.Intn(i+1)
+        list_keys[i], list_keys[j] = list_keys[j], list_keys[i]
+    }
+
     for _, key := range list_keys {
         fmt.Fprintln(f, key)
     }
+
+    // if err := cf.Persist(); err != nil {
+        // panic(err)
+    // }
 }
 
 func read(list_path, keys_path string) {
