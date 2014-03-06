@@ -273,7 +273,6 @@ func read(list_path, keys_path string) {
 
     start := time.Now()
     for _, key := range keys {
-        fmt.Print("key ", key)
         start := time.Now()
         list, err := list.GetList(key)
         if err != nil {
@@ -281,11 +280,14 @@ func read(list_path, keys_path string) {
             os.Exit(ErrorCodes["getlist"])
         }
         end := time.Now()
-        sum := 0
-        for _, item := range list {
-            sum += len(item)
+        diff := end.Sub(start).Seconds()
+        if diff > .1 {
+            sum := 0
+            for _, item := range list {
+                sum += len(item)
+            }
+            fmt.Println("key", key, "duration", diff, len(list), sum)
         }
-        fmt.Println(" duration", end.Sub(start).Seconds(), len(list), sum)
     }
     end := time.Now()
     fmt.Println("duration", end.Sub(start).Seconds())
