@@ -3,7 +3,6 @@ package bptree
 import "fmt"
 import "os"
 import "runtime"
-import "backdoor"
 import "sync"
 import "container/list"
 import "file-structures/treeinfo"
@@ -142,12 +141,11 @@ func (self *BpTree) Contains(key ByteSlice) bool {
 // recursively finds the first matching record
 func (self *BpTree) find(key ByteSlice, block *KeyBlock, height int) (int, *KeyBlock) {
     // fmt.Printf("tree height %v, %v, %v, %v\n", 
-      //  block.Position(), self.info.Height(), height, backdoor.GoID())
     if height > 0 {
         if block.Mode() != self.internal.Mode {
             msg := fmt.Sprintf(
-              "137 expected an internal block got an external %v %v %v \n%v", 
-                  block.Position(), height, backdoor.GoID(), block)
+              "137 expected an internal block got an external %v %v\n%v", 
+                  block.Position(), height, block)
             panic(msg)
         }
         var pos ByteSlice
