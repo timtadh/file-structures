@@ -3,6 +3,10 @@ A B+Tree for Go
 
 By Tim Henderson
 
+**NOTE:** I now have a [new repository](https://github.com/timtadh/fs2) which
+covers *much the same functionality* as this repository. Except better. [Check
+out fs2 now!](https://github.com/timtadh/fs2)
+
 Long ago, when Go 1 was just a twinkle in Rob Pike's eye, I developed a B+Tree
 for Go. It didn't support removal, but it did support duplicate keys "the right
 way" (tm). Although I was pretty proud of my B+Tree, I didn't have much use for
