@@ -3,54 +3,54 @@ package file2
 import . "file-structures/block/byteslice"
 
 type BlockSizer interface {
-    BlockSize() uint32
+	BlockSize() uint32
 }
 
 type BlockReader interface {
-    BlockSizer
-    ReadBlock(key int64) (block ByteSlice, err error)
-    ReadBlocks(key int64, n int) (blocks ByteSlice, err error)
+	BlockSizer
+	ReadBlock(key int64) (block ByteSlice, err error)
+	ReadBlocks(key int64, n int) (blocks ByteSlice, err error)
 }
 
 type BlockWriter interface {
-    BlockSizer
-    WriteBlock(key int64, block ByteSlice) error
+	BlockSizer
+	WriteBlock(key int64, block ByteSlice) error
 }
 
 type BlockReadWriter interface {
-    BlockSizer
-    ReadBlock(key int64) (block ByteSlice, err error)
-    ReadBlocks(key int64, n int) (blocks ByteSlice, err error)
-    WriteBlock(key int64, block ByteSlice) error
+	BlockSizer
+	ReadBlock(key int64) (block ByteSlice, err error)
+	ReadBlocks(key int64, n int) (blocks ByteSlice, err error)
+	WriteBlock(key int64, block ByteSlice) error
 }
 
 type BlockAllocator interface {
-    Free(key int64) error
-    Allocate() (key int64, err error)
-    AllocateBlocks(n int) (key int64, err error)
+	Free(key int64) error
+	Allocate() (key int64, err error)
+	AllocateBlocks(n int) (key int64, err error)
 }
 
 type Closer interface {
-    Close() error
+	Close() error
 }
 
 type Removable interface {
-    Remove() error
+	Remove() error
 }
 
 type RootController interface {
-    ControlData() (block ByteSlice, err error)
-    SetControlData(block ByteSlice) (err error)
+	ControlData() (block ByteSlice, err error)
+	SetControlData(block ByteSlice) (err error)
 }
 
 type BlockDevice interface {
-    BlockReadWriter
-    BlockAllocator
-    Closer
-    RootController
+	BlockReadWriter
+	BlockAllocator
+	Closer
+	RootController
 }
 
 type RemovableBlockDevice interface {
-    BlockDevice
-    Removable
+	BlockDevice
+	Removable
 }
